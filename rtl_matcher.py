@@ -29,8 +29,10 @@ The pipeline runs in three phases:
     For each input place string, start from the rightmost (broadest) term and
     look up its candidate UUIDs. Move left one term at a time, keeping only
     candidates whose Parent_UUID chain connects back to the current confirmed
-    set. When multiple candidates survive, rank by token overlap between the
-    original string and each candidate's Type_Ahead_Value field.
+    set. When multiple candidates survive, rank by jurisdiction level gap
+    from the parent anchor (smaller gap = more direct child = better fit),
+    with population as a secondary tiebreaker. Unresolvable ties are
+    written to a separate side file for QA review.
 """
 
 import base64
@@ -456,7 +458,7 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
 # Phase 2: Resolve authority records
 #
 # Phase 1 gives us UUIDs, but matching requires the full authority records
-# (Parent_UUID for chain walking, Type_Ahead_Value for ranking). Phase 2
+# (Parent_UUID for chain walking, Level for ranking). Phase 2
 # fetches all of these in batch, then walks up the Parent_UUID hierarchy
 # level by level to pre-cache ancestor records. Without this pre-fetch,
 # Phase 3 would make individual API calls for each parent encountered
