@@ -704,6 +704,17 @@ def resolve_parent_only(candidate_ids, auth_cache, client):
 # --- END RTL-LEVEL-PREF ---
 
 
+def _get_parent_level(confirmed_set, auth_cache):
+    """Extract the jurisdiction Level from the first candidate with a valid level."""
+    for uid in confirmed_set:
+        rec = auth_cache.get(uid, {})
+        try:
+            return int(field_str(rec, 'Level'))
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
 def rank_candidates(candidates, auth_cache, parent_level):
     """Rank candidates by level gap from parent anchor, then population.
 
@@ -758,6 +769,7 @@ class MatchResult:
     match_type: str = 'no_terms'
     skipped_count: int = 0
     skipped_terms: str = ''
+    tied_ids: list = field(default_factory=list)
 
 
 def match_entry(terms, name_cache, auth_cache, client, original):
@@ -765,7 +777,9 @@ def match_entry(terms, name_cache, auth_cache, client, original):
 
     Match types returned:
       - chain_verified: multiple terms connected through the hierarchy
+      - chain_amb: chain verified but top candidates tied on level gap + population
       - single_term: only one term in the input, matched directly
+      - single_amb: single term but top candidates tied on population
       - parent_only: rightmost term matched but no children verified against it
       - no_auth_match: rightmost term had no candidates in name_cache
       - no_terms: input was empty or whitespace-only
@@ -776,20 +790,23 @@ def match_entry(terms, name_cache, auth_cache, client, original):
 
     right_to_left = list(reversed(stripped))
 
-    # Seed the confirmed set from the broadest (rightmost) term
     parent_ids = name_cache.get(right_to_left[0].lower(), set())
     if not parent_ids:
         return MatchResult(match_type='no_auth_match')
 
     if len(right_to_left) == 1:
-        ranked = rank_candidates(list(parent_ids), auth_cache, original)
-        return MatchResult(ranked, depth=1, match_type='single_term')
+        ranked = rank_candidates(list(parent_ids), auth_cache, None)
+        winner, tied = detect_tie(ranked)
+        if tied:
+            return MatchResult([], depth=1, match_type='single_amb', tied_ids=tied)
+        ids = [winner] if winner else []
+        return MatchResult(ids, depth=1, match_type='single_term')
 
     confirmed = parent_ids
     depth = 1
     skipped = []
+    parent_level_for_ranking = None
 
-    # Walk left through remaining terms, verifying each against the hierarchy
     for i in range(1, len(right_to_left)):
         child_ids = name_cache.get(right_to_left[i].lower(), set())
         if not child_ids:
@@ -805,14 +822,27 @@ def match_entry(terms, name_cache, auth_cache, client, original):
         }
 
         if verified:
+            parent_level_for_ranking = _get_parent_level(confirmed, auth_cache)
             confirmed = verified
             depth += 1
         else:
             skipped.append(right_to_left[i])
 
-    ranked = rank_candidates(list(confirmed), auth_cache, original)
-    match_type = 'chain_verified' if depth > 1 else 'parent_only'
-    return MatchResult(ranked, depth, match_type, len(skipped), '; '.join(skipped))
+    skip_count = len(skipped)
+    skip_str = '; '.join(skipped)
+
+    if depth > 1:
+        ranked = rank_candidates(list(confirmed), auth_cache, parent_level_for_ranking)
+        winner, tied = detect_tie(ranked)
+        if tied:
+            return MatchResult([], depth, 'chain_amb', skip_count, skip_str, tied)
+        ids = [winner] if winner else []
+        return MatchResult(ids, depth, 'chain_verified', skip_count, skip_str)
+
+    # parent_only: pass UUIDs through for resolve_parent_only in main()
+    ranked = rank_candidates(list(confirmed), auth_cache, None)
+    ids = [uuid for uuid, _ in ranked]
+    return MatchResult(ids, depth, 'parent_only', skip_count, skip_str)
 
 
 # ---------------------------------------------------------------------------

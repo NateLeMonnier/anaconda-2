@@ -1,7 +1,7 @@
 """Tests for batch parent pre-fetch and resolve_parent_only in rtl_matcher."""
 import pytest
 from unittest.mock import MagicMock
-from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie
+from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry
 
 
 def make_auth_record(uuid, parent_uuid=None, name="Place"):
@@ -379,3 +379,117 @@ class TestDetectTie:
         winner, tied = detect_tie(ranked)
         assert winner == 'big'
         assert tied == []
+
+
+def build_hierarchy_caches():
+    """Build caches for: USA (level 8) -> FL-state (level 6) and FL-city (level 4, PR).
+    Original input: "Mount Dora, Florida, United States of America"
+    Mount Dora is not in name_cache, so it gets skipped.
+    """
+    auth_cache = {
+        'usa-1': make_auth_record_full(
+            'usa-1', level='8', name='United States of America',
+            population='330000000'),
+        'fl-state': make_auth_record_full(
+            'fl-state', parent_uuid='usa-1', level='6', name='Florida',
+            population='22000000'),
+        'fl-city': make_auth_record_full(
+            'fl-city', parent_uuid='pr-1', level='4', name='Florida',
+            population='9000'),
+        'pr-1': make_auth_record_full(
+            'pr-1', parent_uuid='usa-1', level='7', name='Puerto Rico',
+            population='3200000'),
+    }
+    name_cache = {
+        'united states of america': {'usa-1'},
+        'florida': {'fl-state', 'fl-city'},
+    }
+    return name_cache, auth_cache
+
+
+def build_tied_hierarchy_caches():
+    """Two Floridas at the same level and same population under USA."""
+    auth_cache = {
+        'usa-1': make_auth_record_full(
+            'usa-1', level='8', name='United States of America',
+            population='330000000'),
+        'fl-a': make_auth_record_full(
+            'fl-a', parent_uuid='usa-1', level='6', name='Florida',
+            population='0'),
+        'fl-b': make_auth_record_full(
+            'fl-b', parent_uuid='usa-1', level='6', name='Florida',
+            population='0'),
+    }
+    name_cache = {
+        'united states of america': {'usa-1'},
+        'florida': {'fl-a', 'fl-b'},
+    }
+    return name_cache, auth_cache
+
+
+class TestMatchEntryTieDetection:
+    def test_chain_verified_picks_better_level_gap(self):
+        name_cache, auth_cache = build_hierarchy_caches()
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['Mount Dora', 'Florida', 'United States of America']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'Mount Dora, Florida, United States of America')
+        assert result.match_type == 'chain_verified'
+        assert result.candidate_ids == ['fl-state']
+        assert result.tied_ids == []
+
+    def test_chain_verified_tie_produces_chain_amb(self):
+        name_cache, auth_cache = build_tied_hierarchy_caches()
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['Florida', 'United States of America']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'Florida, United States of America')
+        assert result.match_type == 'chain_amb'
+        assert result.candidate_ids == []
+        assert set(result.tied_ids) == {'fl-a', 'fl-b'}
+
+    def test_single_term_no_tie_returns_winner(self):
+        auth_cache = {
+            'big': make_auth_record_full('big', level='6', population='500000'),
+            'small': make_auth_record_full('small', level='6', population='100'),
+        }
+        name_cache = {'florida': {'big', 'small'}}
+        client = MagicMock()
+        terms = ['Florida']
+        result = match_entry(terms, name_cache, auth_cache, client, 'Florida')
+        assert result.match_type == 'single_term'
+        assert result.candidate_ids == ['big']
+
+    def test_single_term_tie_produces_single_amb(self):
+        auth_cache = {
+            'a': make_auth_record_full('a', level='6', population='0'),
+            'b': make_auth_record_full('b', level='6', population='0'),
+        }
+        name_cache = {'florida': {'a', 'b'}}
+        client = MagicMock()
+        terms = ['Florida']
+        result = match_entry(terms, name_cache, auth_cache, client, 'Florida')
+        assert result.match_type == 'single_amb'
+        assert result.candidate_ids == []
+        assert set(result.tied_ids) == {'a', 'b'}
+
+    def test_parent_only_unchanged(self):
+        """parent_only results pass through to resolve_parent_only in main(),
+        so match_entry should still return candidate_ids for it."""
+        auth_cache = {
+            'usa-1': make_auth_record_full(
+                'usa-1', level='8', name='United States of America',
+                population='330000000'),
+        }
+        name_cache = {
+            'united states of america': {'usa-1'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['Springfield', 'United States of America']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'Springfield, United States of America')
+        assert result.match_type == 'parent_only'
+        assert 'usa-1' in result.candidate_ids
