@@ -276,3 +276,64 @@ class TestResolveParentOnly:
         }
         result = resolve_parent_only([city_a, city_b], auth_cache, MagicMock())
         assert result == (None, 'amb')
+
+
+from rtl_matcher import rank_candidates
+
+
+class TestRankCandidates:
+    def test_single_candidate_returns_it(self):
+        auth_cache = {
+            'aaa': make_auth_record_full('aaa', level='6', population='300000'),
+        }
+        result = rank_candidates(['aaa'], auth_cache, parent_level=8)
+        assert len(result) == 1
+        assert result[0][0] == 'aaa'
+
+    def test_smaller_level_gap_wins(self):
+        auth_cache = {
+            'state': make_auth_record_full('state', level='6', population='100000'),
+            'city': make_auth_record_full('city', level='4', population='500000'),
+        }
+        result = rank_candidates(['state', 'city'], auth_cache, parent_level=8)
+        assert result[0][0] == 'state'
+        assert result[1][0] == 'city'
+
+    def test_same_gap_higher_pop_wins(self):
+        auth_cache = {
+            'big': make_auth_record_full('big', level='6', population='500000'),
+            'small': make_auth_record_full('small', level='6', population='10000'),
+        }
+        result = rank_candidates(['big', 'small'], auth_cache, parent_level=8)
+        assert result[0][0] == 'big'
+        assert result[1][0] == 'small'
+
+    def test_parent_level_none_sorts_by_pop_only(self):
+        auth_cache = {
+            'high_pop': make_auth_record_full('high_pop', level='4', population='900000'),
+            'low_pop': make_auth_record_full('low_pop', level='6', population='100'),
+        }
+        result = rank_candidates(['high_pop', 'low_pop'], auth_cache, parent_level=None)
+        assert result[0][0] == 'high_pop'
+
+    def test_missing_level_treated_as_zero(self):
+        rec_no_level = make_auth_record_full('no_level', level='', population='50000')
+        auth_cache = {
+            'no_level': rec_no_level,
+            'normal': make_auth_record_full('normal', level='6', population='50000'),
+        }
+        result = rank_candidates(['no_level', 'normal'], auth_cache, parent_level=8)
+        assert result[0][0] == 'normal'
+
+    def test_empty_candidates_returns_empty(self):
+        result = rank_candidates([], {}, parent_level=8)
+        assert result == []
+
+    def test_returns_score_tuples(self):
+        auth_cache = {
+            'aaa': make_auth_record_full('aaa', level='6', population='300000'),
+        }
+        result = rank_candidates(['aaa'], auth_cache, parent_level=8)
+        uuid, score = result[0]
+        assert uuid == 'aaa'
+        assert score == (2, -300000)

@@ -704,24 +704,31 @@ def resolve_parent_only(candidate_ids, auth_cache, client):
 # --- END RTL-LEVEL-PREF ---
 
 
-def rank_candidates(candidates, auth_cache, original):
-    """When multiple authority records survive chain verification, rank them
-    by how many comma-separated tokens from the original place string appear
-    in the candidate's Type_Ahead_Value. This favors candidates whose full
-    jurisdiction path most closely matches what the user typed.
-    """
-    if len(candidates) <= 1:
-        return candidates
+def rank_candidates(candidates, auth_cache, parent_level):
+    """Rank candidates by level gap from parent anchor, then population.
 
-    original_tokens = {t.strip() for t in re.split(r'[,;]', original.lower()) if t.strip()}
+    Returns list of (uuid, score) tuples sorted best-first.
+    score is (level_gap, neg_population) — lower is better on both axes.
+    When parent_level is None (single_term case), ranks by population only.
+    """
+    if not candidates:
+        return []
 
     def score(uuid):
         rec = auth_cache.get(uuid, {})
-        type_ahead = field_str(rec, 'Type_Ahead_Value').lower()
-        type_ahead_tokens = {t.strip() for t in type_ahead.split(',') if t.strip()}
-        return len(original_tokens & type_ahead_tokens)
+        pop = get_population(rec)
+        if parent_level is None:
+            return (0, -pop)
+        try:
+            level = int(field_str(rec, 'Level'))
+        except (ValueError, TypeError):
+            level = 0
+        gap = abs(parent_level - level)
+        return (gap, -pop)
 
-    return sorted(candidates, key=score, reverse=True)
+    scored = [(uuid, score(uuid)) for uuid in candidates]
+    scored.sort(key=lambda x: x[1])
+    return scored
 
 
 @dataclass
