@@ -731,6 +731,26 @@ def rank_candidates(candidates, auth_cache, parent_level):
     return scored
 
 
+def detect_tie(ranked_with_scores):
+    """Check if top candidates in a ranked list share the same score.
+
+    Returns (winner_uuid_or_None, tied_uuids).
+    If tied: winner is None, tied_uuids contains all candidates sharing the top score.
+    If not tied: winner is the top candidate, tied_uuids is empty.
+    """
+    if not ranked_with_scores:
+        return (None, [])
+    if len(ranked_with_scores) == 1:
+        return (ranked_with_scores[0][0], [])
+
+    top_score = ranked_with_scores[0][1]
+    tied = [uuid for uuid, s in ranked_with_scores if s == top_score]
+
+    if len(tied) > 1:
+        return (None, tied)
+    return (ranked_with_scores[0][0], [])
+
+
 @dataclass
 class MatchResult:
     candidate_ids: list = field(default_factory=list)

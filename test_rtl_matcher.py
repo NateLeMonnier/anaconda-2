@@ -1,7 +1,7 @@
 """Tests for batch parent pre-fetch and resolve_parent_only in rtl_matcher."""
 import pytest
 from unittest.mock import MagicMock
-from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH
+from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie
 
 
 def make_auth_record(uuid, parent_uuid=None, name="Place"):
@@ -337,3 +337,45 @@ class TestRankCandidates:
         uuid, score = result[0]
         assert uuid == 'aaa'
         assert score == (2, -300000)
+
+
+class TestDetectTie:
+    def test_empty_list_returns_no_winner(self):
+        winner, tied = detect_tie([])
+        assert winner is None
+        assert tied == []
+
+    def test_single_candidate_returns_winner(self):
+        winner, tied = detect_tie([('aaa', (2, -300000))])
+        assert winner == 'aaa'
+        assert tied == []
+
+    def test_different_scores_returns_winner(self):
+        ranked = [('better', (2, -300000)), ('worse', (4, -900000))]
+        winner, tied = detect_tie(ranked)
+        assert winner == 'better'
+        assert tied == []
+
+    def test_identical_scores_returns_tie(self):
+        ranked = [('a', (2, -300000)), ('b', (2, -300000))]
+        winner, tied = detect_tie(ranked)
+        assert winner is None
+        assert set(tied) == {'a', 'b'}
+
+    def test_three_candidates_two_tied_at_top(self):
+        ranked = [('a', (2, -100)), ('b', (2, -100)), ('c', (4, -500))]
+        winner, tied = detect_tie(ranked)
+        assert winner is None
+        assert set(tied) == {'a', 'b'}
+
+    def test_three_candidates_all_tied(self):
+        ranked = [('a', (2, -100)), ('b', (2, -100)), ('c', (2, -100))]
+        winner, tied = detect_tie(ranked)
+        assert winner is None
+        assert set(tied) == {'a', 'b', 'c'}
+
+    def test_same_gap_different_pop_not_tied(self):
+        ranked = [('big', (2, -500000)), ('small', (2, -100))]
+        winner, tied = detect_tie(ranked)
+        assert winner == 'big'
+        assert tied == []
