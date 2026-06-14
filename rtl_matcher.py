@@ -49,6 +49,8 @@ from dataclasses import dataclass, field
 
 INPUT = os.environ.get('RTL_INPUT', os.path.expanduser("~/storied/resources/SnowballLocationsSampled/locations_sample_5k.tsv"))
 OUTPUT = os.environ.get('RTL_OUTPUT', os.path.expanduser("~/storied/resources/SnowballLocationsSampled/locations_sample_5k_output.tsv"))
+_base, _ext = os.path.splitext(OUTPUT)
+TIE_OUTPUT = os.environ.get('RTL_TIE_OUTPUT', f"{_base}_ties{_ext}")
 ENV = os.path.expanduser("~/storied/code/place-normalizer/.env")
 
 # FileMaker Data API accepts multiple query objects per request with no
@@ -59,6 +61,11 @@ OUTPUT_FIELDS = [
     'original', 'guid', 'frequency', 'match_type', 'match_depth',
     'candidates', 'authority_name', 'type_ahead', 'jurisdiction',
     'level', 'authority_id', 'skipped_count', 'skipped_terms',
+]
+
+TIE_OUTPUT_FIELDS = [
+    'original', 'guid', 'frequency', 'match_type', 'match_depth',
+    'authority_id', 'authority_name', 'type_ahead', 'level', 'jurisdiction',
 ]
 
 
@@ -875,6 +882,13 @@ def write_results(results, path):
         writer.writerows(results)
 
 
+def write_ties(ties, path):
+    with open(path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=TIE_OUTPUT_FIELDS, delimiter='\t')
+        writer.writeheader()
+        writer.writerows(ties)
+
+
 def print_summary(results, call_count, elapsed_sec, output_path):
     types = defaultdict(int)
     for row in results:
@@ -883,7 +897,9 @@ def print_summary(results, call_count, elapsed_sec, output_path):
     print(f"\n{'='*50}")
     print(f"RESULTS — {len(results)} entries")
     print(f"{'='*50}")
-    for match_type in ['chain_verified', 'single_term', 'parent_resolved', 'parent_only', 'parent_amb', 'no_auth_match', 'no_terms']:  # RTL-LEVEL-PREF: added parent_resolved, parent_amb
+    for match_type in ['chain_verified', 'chain_amb', 'single_term', 'single_amb',
+                       'parent_resolved', 'parent_only', 'parent_amb',
+                       'no_auth_match', 'no_terms']:
         if match_type in types:
             print(f"  {match_type:20s} {types[match_type]:>5}")
 
@@ -957,6 +973,7 @@ def main():
     # Phase 3: Run right-to-left matching on each entry
     print(f"\nPhase 3: Right-to-left matching (chain walk + skip + rank) {elapsed()}")
     results = []
+    ties = []
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
         match = match_entry(terms, name_cache, auth_cache, client, place)
 
@@ -981,6 +998,22 @@ def main():
                     skipped_terms=match.skipped_terms,
                 )
         # --- END RTL-LEVEL-PREF ---
+
+        if match.match_type in ('chain_amb', 'single_amb') and match.tied_ids:
+            for tid in match.tied_ids:
+                rec = auth_cache.get(tid, {})
+                ties.append({
+                    'original': place,
+                    'guid': guid,
+                    'frequency': frequency,
+                    'match_type': match.match_type,
+                    'match_depth': match.depth,
+                    'authority_id': tid,
+                    'authority_name': rec.get('Auth_Place_Name', ''),
+                    'type_ahead': rec.get('Type_Ahead_Value', ''),
+                    'level': rec.get('Level', ''),
+                    'jurisdiction': rec.get('Jurisdiction', ''),
+                })
 
         row = {
             'original': place,
@@ -1016,6 +1049,9 @@ def main():
     print(f"  Matched {len(parsed)}/{len(parsed)} entries")
 
     write_results(results, OUTPUT)
+    if ties:
+        write_ties(ties, TIE_OUTPUT)
+        print(f"  Wrote {len(ties)} tied candidate rows to {TIE_OUTPUT}")
     print_summary(results, client.call_count, time.time() - start, OUTPUT)
 
 
