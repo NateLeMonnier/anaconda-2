@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Evaluator and RTL matcher outputs (date folders with run results)
+results/*/
+rtl-outputs/*/
