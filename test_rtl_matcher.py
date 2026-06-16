@@ -1,7 +1,7 @@
 """Tests for batch parent pre-fetch and resolve_parent_only in rtl_matcher."""
 import pytest
 from unittest.mock import MagicMock
-from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint, parse_entries
+from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint, parse_entries, resolve_helper_term
 
 
 def make_auth_record(uuid, parent_uuid=None, name="Place"):
@@ -774,3 +774,36 @@ class TestMatchEntryJurisdictionHint:
                              'Clark County, Ohio', jurisdiction_hints=jurisdiction_hints)
         assert result.match_type == 'chain_verified'
         assert result.candidate_ids == ['clark_county']
+
+
+class TestResolveHelperTerm:
+    def test_resolves_single_match(self):
+        utah_rec = make_auth_record_full('utah-uuid', level='6', name='Utah',
+                                         parent_uuid='usa-uuid', jurisdiction='State')
+        usa_rec = make_auth_record_full('usa-uuid', level='8', name='United States',
+                                        jurisdiction='Country')
+        client = MagicMock()
+        # First call: Authority_Place query for "Utah"
+        # Second call: parent chain fetch for usa-uuid
+        client.find.side_effect = [
+            make_fm_response([utah_rec]),
+            make_fm_response([usa_rec]),
+        ]
+        auth_cache = {}
+        result = resolve_helper_term('Utah', client, auth_cache)
+        assert result is not None
+        assert result['uuid'] == 'utah-uuid'
+        assert result['level'] == 6
+        assert 'usa-uuid' in result['ancestor_uuids']
+
+    def test_returns_none_for_empty_string(self):
+        client = MagicMock()
+        result = resolve_helper_term('', client, {})
+        assert result is None
+        client.find.assert_not_called()
+
+    def test_returns_none_for_none(self):
+        client = MagicMock()
+        result = resolve_helper_term(None, client, {})
+        assert result is None
+        client.find.assert_not_called()

@@ -1102,6 +1102,148 @@ def print_summary(results, call_count, elapsed_sec, output_path):
 
 
 # ---------------------------------------------------------------------------
+# Helper term resolution
+#
+# An optional geographic context string (e.g., "Utah, USA") that biases
+# single-term matching by providing a set of known ancestor UUIDs. The caller
+# passes RTL_HELPER_TERM via env or interactive prompt; this function resolves
+# it to a single authority record and walks up its parent chain to collect
+# ancestor UUIDs that can be used in Phase 3 scoring.
+# ---------------------------------------------------------------------------
+
+def resolve_helper_term(term_string, client, auth_cache):
+    """Resolve a helper term string to a single authority record.
+
+    Returns a dict with keys 'uuid', 'level', and 'ancestor_uuids' (a set of
+    parent chain UUIDs), or None if the term is empty or cannot be resolved.
+
+    Process:
+      1. Split term_string on commas/semicolons into individual terms.
+      2. Query Authority_Place for each term by exact Auth_Place_Name match.
+      3. If multiple terms, do a mini RTL chain walk to narrow candidates.
+      4. If multiple candidates remain after narrowing, prompt user to pick.
+      5. Walk up the chosen record's Parent_UUID chain to collect ancestors.
+    """
+    if not term_string:
+        return None
+
+    terms = [t.strip() for t in re.split(r'[,;]', term_string) if t.strip()]
+    if not terms:
+        return None
+
+    # Query each term against Authority_Place
+    term_candidates = {}
+    for term in terms:
+        query = [{"Auth_Place_Name": f"=={term}"}]
+        records = client.find("Authority_Place", query)
+        uuids = set()
+        for rec in records:
+            fd = rec['fieldData']
+            uuid = field_str(fd, 'UUID')
+            if uuid:
+                auth_cache[uuid] = fd
+                uuids.add(uuid)
+        if uuids:
+            term_candidates[term.lower()] = uuids
+
+    if not term_candidates:
+        print("  Helper term: no authority records found.")
+        return None
+
+    # Mini RTL chain walk when multiple terms provided
+    if len(terms) > 1:
+        right_to_left = list(reversed(terms))
+        confirmed = term_candidates.get(right_to_left[0].lower(), set())
+        if not confirmed:
+            # Try left-to-right fallback: use whatever we found
+            all_found = set()
+            for uuids in term_candidates.values():
+                all_found.update(uuids)
+            confirmed = all_found
+        else:
+            for i in range(1, len(right_to_left)):
+                child_ids = term_candidates.get(right_to_left[i].lower(), set())
+                if not child_ids:
+                    continue
+                _prefetch_missing_parents(child_ids, auth_cache, client)
+                verified = {
+                    cid for cid in child_ids
+                    if walk_up_chain(cid, confirmed, auth_cache, client)
+                }
+                if verified:
+                    confirmed = verified
+        candidates = list(confirmed)
+    else:
+        candidates = list(term_candidates.get(terms[0].lower(), set()))
+
+    if not candidates:
+        print("  Helper term: chain walk produced no candidates.")
+        return None
+
+    # Single candidate — use it directly
+    if len(candidates) == 1:
+        chosen_uuid = candidates[0]
+    else:
+        # Prompt user to pick
+        print(f"\n  Helper term '{term_string}' matched {len(candidates)} records:")
+        for idx, uuid in enumerate(candidates):
+            rec = auth_cache.get(uuid, {})
+            name = field_str(rec, 'Auth_Place_Name')
+            level = field_str(rec, 'Level')
+            jurisdiction = field_str(rec, 'Jurisdiction')
+            type_ahead = field_str(rec, 'Type_Ahead_Value')
+            print(f"    [{idx + 1}] {name}  level={level}  jurisdiction={jurisdiction}  ({type_ahead})")
+        print(f"    [q] Skip helper term")
+        choice = input("  Pick a number: ").strip().lower()
+        if choice == 'q' or not choice:
+            return None
+        try:
+            idx = int(choice) - 1
+            if idx < 0 or idx >= len(candidates):
+                print("  Invalid selection, skipping helper term.")
+                return None
+            chosen_uuid = candidates[idx]
+        except ValueError:
+            print("  Invalid selection, skipping helper term.")
+            return None
+
+    chosen_rec = auth_cache.get(chosen_uuid, {})
+    try:
+        chosen_level = int(field_str(chosen_rec, 'Level'))
+    except (ValueError, TypeError):
+        chosen_level = 0
+
+    # Walk up parent chain to collect ancestor UUIDs
+    ancestor_uuids = set()
+    current = chosen_uuid
+    for _ in range(20):
+        rec = auth_cache.get(current)
+        if not rec:
+            # Try to fetch it
+            query = [{"UUID": f"=={current}"}]
+            records = client.find("Authority_Place", query)
+            if records:
+                fd = records[0]['fieldData']
+                uuid = field_str(fd, 'UUID')
+                if uuid:
+                    auth_cache[uuid] = fd
+                    rec = fd
+            if not rec:
+                break
+        parent_uuid = field_str(rec, 'Parent_UUID')
+        if not parent_uuid:
+            break
+        ancestor_uuids.add(parent_uuid)
+        current = parent_uuid
+
+    return {
+        'uuid': chosen_uuid,
+        'level': chosen_level,
+        'ancestor_uuids': ancestor_uuids,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main — orchestrates the three-phase pipeline
 # ---------------------------------------------------------------------------
 
@@ -1120,6 +1262,14 @@ def main():
 
     parsed, all_terms, jurisdiction_hints = parse_entries(entries)
     print(f"Unique terms to look up: {len(all_terms)}")
+
+    helper_term_str = os.environ.get('RTL_HELPER_TERM', '').strip()
+    if not helper_term_str:
+        print("\nNo helper term provided (RTL_HELPER_TERM not set).")
+        print("A helper term provides geographic context for ambiguous single-term matches.")
+        print("Examples: 'Utah, USA', 'New South Wales, Australia', 'USA'")
+        helper_term_str = input("Enter a helper term (or press Enter to skip): ").strip()
+    helper_term = None
 
     # Phase 1a: Check the Master Normalization Table for known mappings
     print(f"\nPhase 1a: MNT lookups (filtering junk IDs) {elapsed()}")
@@ -1164,6 +1314,18 @@ def main():
     prefetch_parent_chains(client, auth_cache)
     print(f"  {len(auth_cache) - before} parent records added, "
           f"{len(auth_cache)} total cached {elapsed()}")
+
+    if helper_term_str:
+        print(f"\nResolving helper term: '{helper_term_str}' {elapsed()}")
+        helper_term = resolve_helper_term(helper_term_str, client, auth_cache)
+        if helper_term:
+            print(f"  Helper term resolved: uuid={helper_term['uuid']} "
+                  f"level={helper_term['level']} "
+                  f"ancestors={len(helper_term['ancestor_uuids'])} {elapsed()}")
+        else:
+            print(f"  Helper term could not be resolved, proceeding without it.")
+    else:
+        helper_term = None
 
     # Phase 3: Run right-to-left matching on each entry
     print(f"\nPhase 3: Right-to-left matching (chain walk + skip + rank) {elapsed()}")
