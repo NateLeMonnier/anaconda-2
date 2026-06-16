@@ -855,7 +855,16 @@ def _get_parent_level(confirmed_set, auth_cache):
     return None
 
 
-def rank_candidates(candidates, auth_cache, parent_level):
+PREFERRED_JURISDICTIONS = frozenset({
+    'City', 'Town', 'Borough', 'Village', 'Comune', 'Kommune', 'Municipality',
+})
+
+FILTERED_JURISDICTIONS = frozenset({
+    'Township', 'County', 'Municipio', 'Parish', 'District', 'Arrondissement',
+})
+
+
+def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None):
     """Rank candidates by level gap from parent anchor, then population.
 
     Returns list of (uuid, score) tuples sorted best-first.
@@ -864,6 +873,13 @@ def rank_candidates(candidates, auth_cache, parent_level):
     """
     if not candidates:
         return []
+
+    if jurisdiction_hint is None:
+        preferred = [c for c in candidates
+                     if field_str(auth_cache.get(c, {}), 'Jurisdiction') in PREFERRED_JURISDICTIONS]
+        if preferred:
+            candidates = [c for c in candidates
+                          if field_str(auth_cache.get(c, {}), 'Jurisdiction') not in FILTERED_JURISDICTIONS]
 
     def score(uuid):
         rec = auth_cache.get(uuid, {})

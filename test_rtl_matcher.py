@@ -339,6 +339,115 @@ class TestRankCandidates:
         assert score == (2, -300000)
 
 
+class TestRankCandidatesJurisdictionFilter:
+    def test_city_preferred_over_township_no_hint(self):
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='80000',
+                                          jurisdiction='City'),
+            'twp': make_auth_record_full('twp', level='4', population='120000',
+                                         jurisdiction='Township'),
+        }
+        result = rank_candidates(['city', 'twp'], auth_cache, parent_level=None,
+                                 jurisdiction_hint=None)
+        assert len(result) == 1
+        assert result[0][0] == 'city'
+
+    def test_township_kept_when_hint_is_township(self):
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='80000',
+                                          jurisdiction='City'),
+            'twp': make_auth_record_full('twp', level='4', population='120000',
+                                         jurisdiction='Township'),
+        }
+        result = rank_candidates(['city', 'twp'], auth_cache, parent_level=None,
+                                 jurisdiction_hint='Township')
+        assert len(result) == 2
+        assert result[0][0] == 'twp'
+
+    def test_county_filtered_when_city_exists(self):
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='50000',
+                                          jurisdiction='City'),
+            'county': make_auth_record_full('county', level='5', population='200000',
+                                            jurisdiction='County'),
+        }
+        result = rank_candidates(['city', 'county'], auth_cache, parent_level=None,
+                                 jurisdiction_hint=None)
+        assert len(result) == 1
+        assert result[0][0] == 'city'
+
+    def test_county_kept_when_hint_is_county(self):
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='50000',
+                                          jurisdiction='City'),
+            'county': make_auth_record_full('county', level='5', population='200000',
+                                            jurisdiction='County'),
+        }
+        result = rank_candidates(['city', 'county'], auth_cache, parent_level=None,
+                                 jurisdiction_hint='County')
+        assert len(result) == 2
+        assert result[0][0] == 'county'
+
+    def test_no_preferred_candidates_keeps_all(self):
+        auth_cache = {
+            'twp_a': make_auth_record_full('twp_a', level='4', population='80000',
+                                           jurisdiction='Township'),
+            'twp_b': make_auth_record_full('twp_b', level='4', population='50000',
+                                           jurisdiction='Township'),
+        }
+        result = rank_candidates(['twp_a', 'twp_b'], auth_cache, parent_level=None,
+                                 jurisdiction_hint=None)
+        assert len(result) == 2
+        assert result[0][0] == 'twp_a'
+
+    def test_borough_is_preferred(self):
+        auth_cache = {
+            'boro': make_auth_record_full('boro', level='4', population='30000',
+                                          jurisdiction='Borough'),
+            'twp': make_auth_record_full('twp', level='4', population='100000',
+                                         jurisdiction='Township'),
+        }
+        result = rank_candidates(['boro', 'twp'], auth_cache, parent_level=None,
+                                 jurisdiction_hint=None)
+        assert len(result) == 1
+        assert result[0][0] == 'boro'
+
+    def test_village_is_preferred(self):
+        auth_cache = {
+            'village': make_auth_record_full('village', level='4', population='5000',
+                                             jurisdiction='Village'),
+            'county': make_auth_record_full('county', level='5', population='500000',
+                                            jurisdiction='County'),
+        }
+        result = rank_candidates(['village', 'county'], auth_cache, parent_level=None,
+                                 jurisdiction_hint=None)
+        assert len(result) == 1
+        assert result[0][0] == 'village'
+
+    def test_filter_applies_with_parent_level_set(self):
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='50000',
+                                          jurisdiction='City'),
+            'twp': make_auth_record_full('twp', level='4', population='120000',
+                                         jurisdiction='Township'),
+        }
+        result = rank_candidates(['city', 'twp'], auth_cache, parent_level=6,
+                                 jurisdiction_hint=None)
+        assert len(result) == 1
+        assert result[0][0] == 'city'
+
+    def test_unknown_jurisdiction_not_filtered(self):
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='50000',
+                                          jurisdiction='City'),
+            'suburb': make_auth_record_full('suburb', level='3', population='10000',
+                                           jurisdiction='Suburb'),
+        }
+        result = rank_candidates(['city', 'suburb'], auth_cache, parent_level=None,
+                                 jurisdiction_hint=None)
+        assert len(result) == 2
+
+
 class TestDetectTie:
     def test_empty_list_returns_no_winner(self):
         winner, tied = detect_tie([])
