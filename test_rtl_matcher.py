@@ -568,8 +568,9 @@ class TestMatchEntryTieDetection:
         client = MagicMock()
         terms = ['Florida']
         result = match_entry(terms, name_cache, auth_cache, client, 'Florida')
-        assert result.match_type == 'single_term'
-        assert result.candidate_ids == ['big']
+        # Two candidates with no jurisdiction -> both survive filter -> single_amb
+        assert result.match_type == 'single_amb'
+        assert set(result.tied_ids) == {'big', 'small'}
 
     def test_single_term_tie_produces_single_amb(self):
         auth_cache = {
@@ -655,3 +656,59 @@ class TestDetectJurisdictionHint:
 
     def test_city_name_containing_county_word(self):
         assert detect_jurisdiction_hint("County Line") is None
+
+
+class TestSingleTermReclassification:
+    def test_single_candidate_after_filter_is_single_term(self):
+        """One city, one township -> filter keeps city only -> single_term."""
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='80000',
+                                          jurisdiction='City'),
+            'twp': make_auth_record_full('twp', level='4', population='120000',
+                                         jurisdiction='Township'),
+        }
+        name_cache = {'lawrence': {'city', 'twp'}}
+        client = MagicMock()
+        result = match_entry(['Lawrence'], name_cache, auth_cache, client, 'Lawrence')
+        assert result.match_type == 'single_term'
+        assert result.candidate_ids == ['city']
+
+    def test_multiple_candidates_after_filter_is_single_amb(self):
+        """Two cities survive filter -> single_amb even with different populations."""
+        auth_cache = {
+            'city_a': make_auth_record_full('city_a', level='4', population='80000',
+                                            jurisdiction='City'),
+            'city_b': make_auth_record_full('city_b', level='4', population='50000',
+                                            jurisdiction='City'),
+        }
+        name_cache = {'lawrence': {'city_a', 'city_b'}}
+        client = MagicMock()
+        result = match_entry(['Lawrence'], name_cache, auth_cache, client, 'Lawrence')
+        assert result.match_type == 'single_amb'
+        assert set(result.tied_ids) == {'city_a', 'city_b'}
+
+    def test_single_candidate_total_is_single_term(self):
+        """Only one candidate in the pool -> single_term, no filter needed."""
+        auth_cache = {
+            'only': make_auth_record_full('only', level='4', population='5000',
+                                          jurisdiction='City'),
+        }
+        name_cache = {'wapakoneta': {'only'}}
+        client = MagicMock()
+        result = match_entry(['Wapakoneta'], name_cache, auth_cache, client, 'Wapakoneta')
+        assert result.match_type == 'single_term'
+        assert result.candidate_ids == ['only']
+
+    def test_multiple_townships_no_city_is_single_amb(self):
+        """Two townships, no city -> filter keeps both -> single_amb."""
+        auth_cache = {
+            'twp_a': make_auth_record_full('twp_a', level='4', population='80000',
+                                           jurisdiction='Township'),
+            'twp_b': make_auth_record_full('twp_b', level='4', population='50000',
+                                           jurisdiction='Township'),
+        }
+        name_cache = {'pine': {'twp_a', 'twp_b'}}
+        client = MagicMock()
+        result = match_entry(['Pine'], name_cache, auth_cache, client, 'Pine')
+        assert result.match_type == 'single_amb'
+        assert set(result.tied_ids) == {'twp_a', 'twp_b'}

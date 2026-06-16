@@ -952,11 +952,10 @@ def match_entry(terms, name_cache, auth_cache, client, original):
 
     if len(right_to_left) == 1:
         ranked = rank_candidates(list(parent_ids), auth_cache, None)
-        winner, tied = detect_tie(ranked)
-        if tied:
-            return MatchResult([], depth=1, match_type='single_amb', tied_ids=tied)
-        ids = [winner] if winner else []
-        return MatchResult(ids, depth=1, match_type='single_term')
+        if len(ranked) == 1:
+            return MatchResult([ranked[0][0]], depth=1, match_type='single_term')
+        all_ids = [uuid for uuid, _ in ranked]
+        return MatchResult([], depth=1, match_type='single_amb', tied_ids=all_ids)
 
     confirmed = parent_ids
     depth = 1
