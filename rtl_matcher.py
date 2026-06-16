@@ -59,6 +59,9 @@ ENV = os.path.expanduser("~/storied/code/place-normalizer/.env")
 # documented cap, so we batch aggressively to minimize round trips.
 BATCH = 1000
 
+FS_BASE = "https://api-integ.familysearch.org/platform/places/search"
+FS_TYPE_CITY = "186"
+
 OUTPUT_FIELDS = [
     'original', 'guid', 'frequency', 'match_type', 'match_depth',
     'candidates', 'authority_name', 'type_ahead', 'jurisdiction',
@@ -229,6 +232,16 @@ ABBREVIATION_EXPANSIONS = [
     (re.compile(r'^Ft\.\s*', re.I), 'Fort '),
     (re.compile(r'^Mt\.\s*', re.I), 'Mount '),
 ]
+
+
+def detect_jurisdiction_hint(term):
+    """Check if a term contains a jurisdiction suffix (County, Township, etc.).
+    Returns the jurisdiction type string if found, None otherwise.
+    Does NOT modify the term — detection only."""
+    for pattern, jurisdiction_type in JURISDICTION_SUFFIXES:
+        if pattern.search(term):
+            return jurisdiction_type
+    return None
 
 
 def transform_term(term):
@@ -452,6 +465,124 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
             print()
 
     return added + non_jurisdiction_added
+
+
+# ---------------------------------------------------------------------------
+# Phase 1d: FamilySearch city resolution
+#
+# For entries where a city-level term went unresolved through 1a-1c but a
+# right-side jurisdiction term (state/country) IS resolved, query the
+# FamilySearch Places API to find the canonical city name, then retry
+# Authority_Place with that name. This bridges spelling variants and
+# historical names that FM knows under a different string.
+# ---------------------------------------------------------------------------
+
+
+def _fs_request(url):
+    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 204:
+                return None
+            return json.loads(resp.read())
+    except Exception:
+        return None
+
+
+def _resolve_fs_id(term, fs_id_cache):
+    key = term.lower()
+    if key in fs_id_cache:
+        return fs_id_cache[key]
+
+    q = urllib.parse.quote(f"name:{term}", safe=':+~')
+    data = _fs_request(f"{FS_BASE}?q={q}&count=5")
+    if not data:
+        fs_id_cache[key] = None
+        return None
+
+    for entry in data.get("entries", []):
+        places = entry.get("content", {}).get("gedcomx", {}).get("places", [])
+        if places:
+            fs_id_cache[key] = places[0].get("id")
+            return fs_id_cache[key]
+
+    fs_id_cache[key] = None
+    return None
+
+
+def _fs_city_lookup(city_term, parent_fs_id):
+    encoded_city = urllib.parse.quote(city_term)
+    q = f"name:{encoded_city}+parentId:{parent_fs_id}~"
+    data = _fs_request(f"{FS_BASE}?q={q}&count=10")
+    if not data:
+        return None
+
+    for entry in data.get("entries", []):
+        places = entry.get("content", {}).get("gedcomx", {}).get("places", [])
+        if not places:
+            continue
+        place_type = places[0].get("type", "")
+        if place_type.split("/")[-1] == FS_TYPE_CITY:
+            full_name = places[0].get("names", [{}])[0].get("value", "")
+            return full_name.split(",")[0].strip()
+    # TODO: consider type 378 (township) for rural records
+    return None
+
+
+def query_fs_places(client, parsed, name_cache):
+    """Phase 1d: use FamilySearch to resolve city terms that failed 1a-1c.
+
+    Walks parsed entries to find (unresolved_city, jurisdiction) pairs,
+    deduplicates them, queries FS for the canonical city name, and retries
+    Authority_Place with the result.
+    """
+    pairs = {}
+    for place, guid, frequency, terms in parsed:
+        for i, term in enumerate(terms):
+            if name_cache.get(term.lower()):
+                continue
+            if re.match(r'^\d', term):
+                continue
+            right = [t for t in terms[i + 1:] if name_cache.get(t.lower())]
+            if not right:
+                continue
+            jurisdiction = right[0]
+            key = (term.lower(), jurisdiction.lower())
+            if key not in pairs:
+                pairs[key] = (term, jurisdiction)
+
+    if not pairs:
+        print("  No eligible (city, jurisdiction) pairs")
+        return 0
+
+    unique_pairs = list(pairs.values())
+    print(f"  {len(unique_pairs)} unique (city, jurisdiction) pairs to resolve...")
+
+    fs_id_cache = {}
+    fs_hits = 0
+    fm_added = 0
+
+    for city_term, jurisdiction_term in unique_pairs:
+        parent_id = _resolve_fs_id(jurisdiction_term, fs_id_cache)
+        if not parent_id:
+            continue
+
+        canonical = _fs_city_lookup(city_term, parent_id)
+        if not canonical:
+            continue
+        fs_hits += 1
+
+        query = [{"Auth_Place_Name": f"=={canonical}"}]
+        records = client.find("Authority_Place", query)
+        for rec in records:
+            fd = rec['fieldData']
+            uuid = field_str(fd, 'UUID')
+            if uuid:
+                name_cache[city_term.lower()].add(uuid)
+                fm_added += 1
+
+    print(f"  {fs_hits} FS hits -> {fm_added} new authority records added")
+    return fm_added
 
 
 # ---------------------------------------------------------------------------
@@ -953,6 +1084,12 @@ def main():
     query_fallback_transforms(client, unmatched, name_cache)
     after = sum(1 for v in name_cache.values() if v)
     print(f"  After transforms: {after} terms matched (+{after - combined} new) {elapsed()}")
+
+    # Phase 1d: FamilySearch city resolution for remaining unmatched city terms
+    print(f"\nPhase 1d: FamilySearch lookups for unresolved city terms {elapsed()}")
+    query_fs_places(client, parsed, name_cache)
+    after_fs = sum(1 for v in name_cache.values() if v)
+    print(f"  After FS: {after_fs} terms matched (+{after_fs - after} new) {elapsed()}")
 
     # Phase 2: Fetch full authority records for every UUID found in Phase 1
     all_auth_ids = set()

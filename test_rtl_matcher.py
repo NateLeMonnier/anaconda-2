@@ -1,7 +1,7 @@
 """Tests for batch parent pre-fetch and resolve_parent_only in rtl_matcher."""
 import pytest
 from unittest.mock import MagicMock
-from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry
+from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint
 
 
 def make_auth_record(uuid, parent_uuid=None, name="Place"):
@@ -493,3 +493,35 @@ class TestMatchEntryTieDetection:
                              'Springfield, United States of America')
         assert result.match_type == 'parent_only'
         assert 'usa-1' in result.candidate_ids
+
+
+class TestDetectJurisdictionHint:
+    def test_county_suffix(self):
+        assert detect_jurisdiction_hint("Washington County") == "County"
+
+    def test_township_suffix(self):
+        assert detect_jurisdiction_hint("Lawrence Township") == "Township"
+
+    def test_twp_abbreviation(self):
+        assert detect_jurisdiction_hint("Lawrence Twp") == "Township"
+        assert detect_jurisdiction_hint("Lawrence Twp.") == "Township"
+
+    def test_parish_suffix(self):
+        assert detect_jurisdiction_hint("Orleans Parish") == "Parish"
+
+    def test_borough_suffix(self):
+        assert detect_jurisdiction_hint("Huntingdon Borough") == "Borough"
+
+    def test_co_abbreviation(self):
+        assert detect_jurisdiction_hint("Mifflin Co") == "County"
+        assert detect_jurisdiction_hint("Mifflin Co.") == "County"
+
+    def test_no_jurisdiction(self):
+        assert detect_jurisdiction_hint("Lawrence") is None
+
+    def test_case_insensitive(self):
+        assert detect_jurisdiction_hint("washington county") == "County"
+        assert detect_jurisdiction_hint("LAWRENCE TOWNSHIP") == "Township"
+
+    def test_city_name_containing_county_word(self):
+        assert detect_jurisdiction_hint("County Line") is None
