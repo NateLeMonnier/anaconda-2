@@ -864,16 +864,21 @@ FILTERED_JURISDICTIONS = frozenset({
 })
 
 
-def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None):
-    """Rank candidates by level gap from parent anchor, then population.
+def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None,
+                    helper_term=None):
+    """Rank candidates by helper-term match, level gap, then population.
 
     Returns list of (uuid, score) tuples sorted best-first.
-    score is (level_gap, neg_population) — lower is better on both axes.
-    When parent_level is None (single_term case), ranks by population only.
+    score is (helper_miss, level_gap, neg_population) — lower is better on all axes.
+    When parent_level is None (single_term case), level_gap is always 0.
+    When helper_term is provided, candidates whose parent chain reaches the
+    helper term's UUID get helper_miss=0; others get a penalty that scales
+    inversely with the helper term's level (more specific = stronger penalty).
     """
     if not candidates:
         return []
 
+    # jurisdiction filter (existing logic)
     if jurisdiction_hint is None:
         preferred = [c for c in candidates
                      if field_str(auth_cache.get(c, {}), 'Jurisdiction') in PREFERRED_JURISDICTIONS]
@@ -881,17 +886,44 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
             candidates = [c for c in candidates
                           if field_str(auth_cache.get(c, {}), 'Jurisdiction') not in FILTERED_JURISDICTIONS]
 
+    # helper term setup
+    helper_targets = None
+    helper_boost = 0
+    if helper_term:
+        helper_targets = {helper_term['uuid']}
+        helper_boost = max(1, 10 - helper_term['level'])
+
+    def _in_helper_chain(uuid):
+        if not helper_targets:
+            return False
+        current = uuid
+        for _ in range(15):
+            rec = auth_cache.get(current)
+            if not rec:
+                return False
+            parent_uuid = field_str(rec, 'Parent_UUID')
+            if not parent_uuid:
+                return False
+            if parent_uuid in helper_targets:
+                return True
+            current = parent_uuid
+        return False
+
     def score(uuid):
         rec = auth_cache.get(uuid, {})
         pop = get_population(rec)
+        helper_miss = 0
+        if helper_targets:
+            if not _in_helper_chain(uuid):
+                helper_miss = helper_boost
         if parent_level is None:
-            return (0, -pop)
+            return (helper_miss, 0, -pop)
         try:
             level = int(field_str(rec, 'Level'))
         except (ValueError, TypeError):
             level = 0
         gap = abs(parent_level - level)
-        return (gap, -pop)
+        return (helper_miss, gap, -pop)
 
     scored = [(uuid, score(uuid)) for uuid in candidates]
     scored.sort(key=lambda x: x[1])
@@ -928,7 +960,8 @@ class MatchResult:
     tied_ids: list = field(default_factory=list)
 
 
-def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None):
+def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None,
+                helper_term=None):
     """Run the right-to-left matching algorithm on a single place string.
 
     Match types returned:
@@ -954,7 +987,7 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         term_key = right_to_left[0].lower()
         hint = (jurisdiction_hints or {}).get(term_key)
         ranked = rank_candidates(list(parent_ids), auth_cache, None,
-                                 jurisdiction_hint=hint)
+                                 jurisdiction_hint=hint, helper_term=helper_term)
         if len(ranked) == 1:
             return MatchResult([ranked[0][0]], depth=1, match_type='single_term')
         all_ids = [uuid for uuid, _ in ranked]
@@ -1333,7 +1366,8 @@ def main():
     ties = []
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
         match = match_entry(terms, name_cache, auth_cache, client, place,
-                            jurisdiction_hints=jurisdiction_hints)
+                            jurisdiction_hints=jurisdiction_hints,
+                            helper_term=helper_term)
 
         # --- BEGIN RTL-LEVEL-PREF ---
         if match.match_type == 'parent_only' and match.candidate_ids:

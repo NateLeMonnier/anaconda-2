@@ -336,7 +336,7 @@ class TestRankCandidates:
         result = rank_candidates(['aaa'], auth_cache, parent_level=8)
         uuid, score = result[0]
         assert uuid == 'aaa'
-        assert score == (2, -300000)
+        assert score == (0, 2, -300000)
 
 
 class TestRankCandidatesJurisdictionFilter:
@@ -455,36 +455,36 @@ class TestDetectTie:
         assert tied == []
 
     def test_single_candidate_returns_winner(self):
-        winner, tied = detect_tie([('aaa', (2, -300000))])
+        winner, tied = detect_tie([('aaa', (0, 2, -300000))])
         assert winner == 'aaa'
         assert tied == []
 
     def test_different_scores_returns_winner(self):
-        ranked = [('better', (2, -300000)), ('worse', (4, -900000))]
+        ranked = [('better', (0, 2, -300000)), ('worse', (0, 4, -900000))]
         winner, tied = detect_tie(ranked)
         assert winner == 'better'
         assert tied == []
 
     def test_identical_scores_returns_tie(self):
-        ranked = [('a', (2, -300000)), ('b', (2, -300000))]
+        ranked = [('a', (0, 2, -300000)), ('b', (0, 2, -300000))]
         winner, tied = detect_tie(ranked)
         assert winner is None
         assert set(tied) == {'a', 'b'}
 
     def test_three_candidates_two_tied_at_top(self):
-        ranked = [('a', (2, -100)), ('b', (2, -100)), ('c', (4, -500))]
+        ranked = [('a', (0, 2, -100)), ('b', (0, 2, -100)), ('c', (0, 4, -500))]
         winner, tied = detect_tie(ranked)
         assert winner is None
         assert set(tied) == {'a', 'b'}
 
     def test_three_candidates_all_tied(self):
-        ranked = [('a', (2, -100)), ('b', (2, -100)), ('c', (2, -100))]
+        ranked = [('a', (0, 2, -100)), ('b', (0, 2, -100)), ('c', (0, 2, -100))]
         winner, tied = detect_tie(ranked)
         assert winner is None
         assert set(tied) == {'a', 'b', 'c'}
 
     def test_same_gap_different_pop_not_tied(self):
-        ranked = [('big', (2, -500000)), ('small', (2, -100))]
+        ranked = [('big', (0, 2, -500000)), ('small', (0, 2, -100))]
         winner, tied = detect_tie(ranked)
         assert winner == 'big'
         assert tied == []
@@ -807,3 +807,82 @@ class TestResolveHelperTerm:
         result = resolve_helper_term(None, client, {})
         assert result is None
         client.find.assert_not_called()
+
+
+class TestHelperTermBoost:
+    def test_state_helper_boosts_matching_candidate(self):
+        """Helper='Utah' (L6) -> candidate in Utah ranks above higher-pop candidate elsewhere."""
+        auth_cache = {
+            'logan_ut': make_auth_record_full('logan_ut', level='4', population='50000',
+                                              jurisdiction='City', parent_uuid='cache_co'),
+            'cache_co': make_auth_record_full('cache_co', level='5', name='Cache',
+                                              parent_uuid='utah'),
+            'utah': make_auth_record_full('utah', level='6', name='Utah',
+                                          parent_uuid='usa'),
+            'usa': make_auth_record_full('usa', level='8', name='USA'),
+            'logan_wv': make_auth_record_full('logan_wv', level='4', population='80000',
+                                              jurisdiction='City', parent_uuid='logan_co'),
+            'logan_co': make_auth_record_full('logan_co', level='5', name='Logan',
+                                              parent_uuid='wv'),
+            'wv': make_auth_record_full('wv', level='6', name='West Virginia',
+                                        parent_uuid='usa'),
+        }
+        helper_term = {'uuid': 'utah', 'level': 6, 'ancestor_uuids': {'usa'}}
+        result = rank_candidates(
+            ['logan_ut', 'logan_wv'], auth_cache, parent_level=None,
+            jurisdiction_hint=None, helper_term=helper_term)
+        assert result[0][0] == 'logan_ut'
+
+    def test_country_helper_weaker_than_state(self):
+        """Helper='USA' (L8) -> US candidate ranks above non-US."""
+        auth_cache = {
+            'clarinda_us': make_auth_record_full('clarinda_us', level='4', population='5000',
+                                                 jurisdiction='City', parent_uuid='page_co'),
+            'page_co': make_auth_record_full('page_co', level='5', name='Page',
+                                             parent_uuid='iowa'),
+            'iowa': make_auth_record_full('iowa', level='6', name='Iowa',
+                                          parent_uuid='usa'),
+            'usa': make_auth_record_full('usa', level='8', name='USA'),
+            'clarinda_au': make_auth_record_full('clarinda_au', level='4', population='200000',
+                                                 jurisdiction='City', parent_uuid='kingston'),
+            'kingston': make_auth_record_full('kingston', level='5', name='Kingston',
+                                              parent_uuid='victoria'),
+            'victoria': make_auth_record_full('victoria', level='6', name='Victoria',
+                                              parent_uuid='australia'),
+            'australia': make_auth_record_full('australia', level='8', name='Australia'),
+        }
+        helper_term = {'uuid': 'usa', 'level': 8, 'ancestor_uuids': set()}
+        result = rank_candidates(
+            ['clarinda_us', 'clarinda_au'], auth_cache, parent_level=None,
+            jurisdiction_hint=None, helper_term=helper_term)
+        assert result[0][0] == 'clarinda_us'
+
+    def test_no_helper_no_boost(self):
+        """Without helper term, higher population wins as before."""
+        auth_cache = {
+            'clarinda_us': make_auth_record_full('clarinda_us', level='4', population='5000',
+                                                 jurisdiction='City'),
+            'clarinda_au': make_auth_record_full('clarinda_au', level='4', population='200000',
+                                                 jurisdiction='City'),
+        }
+        result = rank_candidates(
+            ['clarinda_us', 'clarinda_au'], auth_cache, parent_level=None,
+            jurisdiction_hint=None, helper_term=None)
+        assert result[0][0] == 'clarinda_au'
+
+    def test_helper_no_match_no_effect(self):
+        """Helper='Utah' but all candidates are in Netherlands -> no boost, pop wins."""
+        auth_cache = {
+            'eindhoven_a': make_auth_record_full('eindhoven_a', level='4', population='230000',
+                                                 jurisdiction='City', parent_uuid='nb'),
+            'nb': make_auth_record_full('nb', level='6', name='Noord-Brabant',
+                                        parent_uuid='nl'),
+            'nl': make_auth_record_full('nl', level='8', name='Netherlands'),
+            'eindhoven_b': make_auth_record_full('eindhoven_b', level='4', population='5000',
+                                                 jurisdiction='City', parent_uuid='nb'),
+        }
+        helper_term = {'uuid': 'utah-uuid', 'level': 6, 'ancestor_uuids': {'usa-uuid'}}
+        result = rank_candidates(
+            ['eindhoven_a', 'eindhoven_b'], auth_cache, parent_level=None,
+            jurisdiction_hint=None, helper_term=helper_term)
+        assert result[0][0] == 'eindhoven_a'
