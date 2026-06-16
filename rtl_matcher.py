@@ -50,10 +50,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 INPUT = os.environ.get('RTL_INPUT', os.path.expanduser("~/storied/resources/SnowballLocationsSampled/locations_sample_5k.tsv"))
-OUTPUT = os.environ.get('RTL_OUTPUT', os.path.expanduser("~/storied/resources/SnowballLocationsSampled/locations_sample_5k_output.tsv"))
-_base, _ext = os.path.splitext(OUTPUT)
-TIE_OUTPUT = os.environ.get('RTL_TIE_OUTPUT', f"{_base}_ties{_ext}")
 ENV = os.path.expanduser("~/storied/code/place-normalizer/.env")
+
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_RTL_OUTPUTS_DIR = os.path.join(_SCRIPT_DIR, 'rtl-outputs')
 
 # FileMaker Data API accepts multiple query objects per request with no
 # documented cap, so we batch aggressively to minimize round trips.
@@ -998,14 +998,44 @@ def load_entries(path):
 def parse_entries(entries):
     """Split each entry's place string into comma/semicolon-separated terms
     and collect the full set of unique terms across all entries for bulk lookup.
+    Also detects jurisdiction hints (County, Township, etc.) for each term.
     """
     parsed = []
     all_terms = set()
+    jurisdiction_hints = {}
     for entry in entries:
         terms = [t.strip() for t in re.split(r'[,;]', entry['place']) if t.strip()]
         parsed.append((entry['place'], entry['guid'], entry['frequency'], terms))
         all_terms.update(terms)
-    return parsed, all_terms
+        for term in terms:
+            hint = detect_jurisdiction_hint(term)
+            if hint:
+                jurisdiction_hints[term.lower()] = hint
+    return parsed, all_terms, jurisdiction_hints
+
+
+def _resolve_output_paths(input_path):
+    """Build date-sorted, auto-numbered output paths inside rtl-outputs/.
+
+    Pattern: rtl-outputs/MM-DD/<input_stem>_NN.tsv
+    where NN increments per input name per day.
+    """
+    from datetime import datetime
+    stem = os.path.splitext(os.path.basename(input_path))[0]
+    day_dir = os.path.join(_RTL_OUTPUTS_DIR, datetime.now().strftime('%m-%d'))
+    os.makedirs(day_dir, exist_ok=True)
+
+    existing = [f for f in os.listdir(day_dir) if f.startswith(stem + '_') and f.endswith('.tsv') and '_ties' not in f]
+    max_num = 0
+    for f in existing:
+        part = f[len(stem) + 1:].replace('.tsv', '')
+        if part.isdigit():
+            max_num = max(max_num, int(part))
+
+    num = str(max_num + 1).zfill(2)
+    output = os.path.join(day_dir, f'{stem}_{num}.tsv')
+    tie_output = os.path.join(day_dir, f'{stem}_{num}_ties.tsv')
+    return output, tie_output
 
 
 def write_results(results, path):
@@ -1062,7 +1092,7 @@ def main():
     entries = load_entries(INPUT)
     print(f"Loaded {len(entries)} entries")
 
-    parsed, all_terms = parse_entries(entries)
+    parsed, all_terms, jurisdiction_hints = parse_entries(entries)
     print(f"Unique terms to look up: {len(all_terms)}")
 
     # Phase 1a: Check the Master Normalization Table for known mappings
@@ -1187,11 +1217,12 @@ def main():
 
     print(f"  Matched {len(parsed)}/{len(parsed)} entries")
 
-    write_results(results, OUTPUT)
+    output_path, tie_path = _resolve_output_paths(INPUT)
+    write_results(results, output_path)
     if ties:
-        write_ties(ties, TIE_OUTPUT)
-        print(f"  Wrote {len(ties)} tied candidate rows to {TIE_OUTPUT}")
-    print_summary(results, client.call_count, time.time() - start, OUTPUT)
+        write_ties(ties, tie_path)
+        print(f"  Wrote {len(ties)} tied candidate rows to {tie_path}")
+    print_summary(results, client.call_count, time.time() - start, output_path)
 
 
 if __name__ == '__main__':

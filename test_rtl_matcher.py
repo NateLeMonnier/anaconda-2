@@ -1,7 +1,7 @@
 """Tests for batch parent pre-fetch and resolve_parent_only in rtl_matcher."""
 import pytest
 from unittest.mock import MagicMock
-from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint
+from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint, parse_entries
 
 
 def make_auth_record(uuid, parent_uuid=None, name="Place"):
@@ -493,6 +493,27 @@ class TestMatchEntryTieDetection:
                              'Springfield, United States of America')
         assert result.match_type == 'parent_only'
         assert 'usa-1' in result.candidate_ids
+
+
+class TestParseEntriesJurisdictionHints:
+    def test_returns_jurisdiction_hints(self):
+        entries = [{'place': 'Washington County, Pennsylvania', 'guid': 'g1', 'frequency': '5'}]
+        parsed, all_terms, jurisdiction_hints = parse_entries(entries)
+        assert jurisdiction_hints['washington county'] == 'County'
+
+    def test_no_hint_for_plain_terms(self):
+        entries = [{'place': 'Lawrence, Indiana', 'guid': 'g1', 'frequency': '5'}]
+        parsed, all_terms, jurisdiction_hints = parse_entries(entries)
+        assert 'lawrence' not in jurisdiction_hints
+        assert 'indiana' not in jurisdiction_hints
+
+    def test_multiple_hints(self):
+        entries = [
+            {'place': 'Bethel Township, Clark County, Ohio', 'guid': 'g1', 'frequency': '3'},
+        ]
+        parsed, all_terms, jurisdiction_hints = parse_entries(entries)
+        assert jurisdiction_hints['bethel township'] == 'Township'
+        assert jurisdiction_hints['clark county'] == 'County'
 
 
 class TestDetectJurisdictionHint:
