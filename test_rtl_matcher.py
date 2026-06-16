@@ -712,3 +712,65 @@ class TestSingleTermReclassification:
         result = match_entry(['Pine'], name_cache, auth_cache, client, 'Pine')
         assert result.match_type == 'single_amb'
         assert set(result.tied_ids) == {'twp_a', 'twp_b'}
+
+
+class TestMatchEntryJurisdictionHint:
+    def test_township_hint_preserves_township_candidates(self):
+        """Input 'Lawrence Township' -> hint='Township' -> keep all including townships."""
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='80000',
+                                          jurisdiction='City'),
+            'twp': make_auth_record_full('twp', level='4', population='120000',
+                                         jurisdiction='Township'),
+        }
+        name_cache = {'lawrence township': {'city', 'twp'}}
+        jurisdiction_hints = {'lawrence township': 'Township'}
+        client = MagicMock()
+        result = match_entry(['Lawrence Township'], name_cache, auth_cache, client,
+                             'Lawrence Township', jurisdiction_hints=jurisdiction_hints)
+        # Both kept because hint suppresses filter; >1 candidate -> single_amb
+        assert result.match_type == 'single_amb'
+        assert 'twp' in result.tied_ids
+        assert 'city' in result.tied_ids
+
+    def test_no_hint_filters_township(self):
+        """Input 'Lawrence' -> no hint -> township filtered out."""
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='80000',
+                                          jurisdiction='City'),
+            'twp': make_auth_record_full('twp', level='4', population='120000',
+                                         jurisdiction='Township'),
+        }
+        name_cache = {'lawrence': {'city', 'twp'}}
+        jurisdiction_hints = {}
+        client = MagicMock()
+        result = match_entry(['Lawrence'], name_cache, auth_cache, client,
+                             'Lawrence', jurisdiction_hints=jurisdiction_hints)
+        assert result.match_type == 'single_term'
+        assert result.candidate_ids == ['city']
+
+    def test_county_hint_in_multi_term_preserves_counties(self):
+        """Multi-term: 'Clark County, Ohio' -> county hint on leftmost term -> counties kept."""
+        auth_cache = {
+            'ohio': make_auth_record_full('ohio', level='6', name='Ohio',
+                                          population='11800000', jurisdiction='State'),
+            'clark_county': make_auth_record_full('clark_county', level='5',
+                                                   name='Clark', population='130000',
+                                                   jurisdiction='County',
+                                                   parent_uuid='ohio'),
+            'clark_city': make_auth_record_full('clark_city', level='4',
+                                                name='Clark', population='5000',
+                                                jurisdiction='City',
+                                                parent_uuid='ohio'),
+        }
+        name_cache = {
+            'ohio': {'ohio'},
+            'clark county': {'clark_county', 'clark_city'},
+        }
+        jurisdiction_hints = {'clark county': 'County'}
+        client = MagicMock()
+        client.find.return_value = []
+        result = match_entry(['Clark County', 'Ohio'], name_cache, auth_cache, client,
+                             'Clark County, Ohio', jurisdiction_hints=jurisdiction_hints)
+        assert result.match_type == 'chain_verified'
+        assert result.candidate_ids == ['clark_county']

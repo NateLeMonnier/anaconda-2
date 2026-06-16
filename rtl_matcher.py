@@ -928,7 +928,7 @@ class MatchResult:
     tied_ids: list = field(default_factory=list)
 
 
-def match_entry(terms, name_cache, auth_cache, client, original):
+def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None):
     """Run the right-to-left matching algorithm on a single place string.
 
     Match types returned:
@@ -951,7 +951,10 @@ def match_entry(terms, name_cache, auth_cache, client, original):
         return MatchResult(match_type='no_auth_match')
 
     if len(right_to_left) == 1:
-        ranked = rank_candidates(list(parent_ids), auth_cache, None)
+        term_key = right_to_left[0].lower()
+        hint = (jurisdiction_hints or {}).get(term_key)
+        ranked = rank_candidates(list(parent_ids), auth_cache, None,
+                                 jurisdiction_hint=hint)
         if len(ranked) == 1:
             return MatchResult([ranked[0][0]], depth=1, match_type='single_term')
         all_ids = [uuid for uuid, _ in ranked]
@@ -987,7 +990,15 @@ def match_entry(terms, name_cache, auth_cache, client, original):
     skip_str = '; '.join(skipped)
 
     if depth > 1:
-        ranked = rank_candidates(list(confirmed), auth_cache, parent_level_for_ranking)
+        # Find the leftmost term that actually verified (not skipped)
+        leftmost_key = right_to_left[len(right_to_left) - 1].lower()
+        for i in range(len(right_to_left) - 1, 0, -1):
+            if right_to_left[i] not in skipped:
+                leftmost_key = right_to_left[i].lower()
+                break
+        hint = (jurisdiction_hints or {}).get(leftmost_key)
+        ranked = rank_candidates(list(confirmed), auth_cache, parent_level_for_ranking,
+                                 jurisdiction_hint=hint)
         winner, tied = detect_tie(ranked)
         if tied:
             return MatchResult([], depth, 'chain_amb', skip_count, skip_str, tied)
@@ -1159,7 +1170,8 @@ def main():
     results = []
     ties = []
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
-        match = match_entry(terms, name_cache, auth_cache, client, place)
+        match = match_entry(terms, name_cache, auth_cache, client, place,
+                            jurisdiction_hints=jurisdiction_hints)
 
         # --- BEGIN RTL-LEVEL-PREF ---
         if match.match_type == 'parent_only' and match.candidate_ids:
