@@ -47,6 +47,8 @@ import time
 import urllib.request
 import urllib.error
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 from dataclasses import dataclass, field
 
 INPUT = os.environ.get('RTL_INPUT', os.path.expanduser("~/storied/resources/SnowballLocationsSampled/locations_sample_5k.tsv"))
@@ -478,15 +480,22 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
 # ---------------------------------------------------------------------------
 
 
-def _fs_request(url):
+def _fs_request(url, _max_retries=3):
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            if resp.status == 204:
-                return None
-            return json.loads(resp.read())
-    except Exception:
-        return None
+    for attempt in range(_max_retries):
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status == 204:
+                    return None
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < _max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            return None
+        except Exception:
+            return None
+    return None
 
 
 def _resolve_fs_id(term, fs_id_cache):
@@ -529,12 +538,15 @@ def _fs_city_lookup(city_term, parent_fs_id):
     return None
 
 
-def query_fs_places(client, parsed, name_cache):
+def query_fs_places(client, parsed, name_cache, max_workers=8):
     """Phase 1d: use FamilySearch to resolve city terms that failed 1a-1c.
 
     Walks parsed entries to find (unresolved_city, jurisdiction) pairs,
     deduplicates them, queries FS for the canonical city name, and retries
     Authority_Place with the result.
+
+    FS lookups are parallelized across threads; FM queries run sequentially
+    afterward since there are far fewer of them.
     """
     pairs = {}
     for place, guid, frequency, terms in parsed:
@@ -558,21 +570,60 @@ def query_fs_places(client, parsed, name_cache):
     unique_pairs = list(pairs.values())
     print(f"  {len(unique_pairs)} unique (city, jurisdiction) pairs to resolve...")
 
+    unique_jurisdictions = list({j.lower(): j for j in
+                                 [jp for _, jp in unique_pairs]}.values())
+    print(f"  Resolving {len(unique_jurisdictions)} unique jurisdiction FS IDs ({max_workers} threads)...")
     fs_id_cache = {}
+    fs_id_lock = threading.Lock()
+
+    def _resolve_fs_id_threaded(term):
+        result = _resolve_fs_id(term, {})
+        with fs_id_lock:
+            fs_id_cache[term.lower()] = result
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        list(pool.map(_resolve_fs_id_threaded, unique_jurisdictions))
+
+    resolved_jurisdictions = sum(1 for v in fs_id_cache.values() if v)
+    print(f"  {resolved_jurisdictions}/{len(unique_jurisdictions)} jurisdictions resolved")
+
+    def _lookup_one_pair(city_term, jurisdiction_term):
+        parent_id = fs_id_cache.get(jurisdiction_term.lower())
+        if not parent_id:
+            return (city_term, None)
+        canonical = _fs_city_lookup(city_term, parent_id)
+        return (city_term, canonical)
+
+    print(f"  Looking up {len(unique_pairs)} city terms via FS ({max_workers} threads)...")
+    fs_results = []
+    done_count = 0
+    done_lock = threading.Lock()
+
+    def _lookup_and_track(pair):
+        nonlocal done_count
+        result = _lookup_one_pair(*pair)
+        with done_lock:
+            done_count += 1
+            if done_count % 100 == 0:
+                print(f"    [{done_count}/{len(unique_pairs)}] FS lookups complete")
+        return result
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        fs_results = list(pool.map(_lookup_and_track, unique_pairs))
+
     fs_hits = 0
     fm_added = 0
+    fm_queries = 0
+    canonicals = []
+    for city_term, canonical in fs_results:
+        if canonical:
+            canonicals.append((city_term, canonical))
 
-    for city_term, jurisdiction_term in unique_pairs:
-        parent_id = _resolve_fs_id(jurisdiction_term, fs_id_cache)
-        if not parent_id:
-            continue
-
-        canonical = _fs_city_lookup(city_term, parent_id)
-        if not canonical:
-            continue
+    print(f"  {len(canonicals)} FS hits, querying FM for authority records...")
+    for city_term, canonical in canonicals:
         fs_hits += 1
-
         query = [{"Auth_Place_Name": f"=={canonical}"}]
+        fm_queries += 1
         records = client.find("Authority_Place", query)
         for rec in records:
             fd = rec['fieldData']
@@ -581,7 +632,9 @@ def query_fs_places(client, parsed, name_cache):
                 name_cache[city_term.lower()].add(uuid)
                 fm_added += 1
 
-    print(f"  {fs_hits} FS hits -> {fm_added} new authority records added")
+    fs_skipped = len(unique_pairs) - len(canonicals)
+    print(f"  {fs_hits} FS hits -> {fm_added} new authority records added "
+          f"({fs_skipped} skipped, {fm_queries} FM queries)")
     return fm_added
 
 
