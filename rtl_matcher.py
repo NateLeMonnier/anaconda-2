@@ -503,8 +503,13 @@ def _resolve_fs_id(term, fs_id_cache):
     if key in fs_id_cache:
         return fs_id_cache[key]
 
-    q = urllib.parse.quote(f"name:{term}", safe=':+~')
-    data = _fs_request(f"{FS_BASE}?q={q}&count=5")
+    q_quoted = urllib.parse.quote(f'name:"{term}"', safe=':+~"')
+    data = _fs_request(f"{FS_BASE}?q={q_quoted}&count=5")
+
+    if not data:
+        q_unquoted = urllib.parse.quote(f"name:{term}", safe=':+~')
+        data = _fs_request(f"{FS_BASE}?q={q_unquoted}&count=5")
+
     if not data:
         fs_id_cache[key] = None
         return None
@@ -520,9 +525,15 @@ def _resolve_fs_id(term, fs_id_cache):
 
 
 def _fs_city_lookup(city_term, parent_fs_id):
-    encoded_city = urllib.parse.quote(city_term)
-    q = f"name:{encoded_city}+parentId:{parent_fs_id}~"
-    data = _fs_request(f"{FS_BASE}?q={q}&count=10")
+    encoded_city_quoted = urllib.parse.quote(f'"{city_term}"')
+    q_quoted = f"name:{encoded_city_quoted}+parentId:{parent_fs_id}~"
+    data = _fs_request(f"{FS_BASE}?q={q_quoted}&count=10")
+
+    if not data:
+        encoded_city = urllib.parse.quote(city_term)
+        q_unquoted = f"name:{encoded_city}+parentId:{parent_fs_id}~"
+        data = _fs_request(f"{FS_BASE}?q={q_unquoted}&count=10")
+
     if not data:
         return None
 
