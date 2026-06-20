@@ -223,11 +223,32 @@ JURISDICTION_SUFFIXES = [
 PREFIX_PATTERNS = [
     re.compile(r'^(?:north|south|east|west|northeast|northwest|southeast|southwest)\s+of\s+', re.I),
     re.compile(r'^near\s+', re.I),
+    re.compile(r'^(?:rural|suburban)\s+', re.I),
+]
+
+JURISDICTION_PREFIXES = [
+    (re.compile(r'^county\s+of\s+', re.I), 'County'),
+    (re.compile(r'^parish\s+of\s+', re.I), 'Parish'),
+    (re.compile(r'^borough\s+of\s+', re.I), 'Borough'),
+    (re.compile(r'^township\s+of\s+', re.I), 'Township'),
+    (re.compile(r'^town\s+of\s+', re.I), 'Town'),
+    (re.compile(r'^city\s+of\s+', re.I), 'City'),
+    (re.compile(r'^district\s+of\s+', re.I), 'District'),
+    (re.compile(r'^village\s+of\s+', re.I), 'Village'),
+    (re.compile(r'^state\s+of\s+', re.I), 'State'),
+    (re.compile(r'^province\s+of\s+', re.I), 'Province'),
 ]
 
 TRAILING_DESCRIPTORS = [
-    re.compile(r'\s+(?:area|district|community|region)$', re.I),
+    re.compile(r'\s+(?:area|district|community|region|vicinity|neighborhood)$', re.I),
+    re.compile(r'\s+R\.?\s?D\.?\s*\d*$', re.I),
+    re.compile(r'\s+Route\s+\d+$', re.I),
+    re.compile(r'\s+R\.?\s?R\.?\s*\d*$', re.I),
 ]
+
+NOISE_TERM_RE = re.compile(
+    r'^(?:Route|Rt\.?|R\.?\s?D\.?|R\.?\s?R\.?)\s*\d*$', re.I
+)
 
 ABBREVIATION_EXPANSIONS = [
     (re.compile(r'^St\.\s*', re.I), 'Saint '),
@@ -256,17 +277,26 @@ def transform_term(term):
     for pattern in PREFIX_PATTERNS:
         cleaned = pattern.sub('', cleaned).strip()
 
-    for pattern in TRAILING_DESCRIPTORS:
-        cleaned = pattern.sub('', cleaned).strip()
-
-    # Only one jurisdiction suffix should match; "Washington County Township"
-    # is not a real pattern, so we break on first hit.
-    for pattern, jurisdiction_type in JURISDICTION_SUFFIXES:
+    # Jurisdiction prefixes: "County of X" -> "X" with jurisdiction hint
+    for pattern, jurisdiction_type in JURISDICTION_PREFIXES:
         stripped = pattern.sub('', cleaned)
         if stripped != cleaned:
             cleaned = stripped.strip()
             jurisdiction = jurisdiction_type
             break
+
+    for pattern in TRAILING_DESCRIPTORS:
+        cleaned = pattern.sub('', cleaned).strip()
+
+    # Only one jurisdiction suffix should match; "Washington County Township"
+    # is not a real pattern, so we break on first hit.
+    if not jurisdiction:
+        for pattern, jurisdiction_type in JURISDICTION_SUFFIXES:
+            stripped = pattern.sub('', cleaned)
+            if stripped != cleaned:
+                cleaned = stripped.strip()
+                jurisdiction = jurisdiction_type
+                break
 
     for pattern, replacement in ABBREVIATION_EXPANSIONS:
         expanded = pattern.sub(replacement, cleaned)
@@ -1122,12 +1152,16 @@ def parse_entries(entries):
     """Split each entry's place string into comma/semicolon-separated terms
     and collect the full set of unique terms across all entries for bulk lookup.
     Also detects jurisdiction hints (County, Township, etc.) for each term.
+    Filters out noise terms (standalone Route/RD/RR references).
     """
     parsed = []
     all_terms = set()
     jurisdiction_hints = {}
     for entry in entries:
-        terms = [t.strip() for t in re.split(r'[,;]', entry['place']) if t.strip()]
+        raw_terms = [t.strip() for t in re.split(r'[,;]', entry['place']) if t.strip()]
+        terms = [t for t in raw_terms if not NOISE_TERM_RE.match(t)]
+        if not terms:
+            terms = raw_terms
         parsed.append((entry['place'], entry['guid'], entry['frequency'], terms))
         all_terms.update(terms)
         for term in terms:
