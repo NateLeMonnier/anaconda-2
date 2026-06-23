@@ -19,6 +19,9 @@ The pipeline runs in three phases:
     Terms that fail both lookups get a second pass with fallback transforms
     (stripping directional prefixes, expanding abbreviations like "St." to
     "Saint", separating jurisdiction suffixes like "County" for filtered search).
+    Terms still unresolved after transforms are run through symspellpy spelling
+    correction (edit distance 1, ASCII-folded, 5+ character terms only), and
+    finally through FamilySearch city resolution as a last resort.
 
   Phase 2 — Authority Record Caching
     Fetch the full authority records for every UUID discovered in Phase 1, then
@@ -44,15 +47,20 @@ import socket
 import ssl
 import sys
 import time
+import unicodedata
 import urllib.request
 import urllib.error
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from dataclasses import dataclass, field
+from symspellpy import SymSpell, Verbosity
 
 INPUT = os.environ.get('RTL_INPUT', os.path.expanduser("~/storied/resources/SnowballLocationsSampled/locations_sample_5k.tsv"))
 ENV = os.path.expanduser("~/storied/code/place-normalizer/.env")
+PA_TSV = os.environ.get('RTL_PA_TSV', os.path.expanduser(
+    "~/storied/resources/place-authority-tsv/PA 6_16_2026v77.tsv"))
+MIN_SPELLING_LEN = 5
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _RTL_OUTPUTS_DIR = os.path.join(_SCRIPT_DIR, 'rtl-outputs')
@@ -82,6 +90,34 @@ def field_str(field_data, key):
     if val is None:
         return ''
     return str(val).strip()
+
+
+def ascii_fold(s):
+    """Normalize a Unicode string to its ASCII equivalent (e.g. México -> mexico)."""
+    return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii').lower()
+
+
+def build_ascii_index(name_cache):
+    """Build a secondary index keyed by ASCII-folded names.
+
+    Only entries whose folded form differs from the original key are added,
+    since identical entries are already reachable through name_cache directly.
+    """
+    ascii_cache = defaultdict(set)
+    for key, uuids in name_cache.items():
+        folded = ascii_fold(key)
+        if folded != key:
+            ascii_cache[folded].update(uuids)
+    return ascii_cache
+
+
+def lookup_name(term, name_cache, ascii_cache):
+    """Look up a term in name_cache and merge with ascii_cache matches."""
+    key = term.lower()
+    result = set(name_cache.get(key, set()))
+    folded = ascii_fold(key)
+    result.update(ascii_cache.get(folded, set()))
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -500,7 +536,93 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
 
 
 # ---------------------------------------------------------------------------
-# Phase 1d: FamilySearch city resolution
+# Phase 1d: Spelling correction via symspellpy
+# ---------------------------------------------------------------------------
+
+
+def build_spelling_index(tsv_path):
+    sym = SymSpell(max_dictionary_edit_distance=1, prefix_length=7)
+    seen = set()
+    with open(tsv_path, encoding='utf-8') as f:
+        reader = csv.DictReader(f, delimiter='\t')
+        for row in reader:
+            term = row.get('Term', '').strip()
+            if not term:
+                continue
+            folded = ascii_fold(term)
+            if folded and folded not in seen:
+                sym.create_dictionary_entry(folded, 1)
+                seen.add(folded)
+    return sym
+
+
+SPELLING_LOG_FIELDS = ['original_term', 'corrected_term', 'edit_distance', 'authority_uuid']
+
+
+def query_spelling_corrections(client, unmatched_terms, name_cache, sym_spell):
+    eligible = [t for t in unmatched_terms
+                if len(t) >= MIN_SPELLING_LEN and not name_cache.get(t.lower())]
+
+    if not eligible:
+        print("  No eligible terms for spelling correction")
+        return 0, []
+
+    correction_map = {}
+    for term in eligible:
+        folded = ascii_fold(term)
+        suggestions = sym_spell.lookup(folded, Verbosity.CLOSEST, max_edit_distance=1)
+        if suggestions:
+            corrected_terms = [s.term for s in suggestions if s.term != folded]
+            if corrected_terms:
+                correction_map[term] = corrected_terms
+
+    if not correction_map:
+        print("  No spelling corrections found")
+        return 0, []
+
+    all_corrected = set()
+    for terms in correction_map.values():
+        all_corrected.update(terms)
+
+    corrected_to_uuids = defaultdict(set)
+    corrected_list = list(all_corrected)
+    for i in range(0, len(corrected_list), BATCH):
+        batch = corrected_list[i:i + BATCH]
+        query = [{"Auth_Place_Name": f"=={t}"} for t in batch]
+        records = client.find("Authority_Place", query, limit=10000)
+        for rec in records:
+            name = field_str(rec['fieldData'], 'Auth_Place_Name')
+            uuid = field_str(rec['fieldData'], 'UUID')
+            if name and uuid:
+                corrected_to_uuids[name.lower()].add(uuid)
+
+    added = 0
+    corrections = []
+    for original, candidates in correction_map.items():
+        for candidate in candidates:
+            uuids = corrected_to_uuids.get(candidate, set())
+            if uuids:
+                name_cache[original.lower()].update(uuids)
+                added += len(uuids)
+                corrections.append({
+                    'original_term': original,
+                    'corrected_term': candidate,
+                    'edit_distance': 1,
+                    'authority_uuid': ';'.join(sorted(uuids)),
+                })
+
+    return added, corrections
+
+
+def write_spelling_log(corrections, path):
+    with open(path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=SPELLING_LOG_FIELDS, delimiter='\t')
+        writer.writeheader()
+        writer.writerows(corrections)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1e: FamilySearch city resolution
 #
 # For entries where a city-level term went unresolved through 1a-1c but a
 # right-side jurisdiction term (state/country) IS resolved, query the
@@ -580,7 +702,7 @@ def _fs_city_lookup(city_term, parent_fs_id):
 
 
 def query_fs_places(client, parsed, name_cache, max_workers=8):
-    """Phase 1d: use FamilySearch to resolve city terms that failed 1a-1c.
+    """Phase 1e: use FamilySearch to resolve city terms that failed 1a-1d.
 
     Walks parsed entries to find (unresolved_city, jurisdiction) pairs,
     deduplicates them, queries FS for the canonical city name, and retries
@@ -846,9 +968,6 @@ def _disambiguate_by_population(candidates, auth_cache):
     if first_pop >= 50_000 and second_pop == 0:
         return (first_uid, 'parent_resolved')
 
-    if first_pop >= 50_000 and second_pop >= 50_000:
-        return (None, 'amb')
-
     if second_pop > 0 and first_pop > 5 * second_pop:
         return (first_uid, 'parent_resolved')
 
@@ -856,11 +975,11 @@ def _disambiguate_by_population(candidates, auth_cache):
 
 
 def resolve_parent_only(candidate_ids, auth_cache, client):
-    """Disambiguate candidates using jurisdiction level and population.
+    """Disambiguate parent_only candidates using population alone.
 
-    Partitions candidates into low-level (<=4) and high-level (>=5), then
-    applies population-based tiebreaking rules drawn from Leafprint's
-    place authority guidelines.
+    No chain verification occurred, so level-based preference is unreliable
+    (a specific-looking candidate may be completely unrelated to the input).
+    Treat all candidates as peers and let population decide.
 
     Returns (winner_uuid, 'parent_resolved') or (None, 'amb').
     """
@@ -881,59 +1000,7 @@ def resolve_parent_only(candidate_ids, auth_cache, client):
             if uid:
                 auth_cache[uid] = fd
 
-    # Partition into low (level <= 4) and high (level >= 5)
-    low = []
-    high = []
-    for uid in candidate_ids:
-        rec = auth_cache.get(uid, {})
-        try:
-            level = int(field_str(rec, 'Level'))
-        except (ValueError, TypeError):
-            level = 0
-        if level >= 5:
-            high.append(uid)
-        else:
-            low.append(uid)
-
-    # No low-level candidates -> disambiguate among high
-    if not low:
-        return _disambiguate_by_population(high, auth_cache)
-
-    # Sort low candidates by population descending
-    low_pops = [(uid, get_population(auth_cache.get(uid, {}))) for uid in low]
-    low_pops.sort(key=lambda x: x[1], reverse=True)
-
-    all_low_zero = all(p == 0 for _, p in low_pops)
-
-    # 3a: all low pops zero AND high exists
-    if all_low_zero and high:
-        return _disambiguate_by_population(high, auth_cache)
-
-    # 3b: all low pops zero AND no high
-    if all_low_zero and not high:
-        return (None, 'amb')
-
-    first_uid, first_pop = low_pops[0]
-    second_pop = low_pops[1][1] if len(low_pops) > 1 else 0
-
-    # 3c: highest low >= 50k AND second low == 0
-    if first_pop >= 50_000 and second_pop == 0:
-        return (first_uid, 'parent_resolved')
-
-    # 3d: highest low < 50k AND high exists
-    if first_pop < 50_000 and high:
-        return _disambiguate_by_population(high, auth_cache)
-
-    # 3e: highest low > 5x second low (second > 0)
-    if second_pop > 0 and first_pop > 5 * second_pop:
-        return (first_uid, 'parent_resolved')
-
-    # 3f: otherwise AND high exists
-    if high:
-        return _disambiguate_by_population(high, auth_cache)
-
-    # 3g: otherwise AND no high
-    return (None, 'amb')
+    return _disambiguate_by_population(candidate_ids, auth_cache)
 
 # --- END RTL-LEVEL-PREF ---
 
@@ -1054,7 +1121,7 @@ class MatchResult:
     tied_ids: list = field(default_factory=list)
 
 
-def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None,
+def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None, ascii_cache=None,
                 helper_term=None):
     """Run the right-to-left matching algorithm on a single place string.
 
@@ -1073,7 +1140,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
 
     right_to_left = list(reversed(stripped))
 
-    parent_ids = name_cache.get(right_to_left[0].lower(), set())
+    _ascii = ascii_cache or {}
+    parent_ids = lookup_name(right_to_left[0], name_cache, _ascii)
     if not parent_ids:
         return MatchResult(match_type='no_auth_match')
 
@@ -1093,7 +1161,7 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     parent_level_for_ranking = None
 
     for i in range(1, len(right_to_left)):
-        child_ids = name_cache.get(right_to_left[i].lower(), set())
+        child_ids = lookup_name(right_to_left[i], name_cache, _ascii)
         if not child_ids:
             skipped.append(right_to_left[i])
             continue
@@ -1192,7 +1260,8 @@ def _resolve_output_paths(input_path):
     num = str(max_num + 1).zfill(2)
     output = os.path.join(day_dir, f'{stem}_{num}.tsv')
     tie_output = os.path.join(day_dir, f'{stem}_{num}_ties.tsv')
-    return output, tie_output
+    spelling_log = os.path.join(day_dir, f'{stem}_{num}_spelling.tsv')
+    return output, tie_output, spelling_log
 
 
 def write_results(results, path):
@@ -1422,11 +1491,40 @@ def main():
     after = sum(1 for v in name_cache.values() if v)
     print(f"  After transforms: {after} terms matched (+{after - combined} new) {elapsed()}")
 
-    # Phase 1d: FamilySearch city resolution for remaining unmatched city terms
-    print(f"\nPhase 1d: FamilySearch lookups for unresolved city terms {elapsed()}")
+    # Phase 1c-enrich: also transform MNT-matched terms whose transforms
+    # produce a different lookup string — the MNT entry may be wrong, and
+    # the transform-derived candidates let Phase 3's chain walk pick the
+    # contextually correct one.
+    transformable_matched = [
+        t for t in all_terms
+        if name_cache.get(t.lower()) and transform_term(t)[0] is not None
+    ]
+    if transformable_matched:
+        print(f"  Enriching {len(transformable_matched)} MNT-matched transformable terms...")
+        enrich_added = query_fallback_transforms(client, transformable_matched, name_cache)
+        after_enrich = sum(1 for v in name_cache.values() if v)
+        print(f"  After enrichment: +{enrich_added} UUIDs added {elapsed()}")
+
+    # Phase 1d: Spelling correction for remaining unmatched terms
+    print(f"\nPhase 1d: Spelling correction via symspellpy {elapsed()}")
+    unmatched_1d = [t for t in all_terms if not name_cache.get(t.lower())]
+    print(f"  {len(unmatched_1d)} terms unmatched, building spelling index...")
+    sym_spell = build_spelling_index(PA_TSV)
+    print(f"  Index built: {len(sym_spell.words)} entries")
+    spelling_added, spelling_corrections = query_spelling_corrections(
+        client, unmatched_1d, name_cache, sym_spell
+    )
+    after_spelling = sum(1 for v in name_cache.values() if v)
+    print(f"  After spelling: {after_spelling} terms matched "
+          f"(+{after_spelling - after} new, {spelling_added} UUIDs) {elapsed()}")
+    if spelling_corrections:
+        print(f"  {len(spelling_corrections)} corrections to log")
+
+    # Phase 1e: FamilySearch city resolution for remaining unmatched city terms
+    print(f"\nPhase 1e: FamilySearch lookups for unresolved city terms {elapsed()}")
     query_fs_places(client, parsed, name_cache)
     after_fs = sum(1 for v in name_cache.values() if v)
-    print(f"  After FS: {after_fs} terms matched (+{after_fs - after} new) {elapsed()}")
+    print(f"  After FS: {after_fs} terms matched (+{after_fs - after_spelling} new) {elapsed()}")
 
     # Phase 2: Fetch full authority records for every UUID found in Phase 1
     all_auth_ids = set()
@@ -1458,6 +1556,11 @@ def main():
     else:
         helper_term = None
 
+    # Build ASCII-folded index for diacritic-insensitive fallback lookups
+    ascii_cache = build_ascii_index(name_cache)
+    if ascii_cache:
+        print(f"  ASCII fallback index: {len(ascii_cache)} folded entries")
+
     # Phase 3: Run right-to-left matching on each entry
     print(f"\nPhase 3: Right-to-left matching (chain walk + skip + rank) {elapsed()}")
     results = []
@@ -1465,6 +1568,7 @@ def main():
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
         match = match_entry(terms, name_cache, auth_cache, client, place,
                             jurisdiction_hints=jurisdiction_hints,
+                            ascii_cache=ascii_cache,
                             helper_term=helper_term)
 
         # --- BEGIN RTL-LEVEL-PREF ---
@@ -1538,11 +1642,14 @@ def main():
 
     print(f"  Matched {len(parsed)}/{len(parsed)} entries")
 
-    output_path, tie_path = _resolve_output_paths(INPUT)
+    output_path, tie_path, spelling_log_path = _resolve_output_paths(INPUT)
     write_results(results, output_path)
     if ties:
         write_ties(ties, tie_path)
         print(f"  Wrote {len(ties)} tied candidate rows to {tie_path}")
+    if spelling_corrections:
+        write_spelling_log(spelling_corrections, spelling_log_path)
+        print(f"  Corrections log: {spelling_log_path}")
     print_summary(results, client.call_count, time.time() - start, output_path)
 
 

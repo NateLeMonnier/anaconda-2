@@ -886,3 +886,272 @@ class TestHelperTermBoost:
             ['eindhoven_a', 'eindhoven_b'], auth_cache, parent_level=None,
             jurisdiction_hint=None, helper_term=helper_term)
         assert result[0][0] == 'eindhoven_a'
+
+
+# ---------------------------------------------------------------------------
+# Phase 1d: Spelling correction — build_spelling_index
+# ---------------------------------------------------------------------------
+
+import os
+import tempfile
+from symspellpy import SymSpell, Verbosity
+from rtl_matcher import build_spelling_index
+
+
+class TestBuildSpellingIndex:
+    def _write_tsv(self, tmp_dir, rows):
+        """Write a minimal PA-format TSV and return its path."""
+        path = os.path.join(tmp_dir, "pa_test.tsv")
+        with open(path, 'w') as f:
+            f.write("Level\tLevelName\tReplacement_UUID\tTerm\tID\tHistorical\tFullChainName\tParentID\tPopulation\tLatitude\tLongitude\n")
+            for row in rows:
+                f.write(row + "\n")
+        return path
+
+    def test_loads_terms_from_tsv(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_tsv(tmp, [
+                "1\tCountry\t\tBirmingham\tUUID1\t\tBirmingham\tP1\t1000000\t0\t0",
+                "1\tCountry\t\tCalifornia\tUUID2\t\tCalifornia\tP2\t39000000\t0\t0",
+            ])
+            sym = build_spelling_index(path)
+            # Callers are expected to ascii_fold input before querying
+            result = sym.lookup("birminghan", Verbosity.CLOSEST, max_edit_distance=1)
+            assert len(result) >= 1
+            assert result[0].term == "birmingham"
+
+    def test_ascii_folds_terms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_tsv(tmp, [
+                "1\tCountry\t\tMéxico\tUUID1\t\tMéxico\tP1\t0\t0\t0",
+            ])
+            sym = build_spelling_index(path)
+            result = sym.lookup("mexco", Verbosity.CLOSEST, max_edit_distance=1)
+            assert len(result) >= 1
+            assert result[0].term == "mexico"
+
+    def test_deduplicates_folded_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_tsv(tmp, [
+                "1\tCountry\t\tMéxico\tUUID1\t\tMéxico\tP1\t0\t0\t0",
+                "1\tCountry\t\tMexico\tUUID2\t\tMexico\tP2\t0\t0\t0",
+            ])
+            sym = build_spelling_index(path)
+            assert sym.words.get("mexico") is not None
+
+    def test_handles_multi_word_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_tsv(tmp, [
+                "1\tCountry\t\tNew York\tUUID1\t\tNew York\tP1\t8000000\t0\t0",
+            ])
+            sym = build_spelling_index(path)
+            # Callers are expected to ascii_fold input before querying
+            result = sym.lookup("new yrok", Verbosity.CLOSEST, max_edit_distance=1)
+            assert len(result) >= 1
+            assert result[0].term == "new york"
+
+
+# ---------------------------------------------------------------------------
+# Phase 1d: query_spelling_corrections and write_spelling_log tests
+# ---------------------------------------------------------------------------
+
+from collections import defaultdict
+from unittest.mock import patch
+from rtl_matcher import query_spelling_corrections, write_spelling_log
+
+
+class TestQuerySpellingCorrections:
+    def _make_sym(self, terms):
+        """Build a SymSpell index from a list of canonical terms."""
+        sym = SymSpell(max_dictionary_edit_distance=1, prefix_length=7)
+        for t in terms:
+            sym.create_dictionary_entry(t.lower(), 1)
+        return sym
+
+    def test_corrects_misspelling_and_adds_to_name_cache(self):
+        sym = self._make_sym(["birmingham"])
+        name_cache = defaultdict(set)
+        client = MagicMock()
+        client.find.return_value = [
+            {'fieldData': {'Auth_Place_Name': 'Birmingham', 'UUID': 'uuid-birm'}}
+        ]
+
+        added, corrections = query_spelling_corrections(
+            client, ["Birminghan"], name_cache, sym
+        )
+
+        assert added >= 1
+        assert 'uuid-birm' in name_cache['birminghan']
+        assert len(corrections) == 1
+        assert corrections[0]['original_term'] == 'Birminghan'
+        assert corrections[0]['corrected_term'] == 'birmingham'
+
+    def test_skips_short_terms(self):
+        sym = self._make_sym(["lima", "lira"])
+        name_cache = defaultdict(set)
+        client = MagicMock()
+
+        added, corrections = query_spelling_corrections(
+            client, ["Lira"], name_cache, sym
+        )
+
+        assert added == 0
+        assert len(corrections) == 0
+        client.find.assert_not_called()
+
+    def test_skips_terms_already_in_name_cache(self):
+        sym = self._make_sym(["birmingham"])
+        name_cache = defaultdict(set)
+        name_cache['birmingham'].add('existing-uuid')
+        client = MagicMock()
+
+        added, corrections = query_spelling_corrections(
+            client, ["Birmingham"], name_cache, sym
+        )
+
+        assert added == 0
+        client.find.assert_not_called()
+
+    def test_discards_correction_that_does_not_resolve(self):
+        sym = self._make_sym(["birmingham"])
+        name_cache = defaultdict(set)
+        client = MagicMock()
+        client.find.return_value = []
+
+        added, corrections = query_spelling_corrections(
+            client, ["Birminghan"], name_cache, sym
+        )
+
+        assert added == 0
+        assert 'birminghan' not in name_cache
+        assert len(corrections) == 0
+
+    def test_accepts_multiple_suggestions(self):
+        sym = self._make_sym(["springfield", "springfild"])
+        name_cache = defaultdict(set)
+        client = MagicMock()
+        client.find.return_value = [
+            {'fieldData': {'Auth_Place_Name': 'Springfield', 'UUID': 'uuid-1'}},
+            {'fieldData': {'Auth_Place_Name': 'Springfild', 'UUID': 'uuid-2'}},
+        ]
+
+        added, corrections = query_spelling_corrections(
+            client, ["Springfeld"], name_cache, sym
+        )
+
+        assert 'uuid-1' in name_cache['springfeld'] or 'uuid-2' in name_cache['springfeld']
+
+
+class TestWriteSpellingLog:
+    def test_writes_tsv(self):
+        corrections = [
+            {'original_term': 'Birminghan', 'corrected_term': 'birmingham',
+             'edit_distance': 1, 'authority_uuid': 'uuid-1'},
+        ]
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.tsv', delete=False) as f:
+            path = f.name
+        write_spelling_log(corrections, path)
+
+        with open(path) as f:
+            lines = f.readlines()
+        assert len(lines) == 2  # header + 1 row
+        assert 'Birminghan' in lines[1]
+        assert 'birmingham' in lines[1]
+        os.unlink(path)
+
+
+class TestMntTransformEnrichment:
+    def test_transformable_mnt_matched_term_gets_enriched(self):
+        """'Town of Bristol' has an MNT entry (Bristol, England) but transform_term
+        strips 'Town of' and queries Auth_Place_Name='Bristol' + Jurisdiction='Town',
+        which should find Bristol, Rhode Island. After enrichment, name_cache should
+        contain BOTH UUIDs."""
+        from collections import defaultdict
+        from rtl_matcher import transform_term, query_fallback_transforms
+
+        mnt_uuid = 'bristol-england-uuid'
+        transform_uuid = 'bristol-ri-uuid'
+        name_cache = defaultdict(set)
+        name_cache['town of bristol'].add(mnt_uuid)
+
+        client = MagicMock()
+        client.find.return_value = make_fm_response([
+            make_auth_record_full(transform_uuid, name='Bristol',
+                                  jurisdiction='Town', level='4'),
+        ])
+
+        all_terms = ['Town of Bristol']
+        transformable_matched = [
+            t for t in all_terms
+            if name_cache.get(t.lower()) and transform_term(t)[0] is not None
+        ]
+        query_fallback_transforms(client, transformable_matched, name_cache)
+
+        assert mnt_uuid in name_cache['town of bristol']
+        assert transform_uuid in name_cache['town of bristol']
+
+    def test_non_transformable_mnt_matched_term_skipped(self):
+        """'Rhode Island' has an MNT entry and transform_term returns (None, None).
+        It should not be passed to query_fallback_transforms."""
+        from collections import defaultdict
+        from rtl_matcher import transform_term
+
+        name_cache = defaultdict(set)
+        name_cache['rhode island'].add('ri-uuid')
+
+        all_terms = ['Rhode Island']
+        transformable_matched = [
+            t for t in all_terms
+            if name_cache.get(t.lower()) and transform_term(t)[0] is not None
+        ]
+
+        assert transformable_matched == []
+
+    def test_enrichment_is_additive(self):
+        """Transform results must not replace existing MNT entries."""
+        from collections import defaultdict
+        from rtl_matcher import transform_term, query_fallback_transforms
+
+        mnt_uuid = 'existing-mnt-uuid'
+        name_cache = defaultdict(set)
+        name_cache['city of springfield'].add(mnt_uuid)
+
+        client = MagicMock()
+        client.find.return_value = make_fm_response([
+            make_auth_record_full('springfield-city-uuid', name='Springfield',
+                                  jurisdiction='City', level='4'),
+        ])
+
+        all_terms = ['City of Springfield']
+        transformable_matched = [
+            t for t in all_terms
+            if name_cache.get(t.lower()) and transform_term(t)[0] is not None
+        ]
+        query_fallback_transforms(client, transformable_matched, name_cache)
+
+        assert mnt_uuid in name_cache['city of springfield']
+        assert 'springfield-city-uuid' in name_cache['city of springfield']
+
+    def test_filter_collects_correct_terms(self):
+        """The filter for Phase 1c enrichment should include terms that:
+        1. Have name_cache entries (MNT-matched)
+        2. Are transformable (transform_term returns non-None)
+        And exclude terms that:
+        - Have no name_cache entries (already handled by unmatched path)
+        - Are not transformable (no prefix/suffix to strip)"""
+        from collections import defaultdict
+        from rtl_matcher import transform_term
+
+        name_cache = defaultdict(set)
+        name_cache['town of bristol'].add('some-uuid')     # transformable + matched
+        name_cache['rhode island'].add('ri-uuid')           # not transformable + matched
+        # 'Springfield' not in name_cache                   # transformable but unmatched
+
+        all_terms = ['Town of Bristol', 'Rhode Island', 'Springfield']
+
+        transformable_matched = [
+            t for t in all_terms
+            if name_cache.get(t.lower()) and transform_term(t)[0] is not None
+        ]
+
+        assert transformable_matched == ['Town of Bristol']
