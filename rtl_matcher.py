@@ -272,7 +272,6 @@ PREFIX_PATTERNS = [
     re.compile(r'^(?:north|south|east|west|northeast|northwest|southeast|southwest)\s+of\s+', re.I),
     re.compile(r'^near\s+', re.I),
     re.compile(r'^(?:rural|suburban)\s+', re.I),
-    re.compile(r'^.+\b(?:in|at)\s+', re.I),
 ]
 
 JURISDICTION_PREFIXES = [
@@ -1584,8 +1583,17 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                             skipped.remove(skipped_term)
 
             if proximity_candidates:
+                levels = []
+                for cid in proximity_candidates:
+                    rec = auth_cache.get(cid, {})
+                    try:
+                        levels.append((cid, int(field_str(rec, 'Level'))))
+                    except (ValueError, TypeError):
+                        levels.append((cid, 99))
+                min_level = min(lv for _, lv in levels)
+                most_specific = [cid for cid, lv in levels if lv == min_level]
                 parent_level_for_ranking = _get_parent_level(confirmed, auth_cache)
-                confirmed = set(proximity_candidates)
+                confirmed = set(most_specific)
                 depth += 1
                 proximity_matched = True
 
