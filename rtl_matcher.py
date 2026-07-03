@@ -75,6 +75,11 @@ BATCH = 1000
 FS_BASE = "https://api-integ.familysearch.org/platform/places/search"
 FS_TYPE_CITY = "186"
 
+# Max distance (km) between a skipped term's actual county and the confirmed
+# county for the proximity fallback to accept a chain-verification failure
+# as a likely wrong-county data-entry issue rather than a genuine mismatch.
+PROXIMITY_THRESHOLD_KM = 50
+
 OUTPUT_FIELDS = [
     'original', 'guid', 'frequency', 'match_type', 'match_depth',
     'candidates', 'authority_name', 'type_ahead', 'jurisdiction',
@@ -267,6 +272,7 @@ PREFIX_PATTERNS = [
     re.compile(r'^(?:north|south|east|west|northeast|northwest|southeast|southwest)\s+of\s+', re.I),
     re.compile(r'^near\s+', re.I),
     re.compile(r'^(?:rural|suburban)\s+', re.I),
+    re.compile(r'^.+\b(?:in|at)\s+', re.I),
 ]
 
 JURISDICTION_PREFIXES = [
@@ -1484,6 +1490,7 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     confirmed = parent_ids
     depth = 1
     skipped = []
+    skipped_with_candidates = []
     parent_level_for_ranking = None
 
     for i in range(1, len(right_to_left)):
@@ -1511,9 +1518,76 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
             depth += 1
         else:
             skipped.append(right_to_left[i])
+            skipped_with_candidates.append((right_to_left[i], child_ids))
 
-    skip_count = len(skipped)
-    skip_str = '; '.join(skipped)
+    # --- Proximity fallback ---
+    # When depth >= 2 and skipped terms had candidates that failed chain
+    # verification against the confirmed county, check if any verify against
+    # the state (parent of confirmed county) and are within PROXIMITY_THRESHOLD_KM
+    # of the confirmed county. This catches likely wrong-county data-entry
+    # errors (e.g. a city recorded under the wrong adjacent county).
+    proximity_matched = False
+    proximity_annotations = []
+    if depth >= 2 and skipped_with_candidates:
+        confirmed_county_ids = set(confirmed)
+        state_ids = set()
+        for uid in confirmed:
+            rec = auth_cache.get(uid, {})
+            parent_uuid = field_str(rec, 'Parent_UUID')
+            if parent_uuid:
+                state_ids.add(parent_uuid)
+
+        if state_ids:
+            proximity_candidates = []
+            for skipped_term, candidate_ids in skipped_with_candidates:
+                _prefetch_missing_parents(candidate_ids, auth_cache, client)
+                state_verified = {
+                    cid for cid in candidate_ids
+                    if walk_up_chain(cid, state_ids, auth_cache, client)
+                }
+                if not state_verified:
+                    continue
+
+                for cid in state_verified:
+                    cid_rec = auth_cache.get(cid, {})
+                    cid_parent = field_str(cid_rec, 'Parent_UUID')
+                    if not cid_parent:
+                        continue
+                    cid_county_rec = auth_cache.get(cid_parent, {})
+                    if not cid_county_rec:
+                        continue
+
+                    min_dist = float('inf')
+                    closest_confirmed = None
+                    for conf_uid in confirmed_county_ids:
+                        conf_rec = auth_cache.get(conf_uid, {})
+                        dist = haversine_km(
+                            cid_county_rec.get('Latitude', ''),
+                            cid_county_rec.get('Longitude', ''),
+                            conf_rec.get('Latitude', ''),
+                            conf_rec.get('Longitude', ''),
+                        )
+                        if dist < min_dist:
+                            min_dist = dist
+                            closest_confirmed = conf_uid
+
+                    if min_dist <= PROXIMITY_THRESHOLD_KM:
+                        proximity_candidates.append(cid)
+                        conf_name = field_str(
+                            auth_cache.get(closest_confirmed, {}), 'Auth_Place_Name')
+                        cid_county_name = field_str(cid_county_rec, 'Auth_Place_Name')
+                        proximity_annotations.append(
+                            f"{conf_name} County (proximity: {min_dist:.0f}km, "
+                            f"actual: {cid_county_name} County)")
+
+                        if skipped_term in skipped:
+                            skipped.remove(skipped_term)
+
+            if proximity_candidates:
+                parent_level_for_ranking = _get_parent_level(confirmed, auth_cache)
+                confirmed = set(proximity_candidates)
+                depth += 1
+                proximity_matched = True
 
     if depth > 1:
         # Find the leftmost term that actually verified (not skipped)
@@ -1526,12 +1600,21 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         ranked = rank_candidates(list(confirmed), auth_cache, parent_level_for_ranking,
                                  jurisdiction_hint=hint)
         winner, tied = detect_tie(ranked)
+
+        skip_count = len(skipped)
+        skip_parts = list(skipped)
+        skip_parts.extend(proximity_annotations)
+        skip_str = '; '.join(skip_parts)
+
         if tied:
             return MatchResult([], depth, 'chain_amb', skip_count, skip_str, tied)
+        mt = 'chain_verified_proximity' if proximity_matched else 'chain_verified'
         ids = [winner] if winner else []
-        return MatchResult(ids, depth, 'chain_verified', skip_count, skip_str)
+        return MatchResult(ids, depth, mt, skip_count, skip_str)
 
     # parent_only: pass UUIDs through for resolve_parent_only in main()
+    skip_count = len(skipped)
+    skip_str = '; '.join(skipped)
     ranked = rank_candidates(list(confirmed), auth_cache, None)
     ids = [uuid for uuid, _ in ranked]
     return MatchResult(ids, depth, 'parent_only', skip_count, skip_str)
@@ -1617,7 +1700,8 @@ def print_summary(results, call_count, elapsed_sec, output_path):
     print(f"\n{'='*50}")
     print(f"RESULTS — {len(results)} entries")
     print(f"{'='*50}")
-    for match_type in ['chain_verified', 'chain_amb', 'single_term', 'single_amb',
+    for match_type in ['chain_verified', 'chain_verified_proximity', 'chain_amb',
+                       'single_term', 'single_amb',
                        'parent_resolved', 'parent_rejected', 'parent_only', 'parent_amb',
                        'no_auth_match', 'no_terms']:
         if match_type in types:

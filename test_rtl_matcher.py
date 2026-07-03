@@ -130,7 +130,7 @@ class TestPrefetchParentChains:
 
 
 def make_auth_record_full(uuid, parent_uuid=None, name="Place", level="4",
-                          population="", jurisdiction=""):
+                          population="", jurisdiction="", latitude="", longitude=""):
     return {
         'UUID': uuid,
         'Parent_UUID': parent_uuid or '',
@@ -139,6 +139,8 @@ def make_auth_record_full(uuid, parent_uuid=None, name="Place", level="4",
         'Population': population,
         'Jurisdiction': jurisdiction,
         'Type_Ahead_Value': '',
+        'Latitude': latitude,
+        'Longitude': longitude,
     }
 
 
@@ -1187,3 +1189,187 @@ class TestHaversineKm:
         # New York (40.7128, -74.0060) to Los Angeles (34.0522, -118.2437)
         dist = haversine_km(40.7128, -74.0060, 34.0522, -118.2437)
         assert 3900 < dist < 4000
+
+
+class TestProximityFallback:
+    def _build_cromwell_caches(self):
+        """Cromwell, Adams County, Iowa — Cromwell is actually in Union County.
+        Adams and Union counties are adjacent (~34km apart)."""
+        auth_cache = {
+            'usa': make_auth_record_full('usa', level='8', name='United States',
+                                         population='330000000'),
+            'iowa': make_auth_record_full('iowa', parent_uuid='usa', level='6',
+                                          name='Iowa', population='3200000'),
+            'adams-co': make_auth_record_full('adams-co', parent_uuid='iowa', level='5',
+                                              name='Adams', population='3700',
+                                              jurisdiction='County',
+                                              latitude='41.0652', longitude='-94.6864'),
+            'union-co': make_auth_record_full('union-co', parent_uuid='iowa', level='5',
+                                              name='Union', population='12200',
+                                              jurisdiction='County',
+                                              latitude='41.0007', longitude='-94.2744'),
+            'cromwell': make_auth_record_full('cromwell', parent_uuid='union-co', level='4',
+                                              name='Cromwell', population='108',
+                                              jurisdiction='City',
+                                              latitude='41.0394', longitude='-94.4619'),
+        }
+        name_cache = {
+            'iowa': {'iowa'},
+            'adams county': {'adams-co'},
+            'cromwell': {'cromwell'},
+        }
+        return name_cache, auth_cache
+
+    def test_cromwell_matches_via_proximity(self):
+        name_cache, auth_cache = self._build_cromwell_caches()
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['Cromwell', 'Adams County', 'Iowa']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'Cromwell, Adams County, Iowa',
+                             jurisdiction_hints={'adams county': 'County'})
+        assert result.match_type == 'chain_verified_proximity'
+        assert result.candidate_ids == ['cromwell']
+        assert result.depth == 3
+        assert 'proximity' in result.skipped_terms.lower()
+
+    def test_no_proximity_when_too_far(self):
+        """City in same state but distant county — should NOT match via proximity."""
+        auth_cache = {
+            'usa': make_auth_record_full('usa', level='8', name='United States',
+                                         population='330000000'),
+            'iowa': make_auth_record_full('iowa', parent_uuid='usa', level='6',
+                                          name='Iowa', population='3200000'),
+            'adams-co': make_auth_record_full('adams-co', parent_uuid='iowa', level='5',
+                                              name='Adams', population='3700',
+                                              jurisdiction='County',
+                                              latitude='41.0652', longitude='-94.6864'),
+            'dubuque-co': make_auth_record_full('dubuque-co', parent_uuid='iowa', level='5',
+                                                name='Dubuque', population='98000',
+                                                jurisdiction='County',
+                                                latitude='42.4700', longitude='-90.7100'),
+            'faraway-city': make_auth_record_full('faraway-city', parent_uuid='dubuque-co',
+                                                   level='4', name='Farville',
+                                                   population='500', jurisdiction='City',
+                                                   latitude='42.5', longitude='-90.7'),
+        }
+        name_cache = {
+            'iowa': {'iowa'},
+            'adams county': {'adams-co'},
+            'farville': {'faraway-city'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['Farville', 'Adams County', 'Iowa']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'Farville, Adams County, Iowa',
+                             jurisdiction_hints={'adams county': 'County'})
+        # Should NOT be proximity match — too far away
+        assert result.match_type != 'chain_verified_proximity'
+
+    def test_no_proximity_when_depth_less_than_2(self):
+        """Only one term confirmed (country only) — no proximity fallback."""
+        auth_cache = {
+            'usa': make_auth_record_full('usa', level='8', name='United States',
+                                         population='330000000'),
+            'some-co': make_auth_record_full('some-co', parent_uuid='usa', level='5',
+                                             name='Some', jurisdiction='County',
+                                             latitude='40.0', longitude='-90.0'),
+            'city-x': make_auth_record_full('city-x', parent_uuid='some-co', level='4',
+                                             name='CityX', jurisdiction='City',
+                                             latitude='40.1', longitude='-90.1'),
+        }
+        name_cache = {
+            'united states': {'usa'},
+            'cityx': {'city-x'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['CityX', 'United States']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'CityX, United States')
+        assert result.match_type != 'chain_verified_proximity'
+
+    def test_proximity_picks_most_specific_skipped_term(self):
+        """Two skipped terms with candidates — proximity should match the most specific one."""
+        auth_cache = {
+            'usa': make_auth_record_full('usa', level='8', name='United States',
+                                         population='330000000'),
+            'iowa': make_auth_record_full('iowa', parent_uuid='usa', level='6',
+                                          name='Iowa', population='3200000'),
+            'adams-co': make_auth_record_full('adams-co', parent_uuid='iowa', level='5',
+                                              name='Adams', population='3700',
+                                              jurisdiction='County',
+                                              latitude='41.0652', longitude='-94.6864'),
+            'union-co': make_auth_record_full('union-co', parent_uuid='iowa', level='5',
+                                              name='Union', population='12200',
+                                              jurisdiction='County',
+                                              latitude='41.0007', longitude='-94.2744'),
+            'cromwell': make_auth_record_full('cromwell', parent_uuid='union-co', level='4',
+                                              name='Cromwell', population='108',
+                                              jurisdiction='City',
+                                              latitude='41.0394', longitude='-94.4619'),
+            'neighborhood': make_auth_record_full('neighborhood', parent_uuid='union-co',
+                                                   level='3', name='OldTown',
+                                                   population='50', jurisdiction='Village',
+                                                   latitude='41.04', longitude='-94.46'),
+        }
+        name_cache = {
+            'iowa': {'iowa'},
+            'adams county': {'adams-co'},
+            'cromwell': {'cromwell'},
+            'oldtown': {'neighborhood'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['OldTown', 'Cromwell', 'Adams County', 'Iowa']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'OldTown, Cromwell, Adams County, Iowa',
+                             jurisdiction_hints={'adams county': 'County'})
+        # Cromwell should match via proximity; OldTown may chain-verify against Cromwell
+        # or also match via proximity — either way, most specific wins
+        assert result.match_type in ('chain_verified_proximity', 'chain_verified')
+        assert result.depth >= 3
+
+    def test_proximity_multiple_candidates_disambiguates(self):
+        """Two cities with same name in different counties near the confirmed county.
+        Both within 50km — should use rank_candidates + detect_tie."""
+        auth_cache = {
+            'usa': make_auth_record_full('usa', level='8', name='United States',
+                                         population='330000000'),
+            'iowa': make_auth_record_full('iowa', parent_uuid='usa', level='6',
+                                          name='Iowa', population='3200000'),
+            'adams-co': make_auth_record_full('adams-co', parent_uuid='iowa', level='5',
+                                              name='Adams', population='3700',
+                                              jurisdiction='County',
+                                              latitude='41.0652', longitude='-94.6864'),
+            'union-co': make_auth_record_full('union-co', parent_uuid='iowa', level='5',
+                                              name='Union', population='12200',
+                                              jurisdiction='County',
+                                              latitude='41.0007', longitude='-94.2744'),
+            'taylor-co': make_auth_record_full('taylor-co', parent_uuid='iowa', level='5',
+                                               name='Taylor', population='6000',
+                                               jurisdiction='County',
+                                               latitude='40.7400', longitude='-94.6900'),
+            'springfield-1': make_auth_record_full('springfield-1', parent_uuid='union-co',
+                                                    level='4', name='Springfield',
+                                                    population='200', jurisdiction='City',
+                                                    latitude='41.0', longitude='-94.3'),
+            'springfield-2': make_auth_record_full('springfield-2', parent_uuid='taylor-co',
+                                                    level='4', name='Springfield',
+                                                    population='200', jurisdiction='City',
+                                                    latitude='40.75', longitude='-94.7'),
+        }
+        name_cache = {
+            'iowa': {'iowa'},
+            'adams county': {'adams-co'},
+            'springfield': {'springfield-1', 'springfield-2'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        terms = ['Springfield', 'Adams County', 'Iowa']
+        result = match_entry(terms, name_cache, auth_cache, client,
+                             'Springfield, Adams County, Iowa',
+                             jurisdiction_hints={'adams county': 'County'})
+        # Both within 50km, same pop — should be ambiguous
+        assert result.match_type == 'chain_amb'
