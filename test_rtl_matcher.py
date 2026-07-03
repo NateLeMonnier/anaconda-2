@@ -1155,3 +1155,11 @@ class TestMntTransformEnrichment:
         ]
 
         assert transformable_matched == ['Town of Bristol']
+
+
+class TestLatLongInAuthCache:
+    def test_auth_record_includes_lat_long(self):
+        """PA records loaded via local data should include Latitude and Longitude."""
+        from rtl_local_data import _PA_FIELD_MAP
+        assert 'Latitude' in _PA_FIELD_MAP.values()
+        assert 'Longitude' in _PA_FIELD_MAP.values()
