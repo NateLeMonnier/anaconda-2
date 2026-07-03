@@ -1,7 +1,7 @@
 """Tests for batch parent pre-fetch and resolve_parent_only in rtl_matcher."""
 import pytest
 from unittest.mock import MagicMock
-from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint, parse_entries, resolve_helper_term
+from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint, parse_entries, resolve_helper_term, haversine_km
 
 
 def make_auth_record(uuid, parent_uuid=None, name="Place"):
@@ -1163,3 +1163,27 @@ class TestLatLongInAuthCache:
         from rtl_local_data import _PA_FIELD_MAP
         assert 'Latitude' in _PA_FIELD_MAP.values()
         assert 'Longitude' in _PA_FIELD_MAP.values()
+
+
+class TestHaversineKm:
+    def test_same_point_returns_zero(self):
+        assert haversine_km(41.0, -94.0, 41.0, -94.0) == 0.0
+
+    def test_known_distance(self):
+        # Adams County, Iowa (41.0652, -94.6864) to Union County, Iowa (41.0007, -94.2744)
+        dist = haversine_km(41.0652, -94.6864, 41.0007, -94.2744)
+        assert 30 < dist < 40  # ~34km apart
+
+    def test_missing_lat_returns_inf(self):
+        assert haversine_km(None, -94.0, 41.0, -94.0) == float('inf')
+
+    def test_empty_string_returns_inf(self):
+        assert haversine_km('', -94.0, 41.0, -94.0) == float('inf')
+
+    def test_unparseable_returns_inf(self):
+        assert haversine_km('abc', -94.0, 41.0, -94.0) == float('inf')
+
+    def test_distant_points(self):
+        # New York (40.7128, -74.0060) to Los Angeles (34.0522, -118.2437)
+        dist = haversine_km(40.7128, -74.0060, 34.0522, -118.2437)
+        assert 3900 < dist < 4000
