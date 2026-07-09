@@ -268,7 +268,7 @@ def compute_depth(unified):
 
     dist = Counter(r['level'] for r in has_level)
     total = len(has_level)
-    specific = sum(1 for r in has_level if r['level'] in ('4', '5'))
+    specific = sum(1 for r in has_level if r['level'] in ('2', '3', '4', '5'))
 
     level_table = []
     for lvl in sorted(dist.keys(), key=lambda x: int(x) if x.isdigit() else 99):
@@ -528,7 +528,7 @@ def print_summary(name, metrics):
         print(f"\nResolution Depth ({depth['total_with_level']:,} with level data)")
         for entry in depth['distribution']:
             print(f"  {entry['label']} (L{entry['level']}): {entry['count']:>7,}  ({entry['pct']:5.1%})")
-        print(f"  Specificity (L4+L5): {depth['specificity_score']:.1%}")
+        print(f"  Specificity (L2-L5): {depth['specificity_score']:.1%}")
     else:
         print(f"\nResolution Depth: unavailable (no level data; provide --pa)")
 

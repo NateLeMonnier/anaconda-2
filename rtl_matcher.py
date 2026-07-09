@@ -38,9 +38,11 @@ The pipeline runs in three phases:
     written to a separate side file for QA review.
 """
 
+import argparse
 import base64
 import csv
 import json
+import logging
 import os
 import re
 import socket
@@ -51,22 +53,14 @@ import unicodedata
 import urllib.request
 import urllib.error
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 import threading
 from dataclasses import dataclass, field
 from symspellpy import SymSpell, Verbosity
 
-INPUT = os.environ.get('RTL_INPUT', os.path.expanduser("~/storied/resources/Snowball2-new/snowball2_place_mapping_anaconda_food.tsv"))
-ENV = os.path.expanduser("~/storied/code/place-normalizer/.env")
-PA_TSV = os.environ.get('RTL_PA_TSV', os.path.expanduser(
-    "~/storied/resources/place-authority-mnt-tsv/PA 6_16_2026v77.tsv"))
+log = logging.getLogger(__name__)
+
 MIN_SPELLING_LEN = 5
-
-# Set True to use local TSV exports instead of FileMaker API calls.
-USE_LOCAL_DATA = True
-
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_RTL_OUTPUTS_DIR = os.path.join(_SCRIPT_DIR, 'rtl-outputs')
 
 # FileMaker Data API accepts multiple query objects per request with no
 # documented cap, so we batch aggressively to minimize round trips.
@@ -123,12 +117,22 @@ def build_ascii_index(name_cache):
     return ascii_cache
 
 
+def _normalize_hyphens(s):
+    """Replace hyphens with spaces for consistent lookup keying."""
+    return s.replace('-', ' ')
+
+
 def lookup_name(term, name_cache, ascii_cache):
     """Look up a term in name_cache and merge with ascii_cache matches."""
     key = term.lower()
     result = set(name_cache.get(key, set()))
     folded = ascii_fold(key)
     result.update(ascii_cache.get(folded, set()))
+    dehyphenated = _normalize_hyphens(key)
+    if dehyphenated != key:
+        result.update(name_cache.get(dehyphenated, set()))
+        folded_dh = ascii_fold(dehyphenated)
+        result.update(ascii_cache.get(folded_dh, set()))
     return result
 
 
@@ -143,7 +147,7 @@ def lookup_name(term, name_cache, ascii_cache):
 
 
 class FileMakerClient:
-    def __init__(self, env_path=ENV):
+    def __init__(self, env_path):
         self._load_env(env_path)
         self.host = os.environ['FILEMAKER_HOST']
         self.database = os.environ['FILEMAKER_DATABASE']
@@ -197,10 +201,10 @@ class FileMakerClient:
             return []
         except (socket.timeout, ConnectionError, OSError) as e:
             if not _retry:
-                print(f"  Connection error ({e}), re-authing and retrying...", file=sys.stderr)
+                log.warning("  Connection error (%s), re-authing and retrying...", e)
                 self.auth()
                 return self.find(layout, query, limit, _retry=True)
-            print(f"  Connection error on retry ({e}), skipping batch", file=sys.stderr)
+            log.warning("  Connection error on retry (%s), skipping batch", e)
             return []
         except urllib.error.HTTPError as e:
             body = e.read()
@@ -214,7 +218,7 @@ class FileMakerClient:
             if e.code in (401, 403) and not _retry:
                 self.auth()
                 return self.find(layout, query, limit, _retry=True)
-            print(f"  FM error {e.code}: {body[:200]}", file=sys.stderr)
+            log.warning("  FM error %d: %s", e.code, body[:200])
             return []
 
     def batch_find(self, layout, keys, key_field, extract_fn, label=""):
@@ -229,7 +233,422 @@ class FileMakerClient:
                 extract_fn(rec['fieldData'])
             if label:
                 done = min(i + BATCH, total)
-                print(f"  {label}: {done}/{total}")
+                log.info("  %s: %d/%d", label, done, total)
+
+
+# ---------------------------------------------------------------------------
+# Local TSV data — in-memory indexes over MNT and PA exports
+# ---------------------------------------------------------------------------
+
+_PA_FIELD_MAP = {
+    'Term': 'Auth_Place_Name',
+    'ID': 'UUID',
+    'ParentID': 'Parent_UUID',
+    'LevelName': 'Jurisdiction',
+    'Level': 'Level',
+    'Population': 'Population',
+    'FullChainName': 'Type_Ahead_Value',
+    'Historical': 'Historical',
+    'Latitude': 'Latitude',
+    'Longitude': 'Longitude',
+}
+
+
+def _is_valid_local_uuid(s):
+    return len(s) == 36 and s[8] == '-' and s[13] == '-'
+
+
+class LocalData:
+    """In-memory indexes over the MNT and PA TSV files."""
+
+    def __init__(self):
+        self.mnt_by_raw = None
+        self.mnt_by_value = None
+        self.pa_by_name = None
+        self.pa_by_uuid = None
+        self._loaded = False
+
+    def load(self, mnt_path, pa_path):
+        if self._loaded:
+            return
+        start = time.time()
+        log.info("Loading local TSV data...")
+        self._load_mnt(mnt_path)
+        self._load_pa(pa_path)
+        log.info("  Local data loaded in %.1fs", time.time() - start)
+        self._loaded = True
+
+    def _load_mnt(self, path):
+        self.mnt_by_raw = defaultdict(set)
+        self.mnt_by_value = defaultdict(set)
+        count = 0
+        junk = 0
+        with open(path, encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for row in reader:
+                raw = (row.get('_raw') or row.get('InputString') or '').strip()
+                value = (row.get('_value') or row.get('MatchAuthName') or '').strip()
+                uid = (row.get('_ID') or row.get('MatchAuthID') or '').strip()
+                if uid:
+                    if _is_valid_local_uuid(uid):
+                        if raw:
+                            raw_key = raw.lower()
+                            self.mnt_by_raw[raw_key].add(uid)
+                            dh = raw_key.replace('-', ' ')
+                            if dh != raw_key:
+                                self.mnt_by_raw[dh].add(uid)
+                        if value:
+                            val_key = value.lower()
+                            self.mnt_by_value[val_key].add(uid)
+                            dh = val_key.replace('-', ' ')
+                            if dh != val_key:
+                                self.mnt_by_value[dh].add(uid)
+                        count += 1
+                    else:
+                        junk += 1
+        log.info("  MNT: %d mappings loaded, %d junk IDs skipped, "
+                 "%d unique raw terms, %d unique value terms",
+                 count, junk, len(self.mnt_by_raw), len(self.mnt_by_value))
+
+    def _load_pa(self, path):
+        self.pa_by_name = defaultdict(list)
+        self.pa_by_uuid = {}
+        count = 0
+        with open(path, encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for row in reader:
+                rec = {}
+                for tsv_col, fm_field in _PA_FIELD_MAP.items():
+                    rec[fm_field] = (row.get(tsv_col) or '').strip()
+                uid = rec['UUID']
+                name = rec['Auth_Place_Name']
+                if uid:
+                    self.pa_by_uuid[uid] = rec
+                    if name:
+                        key = name.lower()
+                        self.pa_by_name[key].append(rec)
+                        dehyphenated = key.replace('-', ' ')
+                        if dehyphenated != key:
+                            self.pa_by_name[dehyphenated].append(rec)
+                    count += 1
+        log.info("  PA:  %d records loaded, %d unique names", count, len(self.pa_by_name))
+
+
+_LOCAL = LocalData()
+
+
+def _query_name_local(name):
+    key = name.lower()
+    uuids = set(_LOCAL.mnt_by_raw.get(key, set()))
+    uuids.update(_LOCAL.mnt_by_value.get(key, set()))
+    for rec in _LOCAL.pa_by_name.get(key, []):
+        if rec['UUID']:
+            uuids.add(rec['UUID'])
+    return uuids
+
+
+# ---------------------------------------------------------------------------
+# Local query functions — drop-in replacements for FM query functions
+# ---------------------------------------------------------------------------
+
+def query_mnt_local(terms):
+    name_cache = defaultdict(set)
+    matched = 0
+    for term in terms:
+        key = term.lower()
+        uuids = set()
+        raw_hits = _LOCAL.mnt_by_raw.get(key)
+        if raw_hits:
+            uuids.update(raw_hits)
+        val_hits = _LOCAL.mnt_by_value.get(key)
+        if val_hits:
+            uuids.update(val_hits)
+        if uuids:
+            name_cache[key] = uuids
+            matched += 1
+    log.info("  MNT (local): %d terms, %d matched", len(terms), matched)
+    return name_cache
+
+
+def query_authority_by_name_local(terms, name_cache):
+    added = 0
+    for term in terms:
+        key = term.lower()
+        records = _LOCAL.pa_by_name.get(key, [])
+        for rec in records:
+            uid = rec['UUID']
+            if uid and uid not in name_cache.get(key, set()):
+                name_cache[key].add(uid)
+                added += 1
+    log.info("  Authority by name (local): %d terms, %d new UUIDs", len(terms), added)
+    return added
+
+
+def query_abbreviation_expansions_local(all_terms, name_cache, jurisdiction_abbreviations):
+    expansions = {}
+    for term in all_terms:
+        normalized = term.lower().rstrip('.')
+        expanded = jurisdiction_abbreviations.get(normalized)
+        if expanded:
+            expansions[term] = [expanded]
+        else:
+            multi = JURISDICTION_ABBREVIATION_MULTI.get(normalized)
+            if multi:
+                expansions[term] = multi
+
+    if not expansions:
+        log.info("  No abbreviation expansions found")
+        return 0
+
+    added = 0
+    for orig_term, expanded_names in expansions.items():
+        key = orig_term.lower()
+        for expanded_name in expanded_names:
+            records = _LOCAL.pa_by_name.get(expanded_name.lower(), [])
+            uuids = {rec['UUID'] for rec in records if rec['UUID']}
+            if uuids:
+                new_uuids = uuids - name_cache.get(key, set())
+                if new_uuids:
+                    name_cache[key].update(new_uuids)
+                    added += len(new_uuids)
+    return added
+
+
+def query_name_variants_local(all_terms, name_cache, generate_name_variants_fn):
+    variant_map = {}
+    for term in all_terms:
+        variants = generate_name_variants_fn(term)
+        if variants:
+            variant_map[term] = variants
+
+    if not variant_map:
+        log.info("  No name variants to try")
+        return 0
+
+    added = 0
+    for orig_term, variants in variant_map.items():
+        key = orig_term.lower()
+        for variant in variants:
+            uuids = _query_name_local(variant)
+            new_uuids = uuids - name_cache.get(key, set())
+            if new_uuids:
+                name_cache[key].update(new_uuids)
+                added += len(new_uuids)
+
+    total_variants = sum(len(v) for v in variant_map.values())
+    log.info("  Name variants (local): %d variants checked", total_variants)
+    return added
+
+
+def query_fallback_transforms_local(unmatched_terms, name_cache, transform_term_fn):
+    transforms = {}
+    for term in unmatched_terms:
+        cleaned, jurisdiction = transform_term_fn(term)
+        if cleaned:
+            transforms[term] = (cleaned, jurisdiction)
+
+    if not transforms:
+        log.info("  No transformable terms")
+        return 0
+
+    added = 0
+    for orig, (cleaned, jurisdiction) in transforms.items():
+        key = orig.lower()
+        if jurisdiction:
+            records = _LOCAL.pa_by_name.get(cleaned.lower(), [])
+            for rec in records:
+                if rec['UUID'] and rec['Jurisdiction'].lower() == jurisdiction.lower():
+                    if rec['UUID'] not in name_cache.get(key, set()):
+                        name_cache[key].add(rec['UUID'])
+                        added += 1
+        else:
+            uuids = _query_name_local(cleaned)
+            new_uuids = uuids - name_cache.get(key, set())
+            if new_uuids:
+                name_cache[key].update(new_uuids)
+                added += len(new_uuids)
+
+    log.info("  Fallback transforms (local): %d terms, %d UUIDs", len(transforms), added)
+    return added
+
+
+def query_spelling_corrections_local(terms, name_cache, sym_spell, min_len,
+                                     transform_map=None):
+    candidates_by_key = {}
+    for term in terms:
+        if len(term) < min_len:
+            continue
+        key = term.lower()
+        folded = ascii_fold(term)
+        suggestions = sym_spell.lookup(folded, Verbosity.ALL, max_edit_distance=1)
+        if suggestions:
+            corrected = [s.term for s in suggestions if s.term != folded]
+            if corrected:
+                candidates_by_key[key] = corrected
+
+    if transform_map:
+        for orig_term, cleaned in transform_map.items():
+            if len(cleaned) < min_len:
+                continue
+            key = orig_term.lower()
+            folded = ascii_fold(cleaned)
+            suggestions = sym_spell.lookup(folded, Verbosity.ALL, max_edit_distance=1)
+            if suggestions:
+                corrected = [s.term for s in suggestions if s.term != folded]
+                if corrected:
+                    existing = candidates_by_key.get(key, [])
+                    candidates_by_key[key] = existing + corrected
+
+    if not candidates_by_key:
+        log.info("  No spelling corrections found")
+        return 0, []
+
+    added = 0
+    corrections = []
+    for key, candidates in candidates_by_key.items():
+        for candidate in candidates:
+            records = _LOCAL.pa_by_name.get(candidate, [])
+            uuids = {rec['UUID'] for rec in records if rec['UUID']}
+            new_uuids = uuids - name_cache.get(key, set())
+            if new_uuids:
+                name_cache[key].update(new_uuids)
+                added += len(new_uuids)
+                corrections.append({
+                    'original_term': key,
+                    'corrected_term': candidate,
+                    'edit_distance': 1,
+                    'authority_uuid': ';'.join(sorted(new_uuids)),
+                })
+
+    return added, corrections
+
+
+def query_authority_batch_local(uuids):
+    auth_cache = {}
+    found = 0
+    for uid in uuids:
+        rec = _LOCAL.pa_by_uuid.get(uid)
+        if rec:
+            auth_cache[uid] = rec
+            found += 1
+    log.info("  Authority batch (local): %d UUIDs, %d found", len(uuids), found)
+    return auth_cache
+
+
+def prefetch_parent_chains_local(auth_cache):
+    while True:
+        missing = set()
+        for rec in auth_cache.values():
+            parent = (rec.get('Parent_UUID') or '').strip()
+            if parent and parent not in auth_cache:
+                missing.add(parent)
+        if not missing:
+            break
+        fetched = 0
+        for uid in missing:
+            rec = _LOCAL.pa_by_uuid.get(uid)
+            if rec:
+                auth_cache[uid] = rec
+                fetched += 1
+        log.info("  Parent pre-fetch (local): %d UUIDs, %d found", len(missing), fetched)
+        if fetched == 0:
+            break
+
+
+def resolve_helper_term_local(term_string, auth_cache):
+    if not term_string:
+        return None
+
+    terms = [t.strip() for t in re.split(r'[,;]', term_string) if t.strip()]
+    if not terms:
+        return None
+
+    term_candidates = {}
+    for term in terms:
+        records = _LOCAL.pa_by_name.get(term.lower(), [])
+        uuids = set()
+        for rec in records:
+            uid = rec['UUID']
+            if uid:
+                auth_cache[uid] = rec
+                uuids.add(uid)
+        if uuids:
+            term_candidates[term.lower()] = uuids
+
+    if not term_candidates:
+        log.info("  Helper term: no authority records found.")
+        return None
+
+    if len(terms) > 1:
+        right_to_left = list(reversed(terms))
+        confirmed = term_candidates.get(right_to_left[0].lower(), set())
+        if not confirmed:
+            all_found = set()
+            for uuids in term_candidates.values():
+                all_found.update(uuids)
+            confirmed = all_found
+        else:
+            prefetch_parent_chains_local(auth_cache)
+            for i in range(1, len(right_to_left)):
+                child_ids = term_candidates.get(right_to_left[i].lower(), set())
+                if not child_ids:
+                    continue
+                verified = {
+                    cid for cid in child_ids
+                    if walk_up_chain(cid, confirmed, auth_cache, None)
+                }
+                if verified:
+                    confirmed = verified
+        candidates = list(confirmed)
+    else:
+        candidates = list(term_candidates.get(terms[0].lower(), set()))
+
+    if not candidates:
+        log.info("  Helper term: chain walk produced no candidates.")
+        return None
+
+    if len(candidates) == 1:
+        chosen_uuid = candidates[0]
+    else:
+        def _pop(uid):
+            try:
+                return int(auth_cache.get(uid, {}).get('Population') or 0)
+            except (ValueError, TypeError):
+                return 0
+        chosen_uuid = max(candidates, key=_pop)
+        rec = auth_cache.get(chosen_uuid, {})
+        log.info("  Helper term '%s' had %d candidates, auto-picked: %s (%s)",
+                 term_string, len(candidates),
+                 field_str(rec, 'Auth_Place_Name'),
+                 field_str(rec, 'Type_Ahead_Value'))
+
+    chosen_rec = auth_cache.get(chosen_uuid, {})
+    try:
+        chosen_level = int(field_str(chosen_rec, 'Level'))
+    except (ValueError, TypeError):
+        chosen_level = 0
+
+    ancestor_uuids = set()
+    current = chosen_uuid
+    for _ in range(20):
+        rec = auth_cache.get(current)
+        if not rec:
+            rec = _LOCAL.pa_by_uuid.get(current)
+            if rec:
+                auth_cache[current] = rec
+            else:
+                break
+        parent = (rec.get('Parent_UUID') or '').strip()
+        if not parent:
+            break
+        ancestor_uuids.add(parent)
+        current = parent
+
+    return {
+        'uuid': chosen_uuid,
+        'level': chosen_level,
+        'ancestor_uuids': ancestor_uuids,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +704,13 @@ JURISDICTION_PREFIXES = [
     (re.compile(r'^village\s+of\s+', re.I), 'Village'),
     (re.compile(r'^state\s+of\s+', re.I), 'State'),
     (re.compile(r'^province\s+of\s+', re.I), 'Province'),
+]
+
+# Prefixes that should be stripped but NOT used as jurisdiction filters,
+# because the authority may store the place under a different jurisdiction
+# (e.g. "Territory of Alaska" -> Alaska is stored as State, not Territory).
+NON_FILTERING_PREFIXES = [
+    re.compile(r'^territory\s+of\s+', re.I),
 ]
 
 TRAILING_DESCRIPTORS = [
@@ -355,7 +781,7 @@ JURISDICTION_ABBREVIATIONS = {
     'ill': 'Illinois', 'ind': 'Indiana',
     'kan': 'Kansas', 'kas': 'Kansas', 'kans': 'Kansas',
     'ken': 'Kentucky', 'ky': 'Kentucky',
-    'mass': 'Massachusetts', 'mich': 'Michigan',
+    'mass': 'Massachusetts',
     'minn': 'Minnesota', 'miss': 'Mississippi',
     'neb': 'Nebraska', 'nebr': 'Nebraska',
     'nev': 'Nevada', 'okla': 'Oklahoma',
@@ -366,14 +792,34 @@ JURISDICTION_ABBREVIATIONS = {
     'wis': 'Wisconsin', 'wisc': 'Wisconsin',
     'wyo': 'Wyoming',
     # Canadian provinces
-    'ab': 'Alberta', 'bc': 'British Columbia', 'mb': 'Manitoba',
-    'nb': 'New Brunswick', 'nl': 'Newfoundland and Labrador',
+    'ab': 'Alberta', 'mb': 'Manitoba',
+    'nb': 'New Brunswick',
     'ns': 'Nova Scotia', 'on': 'Ontario', 'pe': 'Prince Edward Island',
     'qc': 'Quebec', 'sk': 'Saskatchewan',
     'nt': 'Northwest Territories', 'nu': 'Nunavut', 'yt': 'Yukon',
     # Australian states
     'nsw': 'New South Wales', 'qld': 'Queensland', 'vic': 'Victoria',
     'tas': 'Tasmania', 'act': 'Australian Capital Territory',
+    # Mexican states
+    'ags': 'Aguascalientes', 'bcs': 'Baja California Sur',
+    'camp': 'Campeche', 'chis': 'Chiapas', 'chih': 'Chihuahua',
+    'coah': 'Coahuila de Zaragoza', 'col': 'Colima',
+    'dgo': 'Durango', 'gto': 'Guanajuato', 'gro': 'Guerrero',
+    'hgo': 'Hidalgo', 'jal': 'Jalisco', 'mex': 'Mexico',
+    'mor': 'Morelos', 'nay': 'Nayarit',
+    'oax': 'Oaxaca', 'pue': 'Puebla',
+    'qro': 'Queretaro de Arteaga', 'qroo': 'Quintana Roo',
+    'slp': 'San Luis Potosi', 'sin': 'Sinaloa', 'son': 'Sonora',
+    'tab': 'Tabasco', 'tamps': 'Tamaulipas', 'tlax': 'Tlaxcala',
+    'ver': 'Veracruz-Llave', 'yuc': 'Yucatan', 'zac': 'Zacatecas',
+}
+
+# Keys that map to multiple jurisdictions across countries. Both expansions
+# are queried and their UUIDs merged — Phase 3 chain walk disambiguates.
+JURISDICTION_ABBREVIATION_MULTI = {
+    'bc': ['British Columbia', 'Baja California'],
+    'mich': ['Michigan', 'Michoacan de Ocampo'],
+    'nl': ['Newfoundland and Labrador', 'Nuevo Leon'],
 }
 
 
@@ -396,6 +842,13 @@ def transform_term(term):
 
     for pattern in PREFIX_PATTERNS:
         cleaned = pattern.sub('', cleaned).strip()
+
+    # Non-filtering prefixes: strip but don't set jurisdiction hint
+    for pattern in NON_FILTERING_PREFIXES:
+        stripped = pattern.sub('', cleaned)
+        if stripped != cleaned:
+            cleaned = stripped.strip()
+            break
 
     # Jurisdiction prefixes: "County of X" -> "X" with jurisdiction hint
     for pattern, jurisdiction_type in JURISDICTION_PREFIXES:
@@ -423,6 +876,12 @@ def transform_term(term):
         if expanded != cleaned:
             cleaned = expanded.strip()
             break
+
+    # Inline parenthesis merge: "Trevo(se)" -> "Trevose" when no space before "("
+    if '(' in cleaned:
+        merged = re.sub(r'(?<!\s)\(([^)]*)\)', r'\1', cleaned)
+        if merged != cleaned:
+            cleaned = merged
 
     if not cleaned or cleaned.lower() == term.lower():
         return None, None
@@ -470,9 +929,8 @@ def query_mnt(client, terms):
         for rec in records:
             extract(rec['fieldData'])
         done = min(i + BATCH, total)
-        print(f"  MNT: {done}/{total} terms, "
-              f"{len(name_cache)} matched, {junk_count} junk filtered")
-        sys.stdout.flush()
+        log.info("  MNT: %d/%d terms, %d matched, %d junk filtered",
+                 done, total, len(name_cache), junk_count)
 
     unmatched = [t for t in term_list if not name_cache.get(t.lower())]
     if unmatched:
@@ -485,9 +943,8 @@ def query_mnt(client, terms):
                 extract(rec['fieldData'])
             rescan_matched = sum(1 for t in unmatched if name_cache.get(t.lower()))
         if rescan_matched:
-            print(f"  MNT whitespace rescan: {rescan_matched} additional terms matched")
+            log.info("  MNT whitespace rescan: %d additional terms matched", rescan_matched)
 
-    print()
     return name_cache
 
 
@@ -519,8 +976,7 @@ def query_authority_by_name(client, terms, name_cache):
         for rec in records:
             extract(rec['fieldData'])
         done = min(i + BATCH, total)
-        print(f"  Authority by name: {done}/{total} terms, {added} new UUIDs")
-    print()
+        log.info("  Authority by name: %d/%d terms, %d new UUIDs", done, total, added)
     return added
 
 
@@ -542,7 +998,7 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
             transforms[term] = (cleaned, jurisdiction)
 
     if not transforms:
-        print("  No transformable terms")
+        log.info("  No transformable terms")
         return 0
 
     items = list(transforms.items())
@@ -575,8 +1031,8 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
                             added += 1
 
             done = min(i + BATCH, len(jurisdiction_terms))
-            print(f"  Fallback (jurisdiction): {done}/{len(jurisdiction_terms)} terms, {added} UUIDs")
-            print()
+            log.info("  Fallback (jurisdiction): %d/%d terms, %d UUIDs",
+                     done, len(jurisdiction_terms), added)
 
     # Non-jurisdiction transforms: "near St. Louis" -> "Saint Louis", queried
     # against both MNT and Authority_Place without jurisdiction filtering
@@ -612,9 +1068,8 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
                         non_jurisdiction_added += 1
 
             done = min(i + BATCH, len(non_jurisdiction_terms))
-            print(f"  Fallback (other): {done}/{len(non_jurisdiction_terms)} terms, "
-                  f"{non_jurisdiction_added} UUIDs")
-            print()
+            log.info("  Fallback (other): %d/%d terms, %d UUIDs",
+                     done, len(non_jurisdiction_terms), non_jurisdiction_added)
 
     return added + non_jurisdiction_added
 
@@ -626,19 +1081,27 @@ def query_abbreviation_expansions(client, all_terms, name_cache):
     merged in. The chain walk in Phase 3 then decides among all candidates.
 
     Strips trailing periods before matching (so "Ky." matches "ky").
+    Handles multi-mapped abbreviations (e.g. "bc" -> both British Columbia
+    and Baja California) by querying all expansions.
     """
     expansions = {}
     for term in all_terms:
         normalized = term.lower().rstrip('.')
         expanded = JURISDICTION_ABBREVIATIONS.get(normalized)
         if expanded:
-            expansions[term] = expanded
+            expansions[term] = [expanded]
+        else:
+            multi = JURISDICTION_ABBREVIATION_MULTI.get(normalized)
+            if multi:
+                expansions[term] = multi
 
     if not expansions:
-        print("  No abbreviation expansions found")
+        log.info("  No abbreviation expansions found")
         return 0
 
-    unique_expanded = set(expansions.values())
+    unique_expanded = set()
+    for names in expansions.values():
+        unique_expanded.update(names)
     expanded_to_uuids = defaultdict(set)
     expanded_list = list(unique_expanded)
     for i in range(0, len(expanded_list), BATCH):
@@ -653,14 +1116,15 @@ def query_abbreviation_expansions(client, all_terms, name_cache):
                 expanded_to_uuids[name.lower()].add(uuid)
 
     added = 0
-    for orig_term, expanded_name in expansions.items():
-        uuids = expanded_to_uuids.get(expanded_name.lower(), set())
-        if uuids:
-            key = orig_term.lower()
-            new_uuids = uuids - name_cache.get(key, set())
-            if new_uuids:
-                name_cache[key].update(new_uuids)
-                added += len(new_uuids)
+    for orig_term, expanded_names in expansions.items():
+        key = orig_term.lower()
+        for expanded_name in expanded_names:
+            uuids = expanded_to_uuids.get(expanded_name.lower(), set())
+            if uuids:
+                new_uuids = uuids - name_cache.get(key, set())
+                if new_uuids:
+                    name_cache[key].update(new_uuids)
+                    added += len(new_uuids)
 
     return added
 
@@ -719,7 +1183,7 @@ def query_name_variants(client, all_terms, name_cache):
             variant_map[term] = variants
 
     if not variant_map:
-        print("  No name variants to try")
+        log.info("  No name variants to try")
         return 0
 
     unique_variants = set()
@@ -751,7 +1215,7 @@ def query_name_variants(client, all_terms, name_cache):
                 variant_to_uuids[name.lower()].add(uuid)
 
         done = min(i + BATCH, len(variant_list))
-        print(f"  Name variants: {done}/{len(variant_list)} variants queried")
+        log.info("  Name variants: %d/%d variants queried", done, len(variant_list))
 
     added = 0
     for orig_term, variants in variant_map.items():
@@ -790,30 +1254,40 @@ def build_spelling_index(tsv_path):
 SPELLING_LOG_FIELDS = ['original_term', 'corrected_term', 'edit_distance', 'authority_uuid']
 
 
-def query_spelling_corrections(client, unmatched_terms, name_cache, sym_spell):
-    eligible = [t for t in unmatched_terms
-                if len(t) >= MIN_SPELLING_LEN and not name_cache.get(t.lower())]
-
-    if not eligible:
-        print("  No eligible terms for spelling correction")
-        return 0, []
-
-    correction_map = {}
-    for term in eligible:
+def query_spelling_corrections(client, terms, name_cache, sym_spell,
+                               transform_map=None):
+    candidates_by_key = {}
+    for term in terms:
+        if len(term) < MIN_SPELLING_LEN:
+            continue
+        key = term.lower()
         folded = ascii_fold(term)
-        suggestions = sym_spell.lookup(folded, Verbosity.CLOSEST, max_edit_distance=1)
+        suggestions = sym_spell.lookup(folded, Verbosity.ALL, max_edit_distance=1)
         if suggestions:
-            corrected_terms = [s.term for s in suggestions if s.term != folded]
-            if corrected_terms:
-                correction_map[term] = corrected_terms
+            corrected = [s.term for s in suggestions if s.term != folded]
+            if corrected:
+                candidates_by_key[key] = corrected
 
-    if not correction_map:
-        print("  No spelling corrections found")
+    if transform_map:
+        for orig_term, cleaned in transform_map.items():
+            if len(cleaned) < MIN_SPELLING_LEN:
+                continue
+            key = orig_term.lower()
+            folded = ascii_fold(cleaned)
+            suggestions = sym_spell.lookup(folded, Verbosity.ALL, max_edit_distance=1)
+            if suggestions:
+                corrected = [s.term for s in suggestions if s.term != folded]
+                if corrected:
+                    existing = candidates_by_key.get(key, [])
+                    candidates_by_key[key] = existing + corrected
+
+    if not candidates_by_key:
+        log.info("  No spelling corrections found")
         return 0, []
 
     all_corrected = set()
-    for terms in correction_map.values():
-        all_corrected.update(terms)
+    for cands in candidates_by_key.values():
+        all_corrected.update(cands)
 
     corrected_to_uuids = defaultdict(set)
     corrected_list = list(all_corrected)
@@ -829,17 +1303,18 @@ def query_spelling_corrections(client, unmatched_terms, name_cache, sym_spell):
 
     added = 0
     corrections = []
-    for original, candidates in correction_map.items():
+    for key, candidates in candidates_by_key.items():
         for candidate in candidates:
             uuids = corrected_to_uuids.get(candidate, set())
-            if uuids:
-                name_cache[original.lower()].update(uuids)
-                added += len(uuids)
+            new_uuids = uuids - name_cache.get(key, set())
+            if new_uuids:
+                name_cache[key].update(new_uuids)
+                added += len(new_uuids)
                 corrections.append({
-                    'original_term': original,
+                    'original_term': key,
                     'corrected_term': candidate,
                     'edit_distance': 1,
-                    'authority_uuid': ';'.join(sorted(uuids)),
+                    'authority_uuid': ';'.join(sorted(new_uuids)),
                 })
 
     return added, corrections
@@ -958,15 +1433,16 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
                 pairs[key] = (term, jurisdiction)
 
     if not pairs:
-        print("  No eligible (city, jurisdiction) pairs")
+        log.info("  No eligible (city, jurisdiction) pairs")
         return 0
 
     unique_pairs = list(pairs.values())
-    print(f"  {len(unique_pairs)} unique (city, jurisdiction) pairs to resolve...")
+    log.info("  %d unique (city, jurisdiction) pairs to resolve...", len(unique_pairs))
 
     unique_jurisdictions = list({j.lower(): j for j in
                                  [jp for _, jp in unique_pairs]}.values())
-    print(f"  Resolving {len(unique_jurisdictions)} unique jurisdiction FS IDs ({max_workers} threads)...")
+    log.info("  Resolving %d unique jurisdiction FS IDs (%d threads)...",
+             len(unique_jurisdictions), max_workers)
     fs_id_cache = {}
     fs_id_lock = threading.Lock()
 
@@ -979,7 +1455,8 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
         list(pool.map(_resolve_fs_id_threaded, unique_jurisdictions))
 
     resolved_jurisdictions = sum(1 for v in fs_id_cache.values() if v)
-    print(f"  {resolved_jurisdictions}/{len(unique_jurisdictions)} jurisdictions resolved")
+    log.info("  %d/%d jurisdictions resolved",
+             resolved_jurisdictions, len(unique_jurisdictions))
 
     def _lookup_one_pair(city_term, jurisdiction_term):
         parent_id = fs_id_cache.get(jurisdiction_term.lower())
@@ -988,7 +1465,8 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
         canonical = _fs_city_lookup(city_term, parent_id)
         return (city_term, canonical)
 
-    print(f"  Looking up {len(unique_pairs)} city terms via FS ({max_workers} threads)...")
+    log.info("  Looking up %d city terms via FS (%d threads)...",
+             len(unique_pairs), max_workers)
     fs_results = []
     done_count = 0
     done_lock = threading.Lock()
@@ -999,7 +1477,8 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
         with done_lock:
             done_count += 1
             if done_count % 100 == 0:
-                print(f"    [{done_count}/{len(unique_pairs)}] FS lookups complete")
+                log.info("    [%d/%d] FS lookups complete",
+                         done_count, len(unique_pairs))
         return result
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
@@ -1013,7 +1492,7 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
         if canonical:
             canonicals.append((city_term, canonical))
 
-    print(f"  {len(canonicals)} FS hits, querying FM for authority records...")
+    log.info("  %d FS hits, querying FM for authority records...", len(canonicals))
     for city_term, canonical in canonicals:
         fs_hits += 1
         query = [{"Auth_Place_Name": f"=={canonical}"}]
@@ -1027,15 +1506,14 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
                 fm_added += 1
 
     fs_skipped = len(unique_pairs) - len(canonicals)
-    print(f"  {fs_hits} FS hits -> {fm_added} new authority records added "
-          f"({fs_skipped} skipped, {fm_queries} FM queries)")
+    log.info("  %d FS hits -> %d new authority records added "
+             "(%d skipped, %d FM queries)",
+             fs_hits, fm_added, fs_skipped, fm_queries)
     return fm_added
 
 
 def _query_fs_places_local(parsed, name_cache, max_workers=8):
     """Phase 1e using FamilySearch network + local PA lookup (no FM client)."""
-    from rtl_local_data import _DATA, ensure_loaded
-    ensure_loaded()
 
     pairs = {}
     for place, guid, frequency, terms in parsed:
@@ -1053,15 +1531,16 @@ def _query_fs_places_local(parsed, name_cache, max_workers=8):
                 pairs[key] = (term, jurisdiction)
 
     if not pairs:
-        print("  No eligible (city, jurisdiction) pairs")
+        log.info("  No eligible (city, jurisdiction) pairs")
         return 0
 
     unique_pairs = list(pairs.values())
-    print(f"  {len(unique_pairs)} unique (city, jurisdiction) pairs to resolve...")
+    log.info("  %d unique (city, jurisdiction) pairs to resolve...", len(unique_pairs))
 
     unique_jurisdictions = list({j.lower(): j for j in
                                  [jp for _, jp in unique_pairs]}.values())
-    print(f"  Resolving {len(unique_jurisdictions)} unique jurisdiction FS IDs ({max_workers} threads)...")
+    log.info("  Resolving %d unique jurisdiction FS IDs (%d threads)...",
+             len(unique_jurisdictions), max_workers)
     fs_id_cache = {}
     fs_id_lock = threading.Lock()
 
@@ -1074,7 +1553,8 @@ def _query_fs_places_local(parsed, name_cache, max_workers=8):
         list(pool.map(_resolve_fs_id_threaded, unique_jurisdictions))
 
     resolved_jurisdictions = sum(1 for v in fs_id_cache.values() if v)
-    print(f"  {resolved_jurisdictions}/{len(unique_jurisdictions)} jurisdictions resolved")
+    log.info("  %d/%d jurisdictions resolved",
+             resolved_jurisdictions, len(unique_jurisdictions))
 
     def _lookup_one_pair(city_term, jurisdiction_term):
         parent_id = fs_id_cache.get(jurisdiction_term.lower())
@@ -1083,7 +1563,8 @@ def _query_fs_places_local(parsed, name_cache, max_workers=8):
         canonical = _fs_city_lookup(city_term, parent_id)
         return (city_term, canonical)
 
-    print(f"  Looking up {len(unique_pairs)} city terms via FS ({max_workers} threads)...")
+    log.info("  Looking up %d city terms via FS (%d threads)...",
+             len(unique_pairs), max_workers)
     done_count = 0
     done_lock = threading.Lock()
 
@@ -1093,17 +1574,18 @@ def _query_fs_places_local(parsed, name_cache, max_workers=8):
         with done_lock:
             done_count += 1
             if done_count % 100 == 0:
-                print(f"    [{done_count}/{len(unique_pairs)}] FS lookups complete")
+                log.info("    [%d/%d] FS lookups complete",
+                         done_count, len(unique_pairs))
         return result
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         fs_results = list(pool.map(_lookup_and_track, unique_pairs))
 
     canonicals = [(city, canon) for city, canon in fs_results if canon]
-    print(f"  {len(canonicals)} FS hits, resolving via local PA...")
+    log.info("  %d FS hits, resolving via local PA...", len(canonicals))
     added = 0
     for city_term, canonical in canonicals:
-        records = _DATA.pa_by_name.get(canonical.lower(), [])
+        records = _LOCAL.pa_by_name.get(canonical.lower(), [])
         for rec in records:
             uid = rec['UUID']
             if uid:
@@ -1111,8 +1593,8 @@ def _query_fs_places_local(parsed, name_cache, max_workers=8):
                 added += 1
 
     fs_skipped = len(unique_pairs) - len(canonicals)
-    print(f"  {len(canonicals)} FS hits -> {added} new authority records added "
-          f"({fs_skipped} skipped)")
+    log.info("  %d FS hits -> %d new authority records added (%d skipped)",
+             len(canonicals), added, fs_skipped)
     return added
 
 
@@ -1142,8 +1624,8 @@ def query_authority_batch(client, uuids):
             if uuid:
                 auth_cache[uuid] = field_data
         done = min(i + BATCH, total)
-        print(f"  Authority: {done}/{total} UUIDs resolved, {len(auth_cache)} found")
-    print()
+        log.info("  Authority: %d/%d UUIDs resolved, %d found",
+                 done, total, len(auth_cache))
     return auth_cache
 
 
@@ -1177,8 +1659,8 @@ def prefetch_parent_chains(client, auth_cache):
                     auth_cache[uuid] = field_data
                     fetched += 1
             done = min(i + BATCH, total)
-            print(f"  Parent pre-fetch: {done}/{total} UUIDs, {fetched} found")
-        print()
+            log.info("  Parent pre-fetch: %d/%d UUIDs, %d found",
+                     done, total, fetched)
         if fetched == 0:
             break
 
@@ -1504,7 +1986,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
             continue
 
         if len(child_ids) > 50:
-            print(f"    term '{right_to_left[i]}': {len(child_ids)} candidates, prefetching...", flush=True)
+            log.debug("    term '%s': %d candidates, prefetching...",
+                      right_to_left[i], len(child_ids))
         _prefetch_missing_parents(child_ids, auth_cache, client)
         verified = {
             candidate_id for candidate_id in child_ids
@@ -1635,7 +2118,14 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
 def load_entries(path):
     """Read the input TSV, expecting columns: place, guid, frequency."""
     with open(path, 'r', encoding='utf-8-sig') as f:
-        return list(csv.DictReader(f, delimiter='\t'))
+        reader = csv.DictReader(f, delimiter='\t')
+        entries = list(reader)
+        if 'place' not in (reader.fieldnames or []):
+            raise ValueError("input TSV missing required 'place' column")
+        missing = [c for c in ('guid', 'frequency') if c not in reader.fieldnames]
+        if missing:
+            print(f"WARNING: input TSV missing column(s) {missing}; defaulting to blank values")
+        return entries
 
 
 def parse_entries(entries):
@@ -1652,7 +2142,7 @@ def parse_entries(entries):
         terms = [t for t in raw_terms if not NOISE_TERM_RE.match(t)]
         if not terms:
             terms = raw_terms
-        parsed.append((entry['place'], entry['guid'], entry['frequency'], terms))
+        parsed.append((entry['place'], entry.get('guid', ''), entry.get('frequency', ''), terms))
         all_terms.update(terms)
         for term in terms:
             hint = detect_jurisdiction_hint(term)
@@ -1661,15 +2151,15 @@ def parse_entries(entries):
     return parsed, all_terms, jurisdiction_hints
 
 
-def _resolve_output_paths(input_path):
-    """Build date-sorted, auto-numbered output paths inside rtl-outputs/.
+def _resolve_output_paths(input_path, output_dir):
+    """Build date-sorted, auto-numbered output paths inside output_dir/.
 
-    Pattern: rtl-outputs/MM-DD/<input_stem>_NN.tsv
+    Pattern: <output_dir>/MM-DD/<input_stem>_NN.tsv
     where NN increments per input name per day.
     """
     from datetime import datetime
     stem = os.path.splitext(os.path.basename(input_path))[0]
-    day_dir = os.path.join(_RTL_OUTPUTS_DIR, datetime.now().strftime('%m-%d'))
+    day_dir = os.path.join(output_dir, datetime.now().strftime('%m-%d'))
     os.makedirs(day_dir, exist_ok=True)
 
     existing = [f for f in os.listdir(day_dir) if f.startswith(stem + '_') and f.endswith('.tsv') and '_ties' not in f]
@@ -1734,18 +2224,11 @@ def print_summary(results, call_count, elapsed_sec, output_path):
 # ancestor UUIDs that can be used in Phase 3 scoring.
 # ---------------------------------------------------------------------------
 
-def resolve_helper_term(term_string, client, auth_cache):
+def resolve_helper_term(term_string, client, auth_cache, interactive=False):
     """Resolve a helper term string to a single authority record.
 
-    Returns a dict with keys 'uuid', 'level', and 'ancestor_uuids' (a set of
-    parent chain UUIDs), or None if the term is empty or cannot be resolved.
-
-    Process:
-      1. Split term_string on commas/semicolons into individual terms.
-      2. Query Authority_Place for each term by exact Auth_Place_Name match.
-      3. If multiple terms, do a mini RTL chain walk to narrow candidates.
-      4. If multiple candidates remain after narrowing, prompt user to pick.
-      5. Walk up the chosen record's Parent_UUID chain to collect ancestors.
+    When interactive=False (default), ambiguous matches pick the candidate
+    with the highest population. Pass interactive=True to prompt the user.
     """
     if not term_string:
         return None
@@ -1770,15 +2253,13 @@ def resolve_helper_term(term_string, client, auth_cache):
             term_candidates[term.lower()] = uuids
 
     if not term_candidates:
-        print("  Helper term: no authority records found.")
+        log.info("  Helper term: no authority records found.")
         return None
 
-    # Mini RTL chain walk when multiple terms provided
     if len(terms) > 1:
         right_to_left = list(reversed(terms))
         confirmed = term_candidates.get(right_to_left[0].lower(), set())
         if not confirmed:
-            # Try left-to-right fallback: use whatever we found
             all_found = set()
             for uuids in term_candidates.values():
                 all_found.update(uuids)
@@ -1800,14 +2281,12 @@ def resolve_helper_term(term_string, client, auth_cache):
         candidates = list(term_candidates.get(terms[0].lower(), set()))
 
     if not candidates:
-        print("  Helper term: chain walk produced no candidates.")
+        log.info("  Helper term: chain walk produced no candidates.")
         return None
 
-    # Single candidate — use it directly
     if len(candidates) == 1:
         chosen_uuid = candidates[0]
-    else:
-        # Prompt user to pick
+    elif interactive:
         print(f"\n  Helper term '{term_string}' matched {len(candidates)} records:")
         for idx, uuid in enumerate(candidates):
             rec = auth_cache.get(uuid, {})
@@ -1829,6 +2308,18 @@ def resolve_helper_term(term_string, client, auth_cache):
         except ValueError:
             print("  Invalid selection, skipping helper term.")
             return None
+    else:
+        def _pop(uid):
+            try:
+                return int(field_str(auth_cache.get(uid, {}), 'Population') or 0)
+            except (ValueError, TypeError):
+                return 0
+        chosen_uuid = max(candidates, key=_pop)
+        rec = auth_cache.get(chosen_uuid, {})
+        log.info("  Helper term '%s' had %d candidates, auto-picked: %s (%s)",
+                 term_string, len(candidates),
+                 field_str(rec, 'Auth_Place_Name'),
+                 field_str(rec, 'Type_Ahead_Value'))
 
     chosen_rec = auth_cache.get(chosen_uuid, {})
     try:
@@ -1900,286 +2391,193 @@ def _parent_contradicts_input(winner_uuid, terms, skipped_terms_str, auth_cache)
 # Main — orchestrates the three-phase pipeline
 # ---------------------------------------------------------------------------
 
-def main():
+def main(args):
     start = time.time()
     def elapsed():
         return f"[{time.time() - start:.1f}s]"
 
-    if USE_LOCAL_DATA:
-        _main_local(start, elapsed)
+    client = None
+
+    if args.local:
+        _LOCAL.load(args.mnt, args.pa)
+        log.info("Local data ready. %s", elapsed())
+
+        fn_query_mnt = lambda terms: query_mnt_local(terms)
+        fn_authority_by_name = lambda terms, nc: query_authority_by_name_local(terms, nc)
+        fn_abbrev = lambda terms, nc: query_abbreviation_expansions_local(
+            terms, nc, JURISDICTION_ABBREVIATIONS)
+        fn_variants = lambda terms, nc: query_name_variants_local(
+            terms, nc, _generate_name_variants)
+        fn_transforms = lambda terms, nc: query_fallback_transforms_local(
+            terms, nc, transform_term)
+        fn_spelling = lambda terms, nc, ss, transform_map=None: query_spelling_corrections_local(
+            terms, nc, ss, MIN_SPELLING_LEN, transform_map=transform_map)
+        fn_auth_batch = lambda uuids: query_authority_batch_local(uuids)
+        fn_prefetch = lambda ac: prefetch_parent_chains_local(ac)
+        fn_helper = lambda s, ac: resolve_helper_term_local(s, ac)
+        fn_fs = None
     else:
-        _main_fm(start, elapsed)
+        client = FileMakerClient(args.env)
+        log.info("Authenticating with FileMaker...")
+        client.auth()
+        log.info("Connected. %s", elapsed())
 
+        fn_query_mnt = lambda terms: query_mnt(client, terms)
+        fn_authority_by_name = lambda terms, nc: query_authority_by_name(client, terms, nc)
+        fn_abbrev = lambda terms, nc: query_abbreviation_expansions(client, terms, nc)
+        fn_variants = lambda terms, nc: query_name_variants(client, terms, nc)
+        fn_transforms = lambda terms, nc: query_fallback_transforms(client, terms, nc)
+        fn_spelling = lambda terms, nc, ss, transform_map=None: query_spelling_corrections(
+            client, terms, nc, ss, transform_map=transform_map)
+        fn_auth_batch = lambda uuids: query_authority_batch(client, uuids)
+        fn_prefetch = lambda ac: prefetch_parent_chains(client, ac)
+        fn_helper = lambda s, ac: resolve_helper_term(s, client, ac)
+        fn_fs = lambda parsed, nc: query_fs_places(client, parsed, nc)
 
-def _main_local(start, elapsed):
-    """Pipeline backed by local TSV files — no FileMaker API calls."""
-    from rtl_local_data import (
-        ensure_loaded,
-        query_mnt_local,
-        query_authority_by_name_local,
-        query_abbreviation_expansions_local,
-        query_name_variants_local,
-        query_fallback_transforms_local,
-        query_spelling_corrections_local,
-        query_authority_batch_local,
-        prefetch_parent_chains_local,
-        resolve_helper_term_local,
-    )
-
-    ensure_loaded()
-    print(f"Local data ready. {elapsed()}")
-
-    entries = load_entries(INPUT)
-    print(f"Loaded {len(entries)} entries")
+    entries = load_entries(args.input)
+    log.info("Loaded %d entries", len(entries))
 
     parsed, all_terms, jurisdiction_hints = parse_entries(entries)
-    print(f"Unique terms to look up: {len(all_terms)}")
+    log.info("Unique terms to look up: %d", len(all_terms))
 
-    helper_term_str = os.environ.get('RTL_HELPER_TERM', '').strip()
-    if not helper_term_str:
-        print("\nNo helper term provided (RTL_HELPER_TERM not set).")
-        print("A helper term provides geographic context for ambiguous single-term matches.")
-        print("Examples: 'Utah, USA', 'New South Wales, Australia', 'USA'")
-        helper_term_str = input("Enter a helper term (or press Enter to skip): ").strip()
-    helper_term = None
+    helper_term_str = args.helper_term or ''
 
-    print(f"\nPhase 1a: MNT lookups {elapsed()}")
-    name_cache = query_mnt_local(all_terms)
+    log.info("\nPhase 1a: MNT lookups %s", elapsed())
+    name_cache = fn_query_mnt(all_terms)
     mnt_matched = sum(1 for v in name_cache.values() if v)
-    print(f"  {mnt_matched} terms matched via MNT {elapsed()}")
+    log.info("  %d terms matched via MNT %s", mnt_matched, elapsed())
 
-    print(f"\nPhase 1b: Authority Place lookups by name {elapsed()}")
-    query_authority_by_name_local(all_terms, name_cache)
+    log.info("\nPhase 1b: Authority Place lookups by name %s", elapsed())
+    fn_authority_by_name(all_terms, name_cache)
     combined = sum(1 for v in name_cache.values() if v)
-    print(f"  Combined: {combined} terms matched {elapsed()}")
+    log.info("  Combined: %d terms matched %s", combined, elapsed())
 
-    print(f"\nPhase 1b2: Jurisdiction abbreviation expansion {elapsed()}")
-    abbrev_added = query_abbreviation_expansions_local(
-        all_terms, name_cache, JURISDICTION_ABBREVIATIONS)
+    log.info("\nPhase 1b2: Jurisdiction abbreviation expansion %s", elapsed())
+    abbrev_added = fn_abbrev(all_terms, name_cache)
     after_abbrev = sum(1 for v in name_cache.values() if v)
-    print(f"  +{abbrev_added} UUIDs added from abbreviation expansion "
-          f"({after_abbrev} terms matched) {elapsed()}")
+    log.info("  +%d UUIDs added from abbreviation expansion "
+             "(%d terms matched) %s", abbrev_added, after_abbrev, elapsed())
 
-    print(f"\nPhase 1b3: Name variant expansion {elapsed()}")
-    variant_added = query_name_variants_local(
-        all_terms, name_cache, _generate_name_variants)
+    log.info("\nPhase 1b3: Name variant expansion %s", elapsed())
+    variant_added = fn_variants(all_terms, name_cache)
     after_variants = sum(1 for v in name_cache.values() if v)
-    print(f"  +{variant_added} UUIDs added from name variants "
-          f"({after_variants} terms matched) {elapsed()}")
+    log.info("  +%d UUIDs added from name variants "
+             "(%d terms matched) %s", variant_added, after_variants, elapsed())
 
-    print(f"\nPhase 1c: Fallback transforms for unmatched terms {elapsed()}")
+    log.info("\nPhase 1c: Fallback transforms for unmatched terms %s", elapsed())
     unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
-    print(f"  {len(unmatched)} terms unmatched, applying transforms...")
-    query_fallback_transforms_local(unmatched, name_cache, transform_term)
+    log.info("  %d terms unmatched, applying transforms...", len(unmatched))
+    fn_transforms(unmatched, name_cache)
     after = sum(1 for v in name_cache.values() if v)
-    print(f"  After transforms: {after} terms matched (+{after - combined} new) {elapsed()}")
+    log.info("  After transforms: %d terms matched (+%d new) %s",
+             after, after - combined, elapsed())
 
     transformable_matched = [
         t for t in all_terms
         if name_cache.get(t.lower()) and transform_term(t)[0] is not None
     ]
     if transformable_matched:
-        print(f"  Enriching {len(transformable_matched)} MNT-matched transformable terms...")
-        enrich_added = query_fallback_transforms_local(
-            transformable_matched, name_cache, transform_term)
+        log.info("  Enriching %d MNT-matched transformable terms...",
+                 len(transformable_matched))
+        enrich_added = fn_transforms(transformable_matched, name_cache)
         after_enrich = sum(1 for v in name_cache.values() if v)
-        print(f"  After enrichment: +{enrich_added} UUIDs added {elapsed()}")
+        log.info("  After enrichment: +%d UUIDs added %s", enrich_added, elapsed())
 
-    print(f"\nPhase 1d: Spelling correction via symspellpy {elapsed()}")
-    unmatched_1d = [t for t in all_terms if not name_cache.get(t.lower())]
-    print(f"  {len(unmatched_1d)} terms unmatched, building spelling index...")
-    sym_spell = build_spelling_index(PA_TSV)
-    print(f"  Index built: {len(sym_spell.words)} entries")
-    spelling_added, spelling_corrections = query_spelling_corrections_local(
-        unmatched_1d, name_cache, sym_spell, MIN_SPELLING_LEN
-    )
+    # Re-run name variants on transformed forms so that e.g. "near St. Charles"
+    # (transformed to "Saint Charles") also tries "St Charles" via PREFIX_SWAPS.
+    log.info("\nPhase 1c2: Name variants on transform output %s", elapsed())
+    transform_variants = {}
+    for t in all_terms:
+        cleaned, _ = transform_term(t)
+        if cleaned:
+            variants = _generate_name_variants(cleaned)
+            if variants:
+                transform_variants[t] = variants
+    if transform_variants:
+        tv_added = 0
+        for orig_term, variants in transform_variants.items():
+            key = orig_term.lower()
+            for variant in variants:
+                if args.local:
+                    uuids = _query_name_local(variant)
+                else:
+                    query = [{"Auth_Place_Name": f"=={variant}"}]
+                    records = client.find("Authority_Place", query, limit=100)
+                    uuids = {field_str(r['fieldData'], 'UUID') for r in records
+                             if field_str(r['fieldData'], 'UUID')}
+                new_uuids = uuids - name_cache.get(key, set())
+                if new_uuids:
+                    name_cache[key].update(new_uuids)
+                    tv_added += len(new_uuids)
+        after_tv = sum(1 for v in name_cache.values() if v)
+        log.info("  +%d UUIDs from transform variants (%d terms matched) %s",
+                 tv_added, after_tv, elapsed())
+    else:
+        log.info("  No transform variants to try")
+
+    log.info("\nPhase 1d: Spelling correction via symspellpy %s", elapsed())
+    transform_map = {}
+    for t in all_terms:
+        cleaned, _ = transform_term(t)
+        if cleaned and cleaned.lower() != t.lower():
+            transform_map[t] = cleaned
+    log.info("  %d terms (%d with transformed forms), building spelling index...",
+             len(all_terms), len(transform_map))
+    sym_spell = build_spelling_index(args.pa)
+    log.info("  Index built: %d entries", len(sym_spell.words))
+    spelling_added, spelling_corrections = fn_spelling(
+        all_terms, name_cache, sym_spell, transform_map=transform_map)
     after_spelling = sum(1 for v in name_cache.values() if v)
-    print(f"  After spelling: {after_spelling} terms matched "
-          f"(+{after_spelling - after} new, {spelling_added} UUIDs) {elapsed()}")
+    log.info("  After spelling: %d terms matched (+%d new, %d UUIDs) %s",
+             after_spelling, after_spelling - after, spelling_added, elapsed())
     if spelling_corrections:
-        print(f"  {len(spelling_corrections)} corrections to log")
+        log.info("  %d corrections to log", len(spelling_corrections))
 
-    # Phase 1e skipped — set to True to enable FamilySearch lookups
-    if False:
-        print(f"\nPhase 1e: FamilySearch lookups for unresolved city terms {elapsed()}")
-        _query_fs_places_local(parsed, name_cache)
+    if fn_fs:
+        log.info("\nPhase 1e: FamilySearch lookups for unresolved city terms %s", elapsed())
+        fn_fs(parsed, name_cache)
         after_fs = sum(1 for v in name_cache.values() if v)
-        print(f"  After FS: {after_fs} terms matched (+{after_fs - after_spelling} new) {elapsed()}")
+        log.info("  After FS: %d terms matched (+%d new) %s",
+                 after_fs, after_fs - after_spelling, elapsed())
 
     all_auth_ids = set()
     for ids in name_cache.values():
         all_auth_ids.update(ids)
-    print(f"\n  {len(all_auth_ids)} unique authority IDs to resolve")
+    log.info("\n  %d unique authority IDs to resolve", len(all_auth_ids))
 
-    print(f"\nPhase 2: Batch resolve authority records {elapsed()}")
-    auth_cache = query_authority_batch_local(all_auth_ids)
-    print(f"  {len(auth_cache)} authority records cached {elapsed()}")
+    log.info("\nPhase 2: Batch resolve authority records %s", elapsed())
+    auth_cache = fn_auth_batch(all_auth_ids)
+    log.info("  %d authority records cached %s", len(auth_cache), elapsed())
 
-    print(f"\nPhase 2b: Pre-fetch parent chains {elapsed()}")
+    log.info("\nPhase 2b: Pre-fetch parent chains %s", elapsed())
     before = len(auth_cache)
-    prefetch_parent_chains_local(auth_cache)
-    print(f"  {len(auth_cache) - before} parent records added, "
-          f"{len(auth_cache)} total cached {elapsed()}")
+    fn_prefetch(auth_cache)
+    log.info("  %d parent records added, %d total cached %s",
+             len(auth_cache) - before, len(auth_cache), elapsed())
 
-    if helper_term_str:
-        print(f"\nResolving helper term: '{helper_term_str}' {elapsed()}")
-        helper_term = resolve_helper_term_local(
-            helper_term_str, auth_cache, walk_up_chain)
-        if helper_term:
-            print(f"  Helper term resolved: uuid={helper_term['uuid']} "
-                  f"level={helper_term['level']} "
-                  f"ancestors={len(helper_term['ancestor_uuids'])} {elapsed()}")
-        else:
-            print(f"  Helper term could not be resolved, proceeding without it.")
-    else:
-        helper_term = None
-
-    ascii_cache = build_ascii_index(name_cache)
-    if ascii_cache:
-        print(f"  ASCII fallback index: {len(ascii_cache)} folded entries")
-
-    _run_phase3(parsed, name_cache, auth_cache, None, jurisdiction_hints,
-                ascii_cache, helper_term, spelling_corrections, start, elapsed)
-
-
-def _main_fm(start, elapsed):
-    """Original pipeline backed by FileMaker API calls."""
-    client = FileMakerClient()
-    print("Authenticating with FileMaker...")
-    client.auth()
-    print(f"Connected. {elapsed()}")
-
-    entries = load_entries(INPUT)
-    print(f"Loaded {len(entries)} entries")
-
-    parsed, all_terms, jurisdiction_hints = parse_entries(entries)
-    print(f"Unique terms to look up: {len(all_terms)}")
-
-    helper_term_str = os.environ.get('RTL_HELPER_TERM', '').strip()
-    if not helper_term_str:
-        print("\nNo helper term provided (RTL_HELPER_TERM not set).")
-        print("A helper term provides geographic context for ambiguous single-term matches.")
-        print("Examples: 'Utah, USA', 'New South Wales, Australia', 'USA'")
-        helper_term_str = input("Enter a helper term (or press Enter to skip): ").strip()
     helper_term = None
-
-    # Phase 1a: Check the Master Normalization Table for known mappings
-    print(f"\nPhase 1a: MNT lookups (filtering junk IDs) {elapsed()}")
-    name_cache = query_mnt(client, all_terms)
-    mnt_matched = sum(1 for v in name_cache.values() if v)
-    print(f"  {mnt_matched} terms matched via MNT {elapsed()}")
-
-    # Phase 1b: Direct name match against Authority_Place for anything MNT missed
-    print(f"\nPhase 1b: Authority Place lookups by name {elapsed()}")
-    query_authority_by_name(client, all_terms, name_cache)
-    combined = sum(1 for v in name_cache.values() if v)
-    print(f"  Combined: {combined} terms matched {elapsed()}")
-
-    # Phase 1b2: Expand jurisdiction abbreviations (additive — runs on ALL
-    # terms regardless of match status, merging expanded-form candidates into
-    # existing entries so the chain walk can pick the right one)
-    print(f"\nPhase 1b2: Jurisdiction abbreviation expansion {elapsed()}")
-    abbrev_added = query_abbreviation_expansions(client, all_terms, name_cache)
-    after_abbrev = sum(1 for v in name_cache.values() if v)
-    print(f"  +{abbrev_added} UUIDs added from abbreviation expansion "
-          f"({after_abbrev} terms matched) {elapsed()}")
-
-    # Phase 1b3: Name variants — prefix swaps (Saint<->St, Fort<->Ft,
-    # Mount<->Mt) and spacing variants (DeKalb<->De Kalb). Additive, runs
-    # on all terms.
-    print(f"\nPhase 1b3: Name variant expansion {elapsed()}")
-    variant_added = query_name_variants(client, all_terms, name_cache)
-    after_variants = sum(1 for v in name_cache.values() if v)
-    print(f"  +{variant_added} UUIDs added from name variants "
-          f"({after_variants} terms matched) {elapsed()}")
-
-    # Phase 1c: Transform unmatched terms and retry both sources
-    print(f"\nPhase 1c: Fallback transforms for unmatched terms {elapsed()}")
-    unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
-    print(f"  {len(unmatched)} terms unmatched, applying transforms...")
-    query_fallback_transforms(client, unmatched, name_cache)
-    after = sum(1 for v in name_cache.values() if v)
-    print(f"  After transforms: {after} terms matched (+{after - combined} new) {elapsed()}")
-
-    # Phase 1c-enrich: also transform MNT-matched terms whose transforms
-    # produce a different lookup string — the MNT entry may be wrong, and
-    # the transform-derived candidates let Phase 3's chain walk pick the
-    # contextually correct one.
-    transformable_matched = [
-        t for t in all_terms
-        if name_cache.get(t.lower()) and transform_term(t)[0] is not None
-    ]
-    if transformable_matched:
-        print(f"  Enriching {len(transformable_matched)} MNT-matched transformable terms...")
-        enrich_added = query_fallback_transforms(client, transformable_matched, name_cache)
-        after_enrich = sum(1 for v in name_cache.values() if v)
-        print(f"  After enrichment: +{enrich_added} UUIDs added {elapsed()}")
-
-    # Phase 1d: Spelling correction for remaining unmatched terms
-    print(f"\nPhase 1d: Spelling correction via symspellpy {elapsed()}")
-    unmatched_1d = [t for t in all_terms if not name_cache.get(t.lower())]
-    print(f"  {len(unmatched_1d)} terms unmatched, building spelling index...")
-    sym_spell = build_spelling_index(PA_TSV)
-    print(f"  Index built: {len(sym_spell.words)} entries")
-    spelling_added, spelling_corrections = query_spelling_corrections(
-        client, unmatched_1d, name_cache, sym_spell
-    )
-    after_spelling = sum(1 for v in name_cache.values() if v)
-    print(f"  After spelling: {after_spelling} terms matched "
-          f"(+{after_spelling - after} new, {spelling_added} UUIDs) {elapsed()}")
-    if spelling_corrections:
-        print(f"  {len(spelling_corrections)} corrections to log")
-
-    # Phase 1e: FamilySearch city resolution for remaining unmatched city terms
-    print(f"\nPhase 1e: FamilySearch lookups for unresolved city terms {elapsed()}")
-    query_fs_places(client, parsed, name_cache)
-    after_fs = sum(1 for v in name_cache.values() if v)
-    print(f"  After FS: {after_fs} terms matched (+{after_fs - after_spelling} new) {elapsed()}")
-
-    # Phase 2: Fetch full authority records for every UUID found in Phase 1
-    all_auth_ids = set()
-    for ids in name_cache.values():
-        all_auth_ids.update(ids)
-    print(f"\n  {len(all_auth_ids)} unique authority IDs to resolve")
-
-    print(f"\nPhase 2: Batch resolve authority records {elapsed()}")
-    auth_cache = query_authority_batch(client, all_auth_ids)
-    print(f"  {len(auth_cache)} authority records cached {elapsed()}")
-
-    # Phase 2b: Walk up the hierarchy to cache all ancestor records,
-    # so Phase 3 can verify parent chains without per-entry API calls
-    print(f"\nPhase 2b: Pre-fetch parent chains {elapsed()}")
-    before = len(auth_cache)
-    prefetch_parent_chains(client, auth_cache)
-    print(f"  {len(auth_cache) - before} parent records added, "
-          f"{len(auth_cache)} total cached {elapsed()}")
-
     if helper_term_str:
-        print(f"\nResolving helper term: '{helper_term_str}' {elapsed()}")
-        helper_term = resolve_helper_term(helper_term_str, client, auth_cache)
+        log.info("\nResolving helper term: '%s' %s", helper_term_str, elapsed())
+        helper_term = fn_helper(helper_term_str, auth_cache)
         if helper_term:
-            print(f"  Helper term resolved: uuid={helper_term['uuid']} "
-                  f"level={helper_term['level']} "
-                  f"ancestors={len(helper_term['ancestor_uuids'])} {elapsed()}")
+            log.info("  Helper term resolved: uuid=%s level=%s ancestors=%d %s",
+                     helper_term['uuid'], helper_term['level'],
+                     len(helper_term['ancestor_uuids']), elapsed())
         else:
-            print(f"  Helper term could not be resolved, proceeding without it.")
-    else:
-        helper_term = None
+            log.info("  Helper term could not be resolved, proceeding without it.")
 
-    # Build ASCII-folded index for diacritic-insensitive fallback lookups
     ascii_cache = build_ascii_index(name_cache)
     if ascii_cache:
-        print(f"  ASCII fallback index: {len(ascii_cache)} folded entries")
+        log.info("  ASCII fallback index: %d folded entries", len(ascii_cache))
 
-    _run_phase3(parsed, name_cache, auth_cache, client, jurisdiction_hints,
+    _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
                 ascii_cache, helper_term, spelling_corrections, start, elapsed)
 
 
-def _run_phase3(parsed, name_cache, auth_cache, client, jurisdiction_hints,
+def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
                 ascii_cache, helper_term, spelling_corrections, start, elapsed):
     """Phase 3 + output — shared by both local and FM modes."""
-    # Phase 3: Run right-to-left matching on each entry
-    print(f"\nPhase 3: Right-to-left matching (chain walk + skip + rank) {elapsed()}")
+    log.info("\nPhase 3: Right-to-left matching (chain walk + skip + rank) %s", elapsed())
     results = []
     ties = []
     contradiction_rejects = 0
@@ -2188,6 +2586,19 @@ def _run_phase3(parsed, name_cache, auth_cache, client, jurisdiction_hints,
                             jurisdiction_hints=jurisdiction_hints,
                             ascii_cache=ascii_cache,
                             helper_term=helper_term)
+
+        # --- Reversed component fallback ---
+        # When RTL produces parent_only (parent matched, children skipped),
+        # retry with original (non-reversed) term order. Catches cases like
+        # "Italy, Sicily" where the broader term is listed first.
+        if match.match_type == 'parent_only' and match.skipped_terms:
+            retry = match_entry(list(reversed(terms)), name_cache, auth_cache,
+                                client, place,
+                                jurisdiction_hints=jurisdiction_hints,
+                                ascii_cache=ascii_cache,
+                                helper_term=helper_term)
+            if retry.match_type in ('chain_verified', 'chain_verified_proximity'):
+                match = retry
 
         # --- BEGIN RTL-LEVEL-PREF ---
         if match.match_type == 'parent_only' and match.candidate_ids:
@@ -2253,7 +2664,6 @@ def _run_phase3(parsed, name_cache, auth_cache, client, jurisdiction_hints,
             'skipped_terms': match.skipped_terms,
         }
 
-        # Populate output fields from the top-ranked candidate
         if match.candidate_ids:
             best_id = match.candidate_ids[0]
             best_record = auth_cache.get(best_id, {})
@@ -2266,23 +2676,87 @@ def _run_phase3(parsed, name_cache, auth_cache, client, jurisdiction_hints,
         results.append(row)
 
         if (idx + 1) % 50 == 0:
-            print(f"  Matched {idx+1}/{len(parsed)} entries...")
+            log.info("  Matched %d/%d entries...", idx + 1, len(parsed))
 
-    print(f"  Matched {len(parsed)}/{len(parsed)} entries")
+    log.info("  Matched %d/%d entries", len(parsed), len(parsed))
     if contradiction_rejects:
-        print(f"  Contradiction check rejected {contradiction_rejects} parent_resolved matches")
+        log.info("  Contradiction check rejected %d parent_resolved matches",
+                 contradiction_rejects)
 
     fm_calls = 0
-    output_path, tie_path, spelling_log_path = _resolve_output_paths(INPUT)
+    output_path, tie_path, spelling_log_path = _resolve_output_paths(
+        args.input, args.output_dir)
     write_results(results, output_path)
     if ties:
         write_ties(ties, tie_path)
-        print(f"  Wrote {len(ties)} tied candidate rows to {tie_path}")
+        log.info("  Wrote %d tied candidate rows to %s", len(ties), tie_path)
     if spelling_corrections:
         write_spelling_log(spelling_corrections, spelling_log_path)
-        print(f"  Corrections log: {spelling_log_path}")
+        log.info("  Corrections log: %s", spelling_log_path)
     print_summary(results, fm_calls, time.time() - start, output_path)
 
 
+def build_cli():
+    parser = argparse.ArgumentParser(
+        description="RTL place-name matcher: resolves raw place strings to "
+                    "authority records via right-to-left jurisdiction matching.")
+
+    parser.add_argument('--input',
+                        help="Input TSV with columns: place, guid, frequency")
+    parser.add_argument('--pa',
+                        help="Authority Place TSV export")
+    parser.add_argument('--mnt',
+                        help="Master Normalization Table TSV export")
+
+    parser.add_argument('--output-dir', default='./rtl-outputs',
+                        help="Output directory (default: ./rtl-outputs)")
+    parser.add_argument('--helper-term',
+                        help="Geographic context term for disambiguating "
+                             "single-term matches (e.g. 'Utah, USA'). "
+                             "Omit to run without one.")
+
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--local', action='store_true', default=True,
+                      help="Use local TSV data (default)")
+    mode.add_argument('--api', dest='local', action='store_false',
+                      help="Use FileMaker API instead of local TSV data")
+
+    parser.add_argument('--env',
+                        help="Path to .env file for FileMaker credentials "
+                             "(required with --api)")
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help="Enable debug-level logging")
+
+    return parser
+
+
+def prompt_missing(args):
+    if not args.input:
+        args.input = input("Input TSV path (place, guid, frequency): ").strip().strip("'\"")
+    if not args.pa:
+        args.pa = input("Authority Place TSV path: ").strip().strip("'\"")
+    if not args.mnt:
+        args.mnt = input("Master Normalization Table TSV path: ").strip().strip("'\"")
+    if not args.output_dir:
+        args.output_dir = input("Output directory [./rtl-outputs]: ").strip() or './rtl-outputs'
+    if args.helper_term is None:
+        ht = input("Helper term (e.g. 'Utah, USA', or blank to skip): ").strip()
+        args.helper_term = ht or None
+    return args
+
+
 if __name__ == '__main__':
-    main()
+    parser = build_cli()
+    args = parser.parse_args()
+    args = prompt_missing(args)
+
+    if not args.local and not args.env:
+        parser.error("--env is required when using --api mode")
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format='%(message)s',
+        stream=sys.stderr,
+    )
+
+    main(args)
