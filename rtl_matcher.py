@@ -221,20 +221,6 @@ class FileMakerClient:
             log.warning("  FM error %d: %s", e.code, body[:200])
             return []
 
-    def batch_find(self, layout, keys, key_field, extract_fn, label=""):
-        """Run batched _find requests for a list of keys against a single field."""
-        key_list = list(keys)
-        total = len(key_list)
-        for i in range(0, total, BATCH):
-            batch = key_list[i:i + BATCH]
-            query = [{key_field: f"=={k}"} for k in batch]
-            records = self.find(layout, query)
-            for rec in records:
-                extract_fn(rec['fieldData'])
-            if label:
-                done = min(i + BATCH, total)
-                log.info("  %s: %d/%d", label, done, total)
-
 
 # ---------------------------------------------------------------------------
 # Local TSV data — in-memory indexes over MNT and PA exports
@@ -780,7 +766,7 @@ JURISDICTION_ABBREVIATIONS = {
     'del': 'Delaware', 'fla': 'Florida',
     'ill': 'Illinois', 'ind': 'Indiana',
     'kan': 'Kansas', 'kas': 'Kansas', 'kans': 'Kansas',
-    'ken': 'Kentucky', 'ky': 'Kentucky',
+    'ken': 'Kentucky',
     'mass': 'Massachusetts',
     'minn': 'Minnesota', 'miss': 'Mississippi',
     'neb': 'Nebraska', 'nebr': 'Nebraska',
@@ -1512,92 +1498,6 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
     return fm_added
 
 
-def _query_fs_places_local(parsed, name_cache, max_workers=8):
-    """Phase 1e using FamilySearch network + local PA lookup (no FM client)."""
-
-    pairs = {}
-    for place, guid, frequency, terms in parsed:
-        for i, term in enumerate(terms):
-            if name_cache.get(term.lower()):
-                continue
-            if re.match(r'^\d', term):
-                continue
-            right = [t for t in terms[i + 1:] if name_cache.get(t.lower())]
-            if not right:
-                continue
-            jurisdiction = right[0]
-            key = (term.lower(), jurisdiction.lower())
-            if key not in pairs:
-                pairs[key] = (term, jurisdiction)
-
-    if not pairs:
-        log.info("  No eligible (city, jurisdiction) pairs")
-        return 0
-
-    unique_pairs = list(pairs.values())
-    log.info("  %d unique (city, jurisdiction) pairs to resolve...", len(unique_pairs))
-
-    unique_jurisdictions = list({j.lower(): j for j in
-                                 [jp for _, jp in unique_pairs]}.values())
-    log.info("  Resolving %d unique jurisdiction FS IDs (%d threads)...",
-             len(unique_jurisdictions), max_workers)
-    fs_id_cache = {}
-    fs_id_lock = threading.Lock()
-
-    def _resolve_fs_id_threaded(term):
-        result = _resolve_fs_id(term, {})
-        with fs_id_lock:
-            fs_id_cache[term.lower()] = result
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        list(pool.map(_resolve_fs_id_threaded, unique_jurisdictions))
-
-    resolved_jurisdictions = sum(1 for v in fs_id_cache.values() if v)
-    log.info("  %d/%d jurisdictions resolved",
-             resolved_jurisdictions, len(unique_jurisdictions))
-
-    def _lookup_one_pair(city_term, jurisdiction_term):
-        parent_id = fs_id_cache.get(jurisdiction_term.lower())
-        if not parent_id:
-            return (city_term, None)
-        canonical = _fs_city_lookup(city_term, parent_id)
-        return (city_term, canonical)
-
-    log.info("  Looking up %d city terms via FS (%d threads)...",
-             len(unique_pairs), max_workers)
-    done_count = 0
-    done_lock = threading.Lock()
-
-    def _lookup_and_track(pair):
-        nonlocal done_count
-        result = _lookup_one_pair(*pair)
-        with done_lock:
-            done_count += 1
-            if done_count % 100 == 0:
-                log.info("    [%d/%d] FS lookups complete",
-                         done_count, len(unique_pairs))
-        return result
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        fs_results = list(pool.map(_lookup_and_track, unique_pairs))
-
-    canonicals = [(city, canon) for city, canon in fs_results if canon]
-    log.info("  %d FS hits, resolving via local PA...", len(canonicals))
-    added = 0
-    for city_term, canonical in canonicals:
-        records = _LOCAL.pa_by_name.get(canonical.lower(), [])
-        for rec in records:
-            uid = rec['UUID']
-            if uid:
-                name_cache[city_term.lower()].add(uid)
-                added += 1
-
-    fs_skipped = len(unique_pairs) - len(canonicals)
-    log.info("  %d FS hits -> %d new authority records added (%d skipped)",
-             len(canonicals), added, fs_skipped)
-    return added
-
-
 # ---------------------------------------------------------------------------
 # Phase 2: Resolve authority records
 #
@@ -1732,8 +1632,6 @@ def walk_up_chain(candidate_id, target_ids, auth_cache, client, max_hops=10):
     return False
 
 
-# --- BEGIN RTL-LEVEL-PREF ---
-
 def get_population(auth_record):
     """Extract population as an integer from a FM authority record.
     Missing, empty, or non-numeric values return 0."""
@@ -1815,8 +1713,6 @@ def resolve_parent_only(candidate_ids, auth_cache, client):
 
     return _disambiguate_by_population(candidate_ids, auth_cache)
 
-# --- END RTL-LEVEL-PREF ---
-
 
 def _get_parent_level(confirmed_set, auth_cache):
     """Extract the jurisdiction Level from the first candidate with a valid level."""
@@ -1852,7 +1748,6 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
     if not candidates:
         return []
 
-    # jurisdiction filter (existing logic)
     if jurisdiction_hint is None:
         preferred = [c for c in candidates
                      if field_str(auth_cache.get(c, {}), 'Jurisdiction') in PREFERRED_JURISDICTIONS]
@@ -2480,7 +2375,6 @@ def main(args):
         log.info("  Enriching %d MNT-matched transformable terms...",
                  len(transformable_matched))
         enrich_added = fn_transforms(transformable_matched, name_cache)
-        after_enrich = sum(1 for v in name_cache.values() if v)
         log.info("  After enrichment: +%d UUIDs added %s", enrich_added, elapsed())
 
     # Re-run name variants on transformed forms so that e.g. "near St. Charles"
@@ -2600,7 +2494,6 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
             if retry.match_type in ('chain_verified', 'chain_verified_proximity'):
                 match = retry
 
-        # --- BEGIN RTL-LEVEL-PREF ---
         if match.match_type == 'parent_only' and match.candidate_ids:
             winner, resolution = resolve_parent_only(
                 match.candidate_ids, auth_cache, client)
@@ -2630,7 +2523,6 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                     skipped_count=match.skipped_count,
                     skipped_terms=match.skipped_terms,
                 )
-        # --- END RTL-LEVEL-PREF ---
 
         if match.match_type in ('chain_amb', 'single_amb') and match.tied_ids:
             for tid in match.tied_ids:
