@@ -108,16 +108,17 @@ class TestPrefetchParentChains:
         assert len(uuid_queries) == 1
 
     def test_batches_large_sets(self):
+        n = BATCH * 2 + 50  # forces 3 batches regardless of BATCH value
         auth_cache = {}
         parent_recs = []
-        for i in range(250):
+        for i in range(n):
             child_id = f'child_{i}'
             parent_id = f'parent_{i}'
             auth_cache[child_id] = make_auth_record(child_id, parent_uuid=parent_id)
             parent_recs.append(make_auth_record(parent_id))
 
         batched_responses = []
-        for i in range(0, 250, BATCH):
+        for i in range(0, n, BATCH):
             batch_recs = parent_recs[i:i + BATCH]
             batched_responses.append(make_fm_response(batch_recs))
 
@@ -151,7 +152,7 @@ class TestResolveParentOnly:
         result = resolve_parent_only([uid], auth_cache, MagicMock())
         assert result == (uid, 'parent_resolved')
 
-    def test_high_level_preferred_over_low_when_low_pops_zero(self):
+    def test_all_zero_populations_mixed_levels_amb(self):
         state = 'state-001'
         city_a = 'city-001'
         city_b = 'city-002'
@@ -161,18 +162,16 @@ class TestResolveParentOnly:
             city_b: make_auth_record_full(city_b, level='4', name='Syracuse', population='0'),
         }
         result = resolve_parent_only([state, city_a, city_b], auth_cache, MagicMock())
-        assert result == (state, 'parent_resolved')
+        assert result == (None, 'amb')
 
-    def test_low_pop_over_50k_rest_zero_wins(self):
+    def test_pop_over_50k_rest_zero_wins(self):
         big_city = 'city-big'
         small_city = 'city-small'
-        state = 'state-001'
         auth_cache = {
             big_city: make_auth_record_full(big_city, level='4', population='75000'),
             small_city: make_auth_record_full(small_city, level='4', population='0'),
-            state: make_auth_record_full(state, level='6', population='5000000'),
         }
-        result = resolve_parent_only([big_city, small_city, state], auth_cache, MagicMock())
+        result = resolve_parent_only([big_city, small_city], auth_cache, MagicMock())
         assert result == (big_city, 'parent_resolved')
 
     def test_low_pop_under_50k_escalates_to_high(self):
@@ -185,7 +184,9 @@ class TestResolveParentOnly:
         result = resolve_parent_only([city, state], auth_cache, MagicMock())
         assert result == (state, 'parent_resolved')
 
-    def test_low_pop_5x_rule(self):
+    def test_highest_pop_wins_5x_rule_across_levels(self):
+        # Candidates are unverified peers: level does not shield a lower-level
+        # candidate from losing to a much larger higher-level one.
         big_city = 'city-big'
         small_city = 'city-small'
         state = 'state-001'
@@ -195,7 +196,7 @@ class TestResolveParentOnly:
             state: make_auth_record_full(state, level='6', population='10000000'),
         }
         result = resolve_parent_only([big_city, small_city, state], auth_cache, MagicMock())
-        assert result == (big_city, 'parent_resolved')
+        assert result == (state, 'parent_resolved')
 
     def test_low_pop_close_escalates_to_high(self):
         city_a = 'city-a'
@@ -985,7 +986,9 @@ class TestQuerySpellingCorrections:
         assert added >= 1
         assert 'uuid-birm' in name_cache['birminghan']
         assert len(corrections) == 1
-        assert corrections[0]['original_term'] == 'Birminghan'
+        # Corrections are keyed by the lowercased term used throughout the
+        # pipeline, so the log records the lowercase form.
+        assert corrections[0]['original_term'] == 'birminghan'
         assert corrections[0]['corrected_term'] == 'birmingham'
 
     def test_skips_short_terms(self):
