@@ -147,6 +147,9 @@ def lookup_name(term, name_cache, ascii_cache):
 
 
 class FileMakerClient:
+    """Thin FileMaker Data API client: token auth, _find queries with
+    re-auth on expiry, and a call counter for run summaries."""
+
     def __init__(self, env_path):
         self._load_env(env_path)
         self.host = os.environ['FILEMAKER_HOST']
@@ -241,6 +244,8 @@ _PA_FIELD_MAP = {
 
 
 def _is_valid_local_uuid(s):
+    """Cheap shape check used on the TSV load hot path (see is_valid_uuid
+    for the strict regex used elsewhere)."""
     return len(s) == 36 and s[8] == '-' and s[13] == '-'
 
 
@@ -324,6 +329,7 @@ _LOCAL = LocalData()
 
 
 def _query_name_local(name):
+    """Return the union of MNT and PA UUIDs for a name (case-insensitive)."""
     key = name.lower()
     uuids = set(_LOCAL.mnt_by_raw.get(key, set()))
     uuids.update(_LOCAL.mnt_by_value.get(key, set()))
@@ -338,6 +344,7 @@ def _query_name_local(name):
 # ---------------------------------------------------------------------------
 
 def query_mnt_local(terms):
+    """Build a name_cache of term -> UUIDs from the in-memory MNT indexes."""
     name_cache = defaultdict(set)
     matched = 0
     for term in terms:
@@ -357,6 +364,7 @@ def query_mnt_local(terms):
 
 
 def query_authority_by_name_local(terms, name_cache):
+    """Add UUIDs of PA records whose canonical name matches each term."""
     added = 0
     for term in terms:
         key = term.lower()
@@ -371,6 +379,8 @@ def query_authority_by_name_local(terms, name_cache):
 
 
 def query_abbreviation_expansions_local(all_terms, name_cache, jurisdiction_abbreviations):
+    """Expand jurisdiction abbreviations (e.g. 'tex' -> 'Texas') and add the
+    expanded names' UUIDs under the original term's key."""
     expansions = {}
     for term in all_terms:
         normalized = term.lower().rstrip('.')
@@ -401,6 +411,8 @@ def query_abbreviation_expansions_local(all_terms, name_cache, jurisdiction_abbr
 
 
 def query_name_variants_local(all_terms, name_cache, generate_name_variants_fn):
+    """Look up generated spelling/punctuation variants of each term and add
+    any hits under the original term's key."""
     variant_map = {}
     for term in all_terms:
         variants = generate_name_variants_fn(term)
@@ -427,6 +439,9 @@ def query_name_variants_local(all_terms, name_cache, generate_name_variants_fn):
 
 
 def query_fallback_transforms_local(unmatched_terms, name_cache, transform_term_fn):
+    """Apply fallback transforms (prefix stripping, suffix separation) to
+    unmatched terms and look up the cleaned forms, honoring any jurisdiction
+    constraint the transform detected."""
     transforms = {}
     for term in unmatched_terms:
         cleaned, jurisdiction = transform_term_fn(term)
@@ -460,6 +475,8 @@ def query_fallback_transforms_local(unmatched_terms, name_cache, transform_term_
 
 def query_spelling_corrections_local(terms, name_cache, sym_spell, min_len,
                                      transform_map=None):
+    """Find edit-distance-1 corrections via SymSpell and add their PA UUIDs.
+    Returns (added_count, correction_log_rows)."""
     candidates_by_key = {}
     for term in terms:
         if len(term) < min_len:
@@ -510,6 +527,7 @@ def query_spelling_corrections_local(terms, name_cache, sym_spell, min_len,
 
 
 def query_authority_batch_local(uuids):
+    """Fetch full authority records for a set of UUIDs from the PA index."""
     auth_cache = {}
     found = 0
     for uid in uuids:
@@ -522,6 +540,8 @@ def query_authority_batch_local(uuids):
 
 
 def prefetch_parent_chains_local(auth_cache):
+    """Walk up Parent_UUID references layer by layer until every ancestor
+    is cached (local equivalent of prefetch_parent_chains)."""
     while True:
         missing = set()
         for rec in auth_cache.values():
@@ -542,6 +562,9 @@ def prefetch_parent_chains_local(auth_cache):
 
 
 def resolve_helper_term_local(term_string, auth_cache):
+    """Resolve a helper-term string (e.g. 'Utah, USA') to a single authority
+    UUID used as a geographic boost during ranking. Returns None if no
+    unambiguous record is found."""
     if not term_string:
         return None
 
@@ -647,6 +670,7 @@ UUID_RE = re.compile(
 
 
 def is_valid_uuid(value):
+    """Strict regex validation of the canonical 8-4-4-4-12 UUID form."""
     return bool(UUID_RE.match(value))
 
 
@@ -1222,6 +1246,7 @@ def query_name_variants(client, all_terms, name_cache):
 
 
 def build_spelling_index(tsv_path):
+    """Build a SymSpell edit-distance-1 index from PA canonical names."""
     sym = SymSpell(max_dictionary_edit_distance=1, prefix_length=7)
     seen = set()
     with open(tsv_path, encoding='utf-8') as f:
@@ -1242,6 +1267,9 @@ SPELLING_LOG_FIELDS = ['original_term', 'corrected_term', 'edit_distance', 'auth
 
 def query_spelling_corrections(client, terms, name_cache, sym_spell,
                                transform_map=None):
+    """FM-backed version of query_spelling_corrections_local: find
+    edit-distance-1 corrections and add their authority UUIDs.
+    Returns (added_count, correction_log_rows)."""
     candidates_by_key = {}
     for term in terms:
         if len(term) < MIN_SPELLING_LEN:
@@ -1307,6 +1335,7 @@ def query_spelling_corrections(client, terms, name_cache, sym_spell,
 
 
 def write_spelling_log(corrections, path):
+    """Write the spelling-correction side file (TSV)."""
     with open(path, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=SPELLING_LOG_FIELDS, delimiter='\t')
         writer.writeheader()
@@ -1325,6 +1354,8 @@ def write_spelling_log(corrections, path):
 
 
 def _fs_request(url, _max_retries=3):
+    """GET a FamilySearch API URL with 429 backoff. Returns parsed JSON or
+    None on any failure."""
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     for attempt in range(_max_retries):
         try:
@@ -1343,6 +1374,8 @@ def _fs_request(url, _max_retries=3):
 
 
 def _resolve_fs_id(term, fs_id_cache):
+    """Resolve a jurisdiction term to its FamilySearch place ID, preferring
+    an exact quoted-name search over the fuzzy fallback."""
     key = term.lower()
     if key in fs_id_cache:
         return fs_id_cache[key]
@@ -1369,6 +1402,8 @@ def _resolve_fs_id(term, fs_id_cache):
 
 
 def _fs_city_lookup(city_term, parent_fs_id):
+    """Search FamilySearch for a city under a parent jurisdiction and return
+    its canonical display name, or None."""
     encoded_city_quoted = urllib.parse.quote(f'"{city_term}"')
     q_quoted = f"name:{encoded_city_quoted}+parentId:{parent_fs_id}~"
     data = _fs_request(f"{FS_BASE}?q={q_quoted}&count=10")
@@ -1821,6 +1856,8 @@ def detect_tie(ranked_with_scores):
 
 @dataclass
 class MatchResult:
+    """Outcome of matching one place string: surviving candidates, how deep
+    the right-to-left walk got, and the match_type bucket for reporting."""
     candidate_ids: list = field(default_factory=list)
     depth: int = 0
     match_type: str = 'no_terms'
@@ -2287,6 +2324,8 @@ def _parent_contradicts_input(winner_uuid, terms, skipped_terms_str, auth_cache)
 # ---------------------------------------------------------------------------
 
 def main(args):
+    """Run the full pipeline: Phase 1 name resolution, Phase 2 authority
+    record caching, Phase 3 right-to-left matching, then write outputs."""
     start = time.time()
     def elapsed():
         return f"[{time.time() - start:.1f}s]"
@@ -2589,6 +2628,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
 
 
 def build_cli():
+    """Construct the argument parser."""
     parser = argparse.ArgumentParser(
         description="RTL place-name matcher: resolves raw place strings to "
                     "authority records via right-to-left jurisdiction matching.")
@@ -2623,6 +2663,7 @@ def build_cli():
 
 
 def prompt_missing(args):
+    """Interactively prompt for any required paths not given as flags."""
     if not args.input:
         args.input = input("Input TSV path (place, guid, frequency): ").strip().strip("'\"")
     if not args.pa:
