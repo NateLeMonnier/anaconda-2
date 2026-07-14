@@ -18,9 +18,8 @@ import json
 import os
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime
-from pathlib import Path
 
 
 COLUMN_VARIANTS = {
@@ -518,7 +517,7 @@ def print_summary(name, metrics):
     print(f"\n=== Place Normalization Evaluation: {name} ===")
     print(f"Input: {mr['total_rows']:,} rows | Total frequency: {mr['total_frequency']:,}")
 
-    print(f"\nMatch Rate")
+    print("\nMatch Rate")
     print(f"  Rows:      {mr['matched_rows']:>7,} / {mr['total_rows']:,}  ({mr['matched_row_rate']:.1%})")
     print(f"  Frequency: {mr['matched_frequency']:>7,} / {mr['total_frequency']:,}  ({mr['matched_freq_rate']:.1%})")
     print(f"  Amb: {mr['amb_rows']} ({mr['amb_frequency']:,} freq) | Ill: {mr['ill_rows']} ({mr['ill_frequency']:,} freq) | Unmatched: {mr['unmatched_rows']} ({mr['unmatched_frequency']:,} freq)")
@@ -530,41 +529,41 @@ def print_summary(name, metrics):
             print(f"  {entry['label']} (L{entry['level']}): {entry['count']:>7,}  ({entry['pct']:5.1%})")
         print(f"  Specificity (L2-L5): {depth['specificity_score']:.1%}")
     else:
-        print(f"\nResolution Depth: unavailable (no level data; provide --pa)")
+        print("\nResolution Depth: unavailable (no level data; provide --pa)")
 
     em = metrics['exact_matches']
-    print(f"\nExact Matches (all input tokens covered)")
+    print("\nExact Matches (all input tokens covered)")
     print(f"  Count: {em['count']:,} / {mr['matched_rows']:,}  ({em['rate']:.1%})")
     print(f"  Freq-weighted: {em['freq_rate']:.1%}")
     if em['top_20']:
-        print(f"  Top by frequency:")
+        print("  Top by frequency:")
         for e in em['top_20'][:5]:
             arrow = f" -> {e['type_ahead']}" if e['type_ahead'] else ''
             print(f"    {e['frequency']:>8,}  {e['original']}{arrow}")
 
     pr = metrics['parent_resolved']
-    print(f"\nParent Resolved")
+    print("\nParent Resolved")
     print(f"  Count: {pr['count']:,} / {mr['matched_rows']:,}  ({pr['rate']:.1%})")
     print(f"  Freq-weighted: {pr['freq_rate']:.1%}")
     if pr['top_20']:
-        print(f"  Top by frequency:")
+        print("  Top by frequency:")
         for p in pr['top_20'][:5]:
             lvl = f" (L{p['level']})" if p['level'] else ''
             arrow = f" -> {p['type_ahead']}{lvl}" if p['type_ahead'] else ''
             print(f"    {p['frequency']:>8,}  {p['original']}{arrow}")
 
     pm = metrics['partial_matches']
-    print(f"\nPartial Matches")
+    print("\nPartial Matches")
     print(f"  Count: {pm['count']:,} / {mr['matched_rows']:,}  ({pm['rate']:.1%})")
     print(f"  Freq-weighted: {pm['freq_rate']:.1%}")
     if pm['top_20']:
-        print(f"  Top by frequency:")
+        print("  Top by frequency:")
         for p in pm['top_20'][:5]:
             arrow = f" -> {p['type_ahead']}" if p['type_ahead'] else ''
             print(f"    {p['frequency']:>8,}  {p['original']}{arrow}")
 
     to = metrics['token_overlap']
-    print(f"\nPotential Mismatches (zero token overlap)")
+    print("\nPotential Mismatches (zero token overlap)")
     print(f"  Count: {to['zero_overlap_count']}")
     if to['top_20']:
         for t in to['top_20'][:5]:
@@ -572,7 +571,7 @@ def print_summary(name, metrics):
 
     gt = metrics.get('ground_truth')
     if gt:
-        print(f"\nGround Truth")
+        print("\nGround Truth")
         print(f"  Accuracy:  {gt['accuracy']:.1%}  (freq-weighted: {gt['accuracy_freq_weighted']:.1%})")
         print(f"  Precision: {gt['precision']:.1%}  (freq-weighted: {gt['precision_freq_weighted']:.1%})")
         print(f"  Recall:    {gt['recall']:.1%}  (freq-weighted: {gt['recall_freq_weighted']:.1%})")
@@ -630,7 +629,7 @@ def write_flagged_tsv(metrics, output_path):
     flagged.sort(key=lambda x: x['frequency'], reverse=True)
 
     if not flagged:
-        print(f"Flagged rows: none")
+        print("Flagged rows: none")
         return
 
     cols = ['guid', 'original', 'frequency', 'authority_id', 'type_ahead',
@@ -685,7 +684,6 @@ def main():
         run_name = args.name or os.path.basename(args.output)
 
     safe_name = re.sub(r'[^\w\-]', '_', run_name)
-    output_base = os.path.join(results_dir, safe_name)
 
     input_lookup = load_input_file(args.input, overrides)
     enrich_from_input(unified, input_lookup)

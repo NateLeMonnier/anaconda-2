@@ -56,6 +56,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from dataclasses import dataclass, field
+from functools import partial
 from symspellpy import SymSpell, Verbosity
 
 log = logging.getLogger(__name__)
@@ -473,13 +474,13 @@ def query_fallback_transforms_local(unmatched_terms, name_cache, transform_term_
     return added
 
 
-def query_spelling_corrections_local(terms, name_cache, sym_spell, min_len,
+def query_spelling_corrections_local(terms, name_cache, sym_spell,
                                      transform_map=None):
     """Find edit-distance-1 corrections via SymSpell and add their PA UUIDs.
     Returns (added_count, correction_log_rows)."""
     candidates_by_key = {}
     for term in terms:
-        if len(term) < min_len:
+        if len(term) < MIN_SPELLING_LEN:
             continue
         key = term.lower()
         folded = ascii_fold(term)
@@ -491,7 +492,7 @@ def query_spelling_corrections_local(terms, name_cache, sym_spell, min_len,
 
     if transform_map:
         for orig_term, cleaned in transform_map.items():
-            if len(cleaned) < min_len:
+            if len(cleaned) < MIN_SPELLING_LEN:
                 continue
             key = orig_term.lower()
             folded = ascii_fold(cleaned)
@@ -2156,7 +2157,7 @@ def print_summary(results, call_count, elapsed_sec, output_path):
 # ancestor UUIDs that can be used in Phase 3 scoring.
 # ---------------------------------------------------------------------------
 
-def resolve_helper_term(term_string, client, auth_cache, interactive=False):
+def resolve_helper_term(client, term_string, auth_cache, interactive=False):
     """Resolve a helper term string to a single authority record.
 
     When interactive=False (default), ambiguous matches pick the candidate
@@ -2227,7 +2228,7 @@ def resolve_helper_term(term_string, client, auth_cache, interactive=False):
             jurisdiction = field_str(rec, 'Jurisdiction')
             type_ahead = field_str(rec, 'Type_Ahead_Value')
             print(f"    [{idx + 1}] {name}  level={level}  jurisdiction={jurisdiction}  ({type_ahead})")
-        print(f"    [q] Skip helper term")
+        print("    [q] Skip helper term")
         choice = input("  Pick a number: ").strip().lower()
         if choice == 'q' or not choice:
             return None
@@ -2336,19 +2337,18 @@ def main(args):
         _LOCAL.load(args.mnt, args.pa)
         log.info("Local data ready. %s", elapsed())
 
-        fn_query_mnt = lambda terms: query_mnt_local(terms)
-        fn_authority_by_name = lambda terms, nc: query_authority_by_name_local(terms, nc)
-        fn_abbrev = lambda terms, nc: query_abbreviation_expansions_local(
-            terms, nc, JURISDICTION_ABBREVIATIONS)
-        fn_variants = lambda terms, nc: query_name_variants_local(
-            terms, nc, _generate_name_variants)
-        fn_transforms = lambda terms, nc: query_fallback_transforms_local(
-            terms, nc, transform_term)
-        fn_spelling = lambda terms, nc, ss, transform_map=None: query_spelling_corrections_local(
-            terms, nc, ss, MIN_SPELLING_LEN, transform_map=transform_map)
-        fn_auth_batch = lambda uuids: query_authority_batch_local(uuids)
-        fn_prefetch = lambda ac: prefetch_parent_chains_local(ac)
-        fn_helper = lambda s, ac: resolve_helper_term_local(s, ac)
+        fn_query_mnt = query_mnt_local
+        fn_authority_by_name = query_authority_by_name_local
+        fn_abbrev = partial(query_abbreviation_expansions_local,
+                            jurisdiction_abbreviations=JURISDICTION_ABBREVIATIONS)
+        fn_variants = partial(query_name_variants_local,
+                              generate_name_variants_fn=_generate_name_variants)
+        fn_transforms = partial(query_fallback_transforms_local,
+                                transform_term_fn=transform_term)
+        fn_spelling = query_spelling_corrections_local
+        fn_auth_batch = query_authority_batch_local
+        fn_prefetch = prefetch_parent_chains_local
+        fn_helper = resolve_helper_term_local
         fn_fs = None
     else:
         client = FileMakerClient(args.env)
@@ -2356,17 +2356,16 @@ def main(args):
         client.auth()
         log.info("Connected. %s", elapsed())
 
-        fn_query_mnt = lambda terms: query_mnt(client, terms)
-        fn_authority_by_name = lambda terms, nc: query_authority_by_name(client, terms, nc)
-        fn_abbrev = lambda terms, nc: query_abbreviation_expansions(client, terms, nc)
-        fn_variants = lambda terms, nc: query_name_variants(client, terms, nc)
-        fn_transforms = lambda terms, nc: query_fallback_transforms(client, terms, nc)
-        fn_spelling = lambda terms, nc, ss, transform_map=None: query_spelling_corrections(
-            client, terms, nc, ss, transform_map=transform_map)
-        fn_auth_batch = lambda uuids: query_authority_batch(client, uuids)
-        fn_prefetch = lambda ac: prefetch_parent_chains(client, ac)
-        fn_helper = lambda s, ac: resolve_helper_term(s, client, ac)
-        fn_fs = lambda parsed, nc: query_fs_places(client, parsed, nc)
+        fn_query_mnt = partial(query_mnt, client)
+        fn_authority_by_name = partial(query_authority_by_name, client)
+        fn_abbrev = partial(query_abbreviation_expansions, client)
+        fn_variants = partial(query_name_variants, client)
+        fn_transforms = partial(query_fallback_transforms, client)
+        fn_spelling = partial(query_spelling_corrections, client)
+        fn_auth_batch = partial(query_authority_batch, client)
+        fn_prefetch = partial(prefetch_parent_chains, client)
+        fn_helper = partial(resolve_helper_term, client)
+        fn_fs = partial(query_fs_places, client)
 
     entries = load_entries(args.input)
     log.info("Loaded %d entries", len(entries))

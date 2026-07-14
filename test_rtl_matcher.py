@@ -1,7 +1,26 @@
-"""Tests for batch parent pre-fetch and resolve_parent_only in rtl_matcher."""
-import pytest
+"""Tests for the RTL matcher."""
+import os
+import tempfile
+from collections import defaultdict
 from unittest.mock import MagicMock
-from rtl_matcher import prefetch_parent_chains, resolve_parent_only, BATCH, detect_tie, match_entry, detect_jurisdiction_hint, parse_entries, resolve_helper_term, haversine_km
+
+from symspellpy import SymSpell, Verbosity
+
+from rtl_matcher import (
+    BATCH,
+    build_spelling_index,
+    detect_jurisdiction_hint,
+    detect_tie,
+    haversine_km,
+    match_entry,
+    parse_entries,
+    prefetch_parent_chains,
+    query_spelling_corrections,
+    rank_candidates,
+    resolve_helper_term,
+    resolve_parent_only,
+    write_spelling_log,
+)
 
 
 def make_auth_record(uuid, parent_uuid=None, name="Place"):
@@ -280,8 +299,6 @@ class TestResolveParentOnly:
         result = resolve_parent_only([city_a, city_b], auth_cache, MagicMock())
         assert result == (None, 'amb')
 
-
-from rtl_matcher import rank_candidates
 
 
 class TestRankCandidates:
@@ -793,7 +810,7 @@ class TestResolveHelperTerm:
             make_fm_response([usa_rec]),
         ]
         auth_cache = {}
-        result = resolve_helper_term('Utah', client, auth_cache)
+        result = resolve_helper_term(client, 'Utah', auth_cache)
         assert result is not None
         assert result['uuid'] == 'utah-uuid'
         assert result['level'] == 6
@@ -801,13 +818,13 @@ class TestResolveHelperTerm:
 
     def test_returns_none_for_empty_string(self):
         client = MagicMock()
-        result = resolve_helper_term('', client, {})
+        result = resolve_helper_term(client, '', {})
         assert result is None
         client.find.assert_not_called()
 
     def test_returns_none_for_none(self):
         client = MagicMock()
-        result = resolve_helper_term(None, client, {})
+        result = resolve_helper_term(client, None, {})
         assert result is None
         client.find.assert_not_called()
 
@@ -895,11 +912,6 @@ class TestHelperTermBoost:
 # Phase 1d: Spelling correction — build_spelling_index
 # ---------------------------------------------------------------------------
 
-import os
-import tempfile
-from symspellpy import SymSpell, Verbosity
-from rtl_matcher import build_spelling_index
-
 
 class TestBuildSpellingIndex:
     def _write_tsv(self, tmp_dir, rows):
@@ -957,10 +969,6 @@ class TestBuildSpellingIndex:
 # ---------------------------------------------------------------------------
 # Phase 1d: query_spelling_corrections and write_spelling_log tests
 # ---------------------------------------------------------------------------
-
-from collections import defaultdict
-from unittest.mock import patch
-from rtl_matcher import query_spelling_corrections, write_spelling_log
 
 
 class TestQuerySpellingCorrections:
