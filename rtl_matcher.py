@@ -625,7 +625,7 @@ def resolve_helper_term_local(term_string, auth_cache):
                 return int(auth_cache.get(uid, {}).get('Population') or 0)
             except (ValueError, TypeError):
                 return 0
-        chosen_uuid = max(candidates, key=_pop)
+        chosen_uuid = max(candidates, key=lambda uid: (_pop(uid), uid))
         rec = auth_cache.get(chosen_uuid, {})
         log.info("  Helper term '%s' had %d candidates, auto-picked: %s (%s)",
                  term_string, len(candidates),
@@ -1703,7 +1703,7 @@ def _disambiguate_by_population(candidates, auth_cache):
         return (candidates[0], 'parent_resolved')
 
     pops = [(uid, get_population(auth_cache.get(uid, {}))) for uid in candidates]
-    pops.sort(key=lambda x: x[1], reverse=True)
+    pops.sort(key=lambda x: (-x[1], x[0]))
 
     if all(p == 0 for _, p in pops):
         return (None, 'amb')
@@ -1751,8 +1751,11 @@ def resolve_parent_only(candidate_ids, auth_cache, client):
 
 
 def _get_parent_level(confirmed_set, auth_cache):
-    """Extract the jurisdiction Level from the first candidate with a valid level."""
-    for uid in confirmed_set:
+    """Extract the jurisdiction Level from the first candidate (in UUID
+    order) that has a valid level. The pick is deterministic but otherwise
+    arbitrary when candidates carry different levels; a principled rule
+    (e.g. most specific level) is an open design question."""
+    for uid in sorted(confirmed_set):
         rec = auth_cache.get(uid, {})
         try:
             return int(field_str(rec, 'Level'))
@@ -1831,7 +1834,7 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
         return (helper_miss, gap, -pop)
 
     scored = [(uuid, score(uuid)) for uuid in candidates]
-    scored.sort(key=lambda x: x[1])
+    scored.sort(key=lambda x: (x[1], x[0]))
     return scored
 
 
@@ -1963,7 +1966,7 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                 if not state_verified:
                     continue
 
-                for cid in state_verified:
+                for cid in sorted(state_verified):
                     cid_rec = auth_cache.get(cid, {})
                     cid_parent = field_str(cid_rec, 'Parent_UUID')
                     if not cid_parent:
@@ -2247,7 +2250,7 @@ def resolve_helper_term(client, term_string, auth_cache, interactive=False):
                 return int(field_str(auth_cache.get(uid, {}), 'Population') or 0)
             except (ValueError, TypeError):
                 return 0
-        chosen_uuid = max(candidates, key=_pop)
+        chosen_uuid = max(candidates, key=lambda uid: (_pop(uid), uid))
         rec = auth_cache.get(chosen_uuid, {})
         log.info("  Helper term '%s' had %d candidates, auto-picked: %s (%s)",
                  term_string, len(candidates),
