@@ -250,6 +250,16 @@ def _is_valid_local_uuid(s):
     return len(s) == 36 and s[8] == '-' and s[13] == '-'
 
 
+def _load_env_file(path):
+    """Parse KEY=VALUE lines from an env file into os.environ."""
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, _, val = line.partition('=')
+                os.environ[key.strip()] = val.strip().strip('"').strip("'")
+
+
 def canonicalize_place(s):
     """Lowercase a place string and normalize separators: split on [,;],
     strip each segment, rejoin with ', '. Both the full-string index keys
@@ -271,15 +281,105 @@ class LocalData:
         self.illegible = set()      # curated junk terms (lowercase)
         self._loaded = False
 
-    def load(self, mnt_path, pa_path):
+    def load(self, mnt_path, pa_path, dict_source=None, env_path=None):
+        """Read the TSVs into dictionaries keyed for the lookups we do.
+        dict_source: None, 'live' (Supabase), or a directory of TSV exports
+        (place_term_dictionary.tsv, place_term_illegible.tsv). Dict terms
+        union into mnt_by_raw; they never replace MNT data."""
         if self._loaded:
             return
         start = time.time()
         log.info("Loading local TSV data...")
         self._load_mnt(mnt_path)
         self._load_pa(pa_path)
+        if dict_source == 'live':
+            self._load_dict_live(env_path)
+        elif dict_source:
+            self._load_dict_tsv(dict_source)
         log.info("  Local data loaded in %.1fs", time.time() - start)
         self._loaded = True
+
+    def _ingest_dict_row(self, term, uid, freq):
+        key = term.lower()
+        self.mnt_by_raw[key].add(uid)
+        dh = key.replace('-', ' ')
+        if dh != key:
+            self.mnt_by_raw[dh].add(uid)
+        self.dict_freq[(key, uid)] = freq
+
+    def _load_dict_live(self, env_path):
+        import psycopg2
+        if env_path:
+            _load_env_file(env_path)
+        password = os.environ.get('SUPABASE_PASSWORD')
+        if not password:
+            raise ValueError("SUPABASE_PASSWORD not set. Use --env or export it.")
+        conn = psycopg2.connect(
+            host="aws-1-us-west-1.pooler.supabase.com", port=5432,
+            dbname="postgres", user="parser_readonly.ncahtzbmazzqrorjkjwm",
+            password=password)
+        cur = conn.cursor()
+        log.info("  Pulling place_term_dictionary...")
+        cur.execute("SELECT term, authority_uuid, frequency "
+                    "FROM place_term_dictionary")
+        n = 0
+        for term, uuid, freq in cur:
+            self._ingest_dict_row(term.strip(), str(uuid).upper(), freq or 0)
+            n += 1
+        log.info("  Dictionary: %d mappings unioned (%d unique terms total)",
+                 n, len(self.mnt_by_raw))
+        log.info("  Pulling authority_place...")
+        cur.execute("SELECT uuid, parent_uuid, canonical_name, level, "
+                    "jurisdiction, full_chain_name FROM authority_place")
+        added = 0
+        for uuid, parent_uuid, name, level, jurisdiction, chain in cur:
+            uid = str(uuid).upper()
+            if uid in self.pa_by_uuid:
+                continue          # PA TSV is primary (has pop/lat/lon)
+            rec = {
+                'Auth_Place_Name': name or '',
+                'UUID': uid,
+                'Parent_UUID': str(parent_uuid).upper() if parent_uuid else '',
+                'Jurisdiction': jurisdiction or '',
+                'Level': str(level) if level is not None else '',
+                'Population': '', 'Type_Ahead_Value': chain or '',
+                'Historical': '', 'Latitude': '', 'Longitude': '',
+            }
+            self.pa_by_uuid[uid] = rec
+            if name:
+                nkey = name.lower()
+                self.pa_by_name[nkey].append(rec)
+                dh = nkey.replace('-', ' ')
+                if dh != nkey:
+                    self.pa_by_name[dh].append(rec)
+            added += 1
+        log.info("  Authority: %d Supabase-only records added", added)
+        log.info("  Pulling place_term_illegible...")
+        cur.execute("SELECT term FROM place_term_illegible")
+        self.illegible = {t[0].strip().lower() for t in cur if t[0]}
+        log.info("  Illegible stop-list: %d terms", len(self.illegible))
+        cur.close()
+        conn.close()
+
+    def _load_dict_tsv(self, dirpath):
+        path = os.path.join(dirpath, 'place_term_dictionary.tsv')
+        n = 0
+        with open(path, encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for row in reader:
+                term = (row.get('term') or '').strip()
+                uid = (row.get('authority_uuid') or '').strip().upper()
+                if term and uid and _is_valid_local_uuid(uid):
+                    self._ingest_dict_row(term, uid, int(row.get('frequency') or 0))
+                    n += 1
+        log.info("  Dictionary TSV: %d mappings unioned", n)
+        ill = os.path.join(dirpath, 'place_term_illegible.tsv')
+        if os.path.exists(ill):
+            with open(ill, encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f, delimiter='\t')
+                self.illegible = {(r.get('term') or '').strip().lower()
+                                  for r in reader if (r.get('term') or '').strip()}
+            log.info("  Illegible stop-list: %d terms", len(self.illegible))
 
     def _load_mnt(self, path):
         self.mnt_by_raw = defaultdict(set)
@@ -2356,7 +2456,7 @@ def main(args):
     client = None
 
     if args.local:
-        _LOCAL.load(args.mnt, args.pa)
+        _LOCAL.load(args.mnt, args.pa, dict_source=args.dict, env_path=args.env)
         log.info("Local data ready. %s", elapsed())
 
         fn_query_mnt = query_mnt_local
@@ -2693,7 +2793,13 @@ def build_cli():
 
     parser.add_argument('--env',
                         help="Path to .env file for FileMaker credentials "
-                             "(required with --api)")
+                             "(required with --api) or Supabase password "
+                             "(used with --dict live)")
+    parser.add_argument('--dict', nargs='?', const='live',
+                        help="Supplement MNT with the Supabase place dictionary "
+                             "(union). Pass a directory of TSV exports, or no "
+                             "value for a live connection (needs SUPABASE_PASSWORD "
+                             "via --env or the environment). Local mode only.")
     parser.add_argument('--verbose', '-v', action='store_true',
                         help="Enable debug-level logging")
 

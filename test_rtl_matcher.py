@@ -1435,3 +1435,22 @@ class TestFullStringIndex:
         ld = LocalData()
         ld._load_mnt(mnt)
         assert ld.fs_by_raw == {}
+
+
+class TestDictUnion:
+    def test_dict_tsv_unions_into_mnt_index(self, tmp_path):
+        mnt = str(tmp_path / 'mnt.tsv')
+        _write_tsv(mnt, ['_value', '_ID', '_raw', '_geoclass'],
+                   [['Hesse', U1, 'hessen', 'Global']])
+        d = tmp_path / 'dictdir'
+        d.mkdir()
+        _write_tsv(str(d / 'place_term_dictionary.tsv'),
+                   ['term', 'authority_uuid', 'level', 'jurisdiction', 'frequency'],
+                   [['hesse', U2, '2', 'Germany', '40'],
+                    ['hessen', U2, '2', 'Germany', '7']])
+        ld = LocalData()
+        ld._load_mnt(mnt)
+        ld._load_dict_tsv(str(d))
+        assert ld.mnt_by_raw['hessen'] == {U1, U2}   # union, both sources
+        assert ld.mnt_by_raw['hesse'] == {U2}
+        assert ld.dict_freq[('hesse', U2)] == 40
