@@ -250,6 +250,14 @@ def _is_valid_local_uuid(s):
     return len(s) == 36 and s[8] == '-' and s[13] == '-'
 
 
+def canonicalize_place(s):
+    """Lowercase a place string and normalize separators: split on [,;],
+    strip each segment, rejoin with ', '. Both the full-string index keys
+    and lookups run through this so spacing variants collapse."""
+    parts = [p.strip() for p in re.split(r'[,;]', s.lower()) if p.strip()]
+    return ', '.join(parts)
+
+
 class LocalData:
     """In-memory indexes over the MNT and PA TSV files."""
 
@@ -258,6 +266,9 @@ class LocalData:
         self.mnt_by_value = None
         self.pa_by_name = None
         self.pa_by_uuid = None
+        self.fs_by_raw = None       # canonical full string -> single UUID
+        self.dict_freq = None       # (term_lower, uuid_upper) -> frequency
+        self.illegible = set()      # curated junk terms (lowercase)
         self._loaded = False
 
     def load(self, mnt_path, pa_path):
@@ -273,6 +284,8 @@ class LocalData:
     def _load_mnt(self, path):
         self.mnt_by_raw = defaultdict(set)
         self.mnt_by_value = defaultdict(set)
+        self.dict_freq = {}
+        fs_tmp = defaultdict(set)
         count = 0
         junk = 0
         with open(path, encoding='utf-8-sig') as f:
@@ -289,6 +302,8 @@ class LocalData:
                             dh = raw_key.replace('-', ' ')
                             if dh != raw_key:
                                 self.mnt_by_raw[dh].add(uid)
+                            if ',' in raw or ';' in raw:
+                                fs_tmp[canonicalize_place(raw)].add(uid)
                         if value:
                             val_key = value.lower()
                             self.mnt_by_value[val_key].add(uid)
@@ -298,9 +313,13 @@ class LocalData:
                         count += 1
                     else:
                         junk += 1
+        self.fs_by_raw = {k: next(iter(v)) for k, v in fs_tmp.items()
+                          if len(v) == 1}
         log.info("  MNT: %d mappings loaded, %d junk IDs skipped, "
                  "%d unique raw terms, %d unique value terms",
                  count, junk, len(self.mnt_by_raw), len(self.mnt_by_value))
+        log.info("  MNT full-string index: %d entries (%d ambiguous dropped)",
+                 len(self.fs_by_raw), sum(1 for v in fs_tmp.values() if len(v) > 1))
 
     def _load_pa(self, path):
         self.pa_by_name = defaultdict(list)
