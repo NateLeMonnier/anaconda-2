@@ -1382,6 +1382,22 @@ def build_spelling_index(tsv_path):
     return sym
 
 
+def build_spelling_index_from_memory():
+    """Build the SymSpell index from _LOCAL data already in memory: PA
+    canonical names plus every dictionary/MNT term. Used in dict mode so
+    the correction vocabulary covers the union."""
+    sym = SymSpell(max_dictionary_edit_distance=1, prefix_length=7)
+    seen = set()
+    for key in list(_LOCAL.pa_by_name) + list(_LOCAL.mnt_by_raw):
+        if ',' in key:
+            continue          # full-string MNT keys are not spelling vocabulary
+        folded = ascii_fold(key)
+        if folded and folded not in seen:
+            sym.create_dictionary_entry(folded, 1)
+            seen.add(folded)
+    return sym
+
+
 SPELLING_LOG_FIELDS = ['original_term', 'corrected_term', 'edit_distance', 'authority_uuid']
 
 
@@ -2621,7 +2637,10 @@ def main(args):
             transform_map[t] = cleaned
     log.info("  %d terms (%d with transformed forms), building spelling index...",
              len(all_terms), len(transform_map))
-    sym_spell = build_spelling_index(args.pa)
+    if args.dict:
+        sym_spell = build_spelling_index_from_memory()
+    else:
+        sym_spell = build_spelling_index(args.pa)
     log.info("  Index built: %d entries", len(sym_spell.words))
     spell_terms = [t for t in all_terms if t.lower() not in _LOCAL.illegible]
     if len(spell_terms) < len(all_terms):
