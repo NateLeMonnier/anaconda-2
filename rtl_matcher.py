@@ -2153,10 +2153,10 @@ def print_summary(results, call_count, elapsed_sec, output_path):
     print(f"\n{'='*50}")
     print(f"RESULTS — {len(results)} entries")
     print(f"{'='*50}")
-    for match_type in ['chain_verified', 'chain_verified_proximity', 'chain_amb',
-                       'single_term', 'single_amb',
+    for match_type in ['mnt_full_string', 'chain_verified', 'chain_verified_proximity',
+                       'chain_amb', 'single_term', 'single_amb', 'freq_resolved',
                        'parent_resolved', 'parent_rejected', 'parent_only', 'parent_amb',
-                       'no_auth_match', 'no_terms']:
+                       'illegible', 'no_auth_match', 'no_terms']:
         if match_type in types:
             print(f"  {match_type:20s} {types[match_type]:>5}")
 
@@ -2395,6 +2395,15 @@ def main(args):
     parsed, all_terms, jurisdiction_hints = parse_entries(entries)
     log.info("Unique terms to look up: %d", len(all_terms))
 
+    fs_hits = {}
+    if args.local and _LOCAL.fs_by_raw:
+        for place, _guid, _freq, _terms in parsed:
+            uid = _LOCAL.fs_by_raw.get(canonicalize_place(place))
+            if uid:
+                fs_hits[place] = uid
+        log.info("  Full-string MNT fast path: %d of %d entries pre-resolved",
+                 len(fs_hits), len(parsed))
+
     helper_term_str = args.helper_term or ''
 
     log.info("\nPhase 1a: MNT lookups %s", elapsed())
@@ -2497,6 +2506,7 @@ def main(args):
     all_auth_ids = set()
     for ids in name_cache.values():
         all_auth_ids.update(ids)
+    all_auth_ids.update(fs_hits.values())
     log.info("\n  %d unique authority IDs to resolve", len(all_auth_ids))
 
     log.info("\nPhase 2: Batch resolve authority records %s", elapsed())
@@ -2525,21 +2535,28 @@ def main(args):
         log.info("  ASCII fallback index: %d folded entries", len(ascii_cache))
 
     _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
-                ascii_cache, helper_term, spelling_corrections, start, elapsed)
+                ascii_cache, helper_term, spelling_corrections, start, elapsed,
+                fs_hits=fs_hits)
 
 
 def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
-                ascii_cache, helper_term, spelling_corrections, start, elapsed):
+                ascii_cache, helper_term, spelling_corrections, start, elapsed,
+                fs_hits=None):
     """Phase 3 + output — shared by both local and FM modes."""
     log.info("\nPhase 3: Right-to-left matching (chain walk + skip + rank) %s", elapsed())
     results = []
     ties = []
     contradiction_rejects = 0
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
-        match = match_entry(terms, name_cache, auth_cache, client, place,
-                            jurisdiction_hints=jurisdiction_hints,
-                            ascii_cache=ascii_cache,
-                            helper_term=helper_term)
+        fs_uid = (fs_hits or {}).get(place)
+        if fs_uid and fs_uid in auth_cache:
+            match = MatchResult([fs_uid], depth=len(terms),
+                                match_type='mnt_full_string')
+        else:
+            match = match_entry(terms, name_cache, auth_cache, client, place,
+                                jurisdiction_hints=jurisdiction_hints,
+                                ascii_cache=ascii_cache,
+                                helper_term=helper_term)
 
         # --- Reversed component fallback ---
         # When RTL produces parent_only (parent matched, children skipped),
