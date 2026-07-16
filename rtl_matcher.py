@@ -2588,8 +2588,12 @@ def main(args):
              len(all_terms), len(transform_map))
     sym_spell = build_spelling_index(args.pa)
     log.info("  Index built: %d entries", len(sym_spell.words))
+    spell_terms = [t for t in all_terms if t.lower() not in _LOCAL.illegible]
+    if len(spell_terms) < len(all_terms):
+        log.info("  %d illegible terms excluded from spelling correction",
+                 len(all_terms) - len(spell_terms))
     spelling_added, spelling_corrections = fn_spelling(
-        all_terms, name_cache, sym_spell, transform_map=transform_map)
+        spell_terms, name_cache, sym_spell, transform_map=transform_map)
     after_spelling = sum(1 for v in name_cache.values() if v)
     log.info("  After spelling: %d terms matched (+%d new, %d UUIDs) %s",
              after_spelling, after_spelling - after, spelling_added, elapsed())
@@ -2657,6 +2661,10 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                                 jurisdiction_hints=jurisdiction_hints,
                                 ascii_cache=ascii_cache,
                                 helper_term=helper_term)
+
+        if (match.match_type == 'no_auth_match' and _LOCAL.illegible
+                and all(t.lower() in _LOCAL.illegible for t in terms)):
+            match = MatchResult(depth=0, match_type='illegible')
 
         # --- Reversed component fallback ---
         # When RTL produces parent_only (parent matched, children skipped),

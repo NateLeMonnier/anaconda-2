@@ -1454,3 +1454,20 @@ class TestDictUnion:
         assert ld.mnt_by_raw['hessen'] == {U1, U2}   # union, both sources
         assert ld.mnt_by_raw['hesse'] == {U2}
         assert ld.dict_freq[('hesse', U2)] == 40
+
+    def test_dict_tsv_loads_illegible_stoplist(self, tmp_path):
+        mnt = str(tmp_path / 'mnt.tsv')
+        _write_tsv(mnt, ['_value', '_ID', '_raw', '_geoclass'],
+                   [['Hesse', U1, 'hessen', 'Global']])
+        d = tmp_path / 'dictdir'
+        d.mkdir()
+        _write_tsv(str(d / 'place_term_dictionary.tsv'),
+                   ['term', 'authority_uuid', 'level', 'jurisdiction', 'frequency'],
+                   [['hesse', U2, '2', 'Germany', '40']])
+        _write_tsv(str(d / 'place_term_illegible.tsv'),
+                   ['term', 'frequency'],
+                   [['Uk Known', '3'], ['a?', '1']])
+        ld = LocalData()
+        ld._load_mnt(mnt)
+        ld._load_dict_tsv(str(d))
+        assert ld.illegible == {'uk known', 'a?'}
