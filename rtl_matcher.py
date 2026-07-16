@@ -250,6 +250,24 @@ def _is_valid_local_uuid(s):
     return len(s) == 36 and s[8] == '-' and s[13] == '-'
 
 
+def _load_env_file(path):
+    """Parse KEY=VALUE lines from an env file into os.environ."""
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, _, val = line.partition('=')
+                os.environ[key.strip()] = val.strip().strip('"').strip("'")
+
+
+def canonicalize_place(s):
+    """Lowercase a place string and normalize separators: split on [,;],
+    strip each segment, rejoin with ', '. Both the full-string index keys
+    and lookups run through this so spacing variants collapse."""
+    parts = [p.strip() for p in re.split(r'[,;]', s.lower()) if p.strip()]
+    return ', '.join(parts)
+
+
 class LocalData:
     """In-memory indexes over the MNT and PA TSV files."""
 
@@ -258,21 +276,116 @@ class LocalData:
         self.mnt_by_value = None
         self.pa_by_name = None
         self.pa_by_uuid = None
+        self.fs_by_raw = None       # canonical full string -> single UUID
+        self.dict_freq = None       # (term_lower, uuid_upper) -> frequency
+        self.illegible = set()      # curated junk terms (lowercase)
         self._loaded = False
 
-    def load(self, mnt_path, pa_path):
+    def load(self, mnt_path, pa_path, dict_source=None, env_path=None):
+        """Read the TSVs into dictionaries keyed for the lookups we do.
+        dict_source: None, 'live' (Supabase), or a directory of TSV exports
+        (place_term_dictionary.tsv, place_term_illegible.tsv). Dict terms
+        union into mnt_by_raw; they never replace MNT data."""
         if self._loaded:
             return
         start = time.time()
         log.info("Loading local TSV data...")
         self._load_mnt(mnt_path)
         self._load_pa(pa_path)
+        if dict_source == 'live':
+            self._load_dict_live(env_path)
+        elif dict_source:
+            self._load_dict_tsv(dict_source)
         log.info("  Local data loaded in %.1fs", time.time() - start)
         self._loaded = True
+
+    def _ingest_dict_row(self, term, uid, freq):
+        key = term.lower()
+        self.mnt_by_raw[key].add(uid)
+        dh = key.replace('-', ' ')
+        if dh != key:
+            self.mnt_by_raw[dh].add(uid)
+        self.dict_freq[(key, uid)] = freq
+
+    def _load_dict_live(self, env_path):
+        import psycopg2
+        if env_path:
+            _load_env_file(env_path)
+        password = os.environ.get('SUPABASE_PASSWORD')
+        if not password:
+            raise ValueError("SUPABASE_PASSWORD not set. Use --env or export it.")
+        conn = psycopg2.connect(
+            host="aws-1-us-west-1.pooler.supabase.com", port=5432,
+            dbname="postgres", user="parser_readonly.ncahtzbmazzqrorjkjwm",
+            password=password)
+        cur = conn.cursor()
+        log.info("  Pulling place_term_dictionary...")
+        cur.execute("SELECT term, authority_uuid, frequency "
+                    "FROM place_term_dictionary")
+        n = 0
+        for term, uuid, freq in cur:
+            self._ingest_dict_row(term.strip(), str(uuid).upper(), freq or 0)
+            n += 1
+        log.info("  Dictionary: %d mappings unioned (%d unique terms total)",
+                 n, len(self.mnt_by_raw))
+        log.info("  Pulling authority_place...")
+        cur.execute("SELECT uuid, parent_uuid, canonical_name, level, "
+                    "jurisdiction, full_chain_name FROM authority_place")
+        added = 0
+        for uuid, parent_uuid, name, level, jurisdiction, chain in cur:
+            uid = str(uuid).upper()
+            if uid in self.pa_by_uuid:
+                continue          # PA TSV is primary (has pop/lat/lon)
+            rec = {
+                'Auth_Place_Name': name or '',
+                'UUID': uid,
+                'Parent_UUID': str(parent_uuid).upper() if parent_uuid else '',
+                'Jurisdiction': jurisdiction or '',
+                'Level': str(level) if level is not None else '',
+                'Population': '', 'Type_Ahead_Value': chain or '',
+                'Historical': '', 'Latitude': '', 'Longitude': '',
+            }
+            self.pa_by_uuid[uid] = rec
+            if name:
+                nkey = name.lower()
+                self.pa_by_name[nkey].append(rec)
+                dh = nkey.replace('-', ' ')
+                if dh != nkey:
+                    self.pa_by_name[dh].append(rec)
+            added += 1
+        log.info("  Authority: %d Supabase-only records added", added)
+        log.info("  Pulling place_term_illegible...")
+        cur.execute("SELECT term FROM place_term_illegible")
+        self.illegible = {t[0].strip().lower() for t in cur if t[0]}
+        log.info("  Illegible stop-list: %d terms", len(self.illegible))
+        cur.close()
+        conn.close()
+
+    def _load_dict_tsv(self, dirpath):
+        path = os.path.join(dirpath, 'place_term_dictionary.tsv')
+        n = 0
+        with open(path, encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for row in reader:
+                term = (row.get('term') or '').strip()
+                uid = (row.get('authority_uuid') or '').strip().upper()
+                if term and uid and _is_valid_local_uuid(uid):
+                    self._ingest_dict_row(term, uid, int(row.get('frequency') or 0))
+                    n += 1
+        log.info("  Dictionary TSV: %d mappings unioned", n)
+        ill = os.path.join(dirpath, 'place_term_illegible.tsv')
+        if os.path.exists(ill):
+            with open(ill, encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f, delimiter='\t')
+                self.illegible = {(r.get('term') or '').strip().lower()
+                                  for r in reader if (r.get('term') or '').strip()}
+            log.info("  Illegible stop-list: %d terms", len(self.illegible))
 
     def _load_mnt(self, path):
         self.mnt_by_raw = defaultdict(set)
         self.mnt_by_value = defaultdict(set)
+        self.dict_freq = {}
+        fs_tmp = defaultdict(set)
         count = 0
         junk = 0
         with open(path, encoding='utf-8-sig') as f:
@@ -289,6 +402,8 @@ class LocalData:
                             dh = raw_key.replace('-', ' ')
                             if dh != raw_key:
                                 self.mnt_by_raw[dh].add(uid)
+                            if ',' in raw or ';' in raw:
+                                fs_tmp[canonicalize_place(raw)].add(uid)
                         if value:
                             val_key = value.lower()
                             self.mnt_by_value[val_key].add(uid)
@@ -298,9 +413,13 @@ class LocalData:
                         count += 1
                     else:
                         junk += 1
+        self.fs_by_raw = {k: next(iter(v)) for k, v in fs_tmp.items()
+                          if len(v) == 1}
         log.info("  MNT: %d mappings loaded, %d junk IDs skipped, "
                  "%d unique raw terms, %d unique value terms",
                  count, junk, len(self.mnt_by_raw), len(self.mnt_by_value))
+        log.info("  MNT full-string index: %d entries (%d ambiguous dropped)",
+                 len(self.fs_by_raw), sum(1 for v in fs_tmp.values() if len(v) > 1))
 
     def _load_pa(self, path):
         self.pa_by_name = defaultdict(list)
@@ -1263,6 +1382,22 @@ def build_spelling_index(tsv_path):
     return sym
 
 
+def build_spelling_index_from_memory():
+    """Build the SymSpell index from _LOCAL data already in memory: PA
+    canonical names plus every dictionary/MNT term. Used in dict mode so
+    the correction vocabulary covers the union."""
+    sym = SymSpell(max_dictionary_edit_distance=1, prefix_length=7)
+    seen = set()
+    for key in list(_LOCAL.pa_by_name) + list(_LOCAL.mnt_by_raw):
+        if ',' in key:
+            continue          # full-string MNT keys are not spelling vocabulary
+        folded = ascii_fold(key)
+        if folded and folded not in seen:
+            sym.create_dictionary_entry(folded, 1)
+            seen.add(folded)
+    return sym
+
+
 SPELLING_LOG_FIELDS = ['original_term', 'corrected_term', 'edit_distance', 'authority_uuid']
 
 
@@ -1696,6 +1831,32 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return 6371.0 * 2 * math.asin(math.sqrt(a))
 
 
+FREQ_MIN = 10      # winner needs at least this many observations
+FREQ_RATIO = 5     # and at least this multiple of the runner-up
+
+
+def _disambiguate_by_frequency(term, candidates, dict_freq):
+    """Pick a winner by dictionary frequency. Fires only when EVERY candidate
+    has a frequency entry for this term (mixed dict/MNT-origin sets fall
+    through to population rules — absence of freq is not evidence against an
+    MNT mapping). Winner needs FREQ_MIN observations and FREQ_RATIO times the
+    runner-up."""
+    if not term or not dict_freq or len(candidates) < 2:
+        return None
+    key = term.lower()
+    freqs = []
+    for uid in candidates:
+        f = dict_freq.get((key, uid))
+        if f is None:
+            return None
+        freqs.append((f, uid))
+    freqs.sort(key=lambda x: (-x[0], x[1]))
+    top_f, top_uid = freqs[0]
+    if top_f >= FREQ_MIN and top_f >= FREQ_RATIO * freqs[1][0]:
+        return top_uid
+    return None
+
+
 def _disambiguate_by_population(candidates, auth_cache):
     """Apply Leafprint population rules to a set of same-tier candidates.
     Returns (winner_uuid, 'parent_resolved') or (None, 'amb')."""
@@ -1720,7 +1881,7 @@ def _disambiguate_by_population(candidates, auth_cache):
     return (None, 'amb')
 
 
-def resolve_parent_only(candidate_ids, auth_cache, client):
+def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
     """Disambiguate parent_only candidates using population alone.
 
     No chain verification occurred, so level-based preference is unreliable
@@ -1746,6 +1907,11 @@ def resolve_parent_only(candidate_ids, auth_cache, client):
                 uid = field_str(fd, 'UUID')
                 if uid:
                     auth_cache[uid] = fd
+
+    winner = _disambiguate_by_frequency(term, candidate_ids,
+                                        _LOCAL.dict_freq or {})
+    if winner:
+        return (winner, 'freq_resolved')
 
     return _disambiguate_by_population(candidate_ids, auth_cache)
 
@@ -1902,6 +2068,10 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         if len(ranked) == 1:
             return MatchResult([ranked[0][0]], depth=1, match_type='single_term')
         all_ids = [uuid for uuid, _ in ranked]
+        winner = _disambiguate_by_frequency(right_to_left[0], all_ids,
+                                            _LOCAL.dict_freq or {})
+        if winner:
+            return MatchResult([winner], depth=1, match_type='freq_resolved')
         return MatchResult([], depth=1, match_type='single_amb', tied_ids=all_ids)
 
     confirmed = parent_ids
@@ -2134,10 +2304,10 @@ def print_summary(results, call_count, elapsed_sec, output_path):
     print(f"\n{'='*50}")
     print(f"RESULTS — {len(results)} entries")
     print(f"{'='*50}")
-    for match_type in ['chain_verified', 'chain_verified_proximity', 'chain_amb',
-                       'single_term', 'single_amb',
+    for match_type in ['mnt_full_string', 'chain_verified', 'chain_verified_proximity',
+                       'chain_amb', 'single_term', 'single_amb', 'freq_resolved',
                        'parent_resolved', 'parent_rejected', 'parent_only', 'parent_amb',
-                       'no_auth_match', 'no_terms']:
+                       'illegible', 'no_auth_match', 'no_terms']:
         if match_type in types:
             print(f"  {match_type:20s} {types[match_type]:>5}")
 
@@ -2337,7 +2507,7 @@ def main(args):
     client = None
 
     if args.local:
-        _LOCAL.load(args.mnt, args.pa)
+        _LOCAL.load(args.mnt, args.pa, dict_source=args.dict, env_path=args.env)
         log.info("Local data ready. %s", elapsed())
 
         fn_query_mnt = query_mnt_local
@@ -2375,6 +2545,15 @@ def main(args):
 
     parsed, all_terms, jurisdiction_hints = parse_entries(entries)
     log.info("Unique terms to look up: %d", len(all_terms))
+
+    fs_hits = {}
+    if args.local and _LOCAL.fs_by_raw:
+        for place, _guid, _freq, _terms in parsed:
+            uid = _LOCAL.fs_by_raw.get(canonicalize_place(place))
+            if uid:
+                fs_hits[place] = uid
+        log.info("  Full-string MNT fast path: %d of %d entries pre-resolved",
+                 len(fs_hits), len(parsed))
 
     helper_term_str = args.helper_term or ''
 
@@ -2458,10 +2637,17 @@ def main(args):
             transform_map[t] = cleaned
     log.info("  %d terms (%d with transformed forms), building spelling index...",
              len(all_terms), len(transform_map))
-    sym_spell = build_spelling_index(args.pa)
+    if args.dict:
+        sym_spell = build_spelling_index_from_memory()
+    else:
+        sym_spell = build_spelling_index(args.pa)
     log.info("  Index built: %d entries", len(sym_spell.words))
+    spell_terms = [t for t in all_terms if t.lower() not in _LOCAL.illegible]
+    if len(spell_terms) < len(all_terms):
+        log.info("  %d illegible terms excluded from spelling correction",
+                 len(all_terms) - len(spell_terms))
     spelling_added, spelling_corrections = fn_spelling(
-        all_terms, name_cache, sym_spell, transform_map=transform_map)
+        spell_terms, name_cache, sym_spell, transform_map=transform_map)
     after_spelling = sum(1 for v in name_cache.values() if v)
     log.info("  After spelling: %d terms matched (+%d new, %d UUIDs) %s",
              after_spelling, after_spelling - after, spelling_added, elapsed())
@@ -2478,6 +2664,7 @@ def main(args):
     all_auth_ids = set()
     for ids in name_cache.values():
         all_auth_ids.update(ids)
+    all_auth_ids.update(fs_hits.values())
     log.info("\n  %d unique authority IDs to resolve", len(all_auth_ids))
 
     log.info("\nPhase 2: Batch resolve authority records %s", elapsed())
@@ -2506,21 +2693,32 @@ def main(args):
         log.info("  ASCII fallback index: %d folded entries", len(ascii_cache))
 
     _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
-                ascii_cache, helper_term, spelling_corrections, start, elapsed)
+                ascii_cache, helper_term, spelling_corrections, start, elapsed,
+                fs_hits=fs_hits)
 
 
 def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
-                ascii_cache, helper_term, spelling_corrections, start, elapsed):
+                ascii_cache, helper_term, spelling_corrections, start, elapsed,
+                fs_hits=None):
     """Phase 3 + output — shared by both local and FM modes."""
     log.info("\nPhase 3: Right-to-left matching (chain walk + skip + rank) %s", elapsed())
     results = []
     ties = []
     contradiction_rejects = 0
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
-        match = match_entry(terms, name_cache, auth_cache, client, place,
-                            jurisdiction_hints=jurisdiction_hints,
-                            ascii_cache=ascii_cache,
-                            helper_term=helper_term)
+        fs_uid = (fs_hits or {}).get(place)
+        if fs_uid and fs_uid in auth_cache:
+            match = MatchResult([fs_uid], depth=len(terms),
+                                match_type='mnt_full_string')
+        else:
+            match = match_entry(terms, name_cache, auth_cache, client, place,
+                                jurisdiction_hints=jurisdiction_hints,
+                                ascii_cache=ascii_cache,
+                                helper_term=helper_term)
+
+        if (match.match_type == 'no_auth_match' and _LOCAL.illegible
+                and all(t.lower() in _LOCAL.illegible for t in terms)):
+            match = MatchResult(depth=0, match_type='illegible')
 
         # --- Reversed component fallback ---
         # When RTL produces parent_only (parent matched, children skipped),
@@ -2537,8 +2735,8 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
 
         if match.match_type == 'parent_only' and match.candidate_ids:
             winner, resolution = resolve_parent_only(
-                match.candidate_ids, auth_cache, client)
-            if resolution == 'parent_resolved':
+                match.candidate_ids, auth_cache, client, term=terms[-1])
+            if resolution in ('parent_resolved', 'freq_resolved'):
                 if _parent_contradicts_input(winner, terms, match.skipped_terms, auth_cache):
                     match = MatchResult(
                         candidate_ids=[],
@@ -2552,7 +2750,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                     match = MatchResult(
                         candidate_ids=[winner],
                         depth=match.depth,
-                        match_type='parent_resolved',
+                        match_type=resolution,
                         skipped_count=match.skipped_count,
                         skipped_terms=match.skipped_terms,
                     )
@@ -2657,7 +2855,13 @@ def build_cli():
 
     parser.add_argument('--env',
                         help="Path to .env file for FileMaker credentials "
-                             "(required with --api)")
+                             "(required with --api) or Supabase password "
+                             "(used with --dict live)")
+    parser.add_argument('--dict', nargs='?', const='live',
+                        help="Supplement MNT with the Supabase place dictionary "
+                             "(union). Pass a directory of TSV exports, or no "
+                             "value for a live connection (needs SUPABASE_PASSWORD "
+                             "via --env or the environment). Local mode only.")
     parser.add_argument('--verbose', '-v', action='store_true',
                         help="Enable debug-level logging")
 

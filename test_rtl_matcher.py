@@ -1384,3 +1384,114 @@ class TestProximityFallback:
                              jurisdiction_hints={'adams county': 'County'})
         # Both within 50km, same pop — should be ambiguous
         assert result.match_type == 'chain_amb'
+
+
+# ---------------------------------------------------------------------------
+# Dict-union reintegration tests
+# ---------------------------------------------------------------------------
+
+from rtl_matcher import LocalData, canonicalize_place
+
+
+def _write_tsv(path, header, rows):
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write('\t'.join(header) + '\n')
+        for r in rows:
+            f.write('\t'.join(r) + '\n')
+
+
+U1 = '11111111-1111-1111-1111-111111111111'
+U2 = '22222222-2222-2222-2222-222222222222'
+
+
+class TestCanonicalizePlace:
+    def test_lowercases_and_normalizes_separators(self):
+        assert canonicalize_place("Danville,VA ,  United States") == "danville, va, united states"
+
+    def test_semicolons_treated_like_commas(self):
+        assert canonicalize_place("Boston; Mass") == "boston, mass"
+
+    def test_single_segment_passthrough(self):
+        assert canonicalize_place("  Hesse ") == "hesse"
+
+
+class TestFullStringIndex:
+    def test_comma_rows_build_fs_index(self, tmp_path):
+        mnt = str(tmp_path / 'mnt.tsv')
+        _write_tsv(mnt, ['_value', '_ID', '_raw', '_geoclass'], [
+            ['Danville', U1, 'Danville,VA, United States', 'US'],
+            ['Hesse', U2, 'Hesse', 'Global'],
+        ])
+        ld = LocalData()
+        ld._load_mnt(mnt)
+        assert ld.fs_by_raw == {'danville, va, united states': U1}
+
+    def test_ambiguous_full_strings_excluded(self, tmp_path):
+        mnt = str(tmp_path / 'mnt.tsv')
+        _write_tsv(mnt, ['_value', '_ID', '_raw', '_geoclass'], [
+            ['A', U1, 'Weston, Ontario, Canada', 'CA'],
+            ['B', U2, 'Weston, Ontario, Canada', 'CA'],
+        ])
+        ld = LocalData()
+        ld._load_mnt(mnt)
+        assert ld.fs_by_raw == {}
+
+
+class TestDictUnion:
+    def test_dict_tsv_unions_into_mnt_index(self, tmp_path):
+        mnt = str(tmp_path / 'mnt.tsv')
+        _write_tsv(mnt, ['_value', '_ID', '_raw', '_geoclass'],
+                   [['Hesse', U1, 'hessen', 'Global']])
+        d = tmp_path / 'dictdir'
+        d.mkdir()
+        _write_tsv(str(d / 'place_term_dictionary.tsv'),
+                   ['term', 'authority_uuid', 'level', 'jurisdiction', 'frequency'],
+                   [['hesse', U2, '2', 'Germany', '40'],
+                    ['hessen', U2, '2', 'Germany', '7']])
+        ld = LocalData()
+        ld._load_mnt(mnt)
+        ld._load_dict_tsv(str(d))
+        assert ld.mnt_by_raw['hessen'] == {U1, U2}   # union, both sources
+        assert ld.mnt_by_raw['hesse'] == {U2}
+        assert ld.dict_freq[('hesse', U2)] == 40
+
+    def test_dict_tsv_loads_illegible_stoplist(self, tmp_path):
+        mnt = str(tmp_path / 'mnt.tsv')
+        _write_tsv(mnt, ['_value', '_ID', '_raw', '_geoclass'],
+                   [['Hesse', U1, 'hessen', 'Global']])
+        d = tmp_path / 'dictdir'
+        d.mkdir()
+        _write_tsv(str(d / 'place_term_dictionary.tsv'),
+                   ['term', 'authority_uuid', 'level', 'jurisdiction', 'frequency'],
+                   [['hesse', U2, '2', 'Germany', '40']])
+        _write_tsv(str(d / 'place_term_illegible.tsv'),
+                   ['term', 'frequency'],
+                   [['Uk Known', '3'], ['a?', '1']])
+        ld = LocalData()
+        ld._load_mnt(mnt)
+        ld._load_dict_tsv(str(d))
+        assert ld.illegible == {'uk known', 'a?'}
+
+
+from rtl_matcher import _disambiguate_by_frequency
+
+
+class TestFrequencyDisambiguation:
+    def test_skewed_frequency_picks_winner(self):
+        freq = {('springfield', U1): 100, ('springfield', U2): 4}
+        assert _disambiguate_by_frequency('Springfield', [U1, U2], freq) == U1
+
+    def test_below_ratio_returns_none(self):
+        freq = {('springfield', U1): 40, ('springfield', U2): 20}
+        assert _disambiguate_by_frequency('springfield', [U1, U2], freq) is None
+
+    def test_below_floor_returns_none(self):
+        freq = {('x', U1): 9, ('x', U2): 1}
+        assert _disambiguate_by_frequency('x', [U1, U2], freq) is None
+
+    def test_mixed_origin_missing_freq_returns_none(self):
+        freq = {('y', U1): 500}          # U2 is MNT-only, no freq entry
+        assert _disambiguate_by_frequency('y', [U1, U2], freq) is None
+
+    def test_empty_freq_returns_none(self):
+        assert _disambiguate_by_frequency('z', [U1, U2], {}) is None
