@@ -1815,6 +1815,32 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return 6371.0 * 2 * math.asin(math.sqrt(a))
 
 
+FREQ_MIN = 10      # winner needs at least this many observations
+FREQ_RATIO = 5     # and at least this multiple of the runner-up
+
+
+def _disambiguate_by_frequency(term, candidates, dict_freq):
+    """Pick a winner by dictionary frequency. Fires only when EVERY candidate
+    has a frequency entry for this term (mixed dict/MNT-origin sets fall
+    through to population rules — absence of freq is not evidence against an
+    MNT mapping). Winner needs FREQ_MIN observations and FREQ_RATIO times the
+    runner-up."""
+    if not term or not dict_freq or len(candidates) < 2:
+        return None
+    key = term.lower()
+    freqs = []
+    for uid in candidates:
+        f = dict_freq.get((key, uid))
+        if f is None:
+            return None
+        freqs.append((f, uid))
+    freqs.sort(key=lambda x: (-x[0], x[1]))
+    top_f, top_uid = freqs[0]
+    if top_f >= FREQ_MIN and top_f >= FREQ_RATIO * freqs[1][0]:
+        return top_uid
+    return None
+
+
 def _disambiguate_by_population(candidates, auth_cache):
     """Apply Leafprint population rules to a set of same-tier candidates.
     Returns (winner_uuid, 'parent_resolved') or (None, 'amb')."""
@@ -1839,7 +1865,7 @@ def _disambiguate_by_population(candidates, auth_cache):
     return (None, 'amb')
 
 
-def resolve_parent_only(candidate_ids, auth_cache, client):
+def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
     """Disambiguate parent_only candidates using population alone.
 
     No chain verification occurred, so level-based preference is unreliable
@@ -1865,6 +1891,11 @@ def resolve_parent_only(candidate_ids, auth_cache, client):
                 uid = field_str(fd, 'UUID')
                 if uid:
                     auth_cache[uid] = fd
+
+    winner = _disambiguate_by_frequency(term, candidate_ids,
+                                        _LOCAL.dict_freq or {})
+    if winner:
+        return (winner, 'freq_resolved')
 
     return _disambiguate_by_population(candidate_ids, auth_cache)
 
@@ -2021,6 +2052,10 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         if len(ranked) == 1:
             return MatchResult([ranked[0][0]], depth=1, match_type='single_term')
         all_ids = [uuid for uuid, _ in ranked]
+        winner = _disambiguate_by_frequency(right_to_left[0], all_ids,
+                                            _LOCAL.dict_freq or {})
+        if winner:
+            return MatchResult([winner], depth=1, match_type='freq_resolved')
         return MatchResult([], depth=1, match_type='single_amb', tied_ids=all_ids)
 
     confirmed = parent_ids
@@ -2681,8 +2716,8 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
 
         if match.match_type == 'parent_only' and match.candidate_ids:
             winner, resolution = resolve_parent_only(
-                match.candidate_ids, auth_cache, client)
-            if resolution == 'parent_resolved':
+                match.candidate_ids, auth_cache, client, term=terms[-1])
+            if resolution in ('parent_resolved', 'freq_resolved'):
                 if _parent_contradicts_input(winner, terms, match.skipped_terms, auth_cache):
                     match = MatchResult(
                         candidate_ids=[],
@@ -2696,7 +2731,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                     match = MatchResult(
                         candidate_ids=[winner],
                         depth=match.depth,
-                        match_type='parent_resolved',
+                        match_type=resolution,
                         skipped_count=match.skipped_count,
                         skipped_terms=match.skipped_terms,
                     )

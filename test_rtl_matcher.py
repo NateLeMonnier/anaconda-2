@@ -1471,3 +1471,27 @@ class TestDictUnion:
         ld._load_mnt(mnt)
         ld._load_dict_tsv(str(d))
         assert ld.illegible == {'uk known', 'a?'}
+
+
+from rtl_matcher import _disambiguate_by_frequency
+
+
+class TestFrequencyDisambiguation:
+    def test_skewed_frequency_picks_winner(self):
+        freq = {('springfield', U1): 100, ('springfield', U2): 4}
+        assert _disambiguate_by_frequency('Springfield', [U1, U2], freq) == U1
+
+    def test_below_ratio_returns_none(self):
+        freq = {('springfield', U1): 40, ('springfield', U2): 20}
+        assert _disambiguate_by_frequency('springfield', [U1, U2], freq) is None
+
+    def test_below_floor_returns_none(self):
+        freq = {('x', U1): 9, ('x', U2): 1}
+        assert _disambiguate_by_frequency('x', [U1, U2], freq) is None
+
+    def test_mixed_origin_missing_freq_returns_none(self):
+        freq = {('y', U1): 500}          # U2 is MNT-only, no freq entry
+        assert _disambiguate_by_frequency('y', [U1, U2], freq) is None
+
+    def test_empty_freq_returns_none(self):
+        assert _disambiguate_by_frequency('z', [U1, U2], {}) is None
