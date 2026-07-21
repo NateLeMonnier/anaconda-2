@@ -1526,6 +1526,30 @@ class TestResolveParentMatch:
         assert len(result.tied_ids) == MAX_ARRAY
 
 
+class TestSouthRegression:
+    def test_generic_parent_with_garbage_siblings_is_parent_amb(self):
+        # "Garbage, garbage, South": only "south" matches authority; it pulls a
+        # country and a village. Must NOT resolve to the country by population.
+        country = 'za-1'
+        village = 'v-1'
+        auth_cache = {
+            country: make_auth_record_full(country, level='8', name='South Africa',
+                                           population='60000000'),
+            village: make_auth_record_full(village, level='4', name='South',
+                                           population='500'),
+        }
+        name_cache = {'south': {country, village}}
+        match = match_entry(['Garbage', 'garbage', 'South'], name_cache,
+                            auth_cache, MagicMock(), 'Garbage, garbage, South')
+        # rightmost "south" anchors parent_only with two candidates
+        assert match.match_type == 'parent_only'
+        resolved = resolve_parent_match(match, ['Garbage', 'garbage', 'South'],
+                                        auth_cache, MagicMock())
+        assert resolved.match_type == 'parent_amb'
+        assert resolved.confidence == 'low'
+        assert set(resolved.tied_ids) == {country, village}
+
+
 class TestMatchEntryArrayCap:
     def test_single_amb_capped(self):
         # MAX_ARRAY + 3 same-level candidates for one term -> single_amb, capped.
