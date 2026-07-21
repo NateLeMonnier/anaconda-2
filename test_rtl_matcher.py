@@ -1526,6 +1526,21 @@ class TestResolveParentMatch:
         assert len(result.tied_ids) == MAX_ARRAY
 
 
+class TestMatchEntryArrayCap:
+    def test_single_amb_capped(self):
+        # MAX_ARRAY + 3 same-level candidates for one term -> single_amb, capped.
+        n = MAX_ARRAY + 3
+        ids = [f'city-{i}' for i in range(n)]
+        auth_cache = {i: make_auth_record_full(i, level='4', population=str(1000 * (n - k)))
+                      for k, i in enumerate(ids)}
+        name_cache = {'springfield': set(ids)}
+        result = match_entry(['Springfield'], name_cache, auth_cache, MagicMock(),
+                             'Springfield')
+        assert result.match_type == 'single_amb'
+        assert result.confidence == 'low'
+        assert len(result.tied_ids) == MAX_ARRAY
+
+
 class TestConfidenceTier:
     def test_high_types(self):
         for mt in ('mnt_full_string', 'chain_verified', 'single_term', 'parent_resolved'):

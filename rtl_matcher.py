@@ -2087,7 +2087,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                                             _LOCAL.dict_freq or {})
         if winner:
             return MatchResult([winner], depth=1, match_type='freq_resolved')
-        return MatchResult([], depth=1, match_type='single_amb', tied_ids=all_ids)
+        return MatchResult([], depth=1, match_type='single_amb',
+                           tied_ids=cap_candidates(all_ids, "single_amb"))
 
     confirmed = parent_ids
     depth = 1
@@ -2219,7 +2220,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         skip_str = '; '.join(skip_parts)
 
         if tied:
-            return MatchResult([], depth, 'chain_amb', skip_count, skip_str, tied)
+            return MatchResult([], depth, 'chain_amb', skip_count, skip_str,
+                               cap_candidates(tied, "chain_amb"))
         mt = 'chain_verified_proximity' if proximity_matched else 'chain_verified'
         ids = [winner] if winner else []
         return MatchResult(ids, depth, mt, skip_count, skip_str)
