@@ -2332,7 +2332,9 @@ def build_result_row(match, original, guid, frequency, auth_cache):
         'skipped_count': match.skipped_count,
         'skipped_terms': match.skipped_terms,
     }
-    if all_candidates:
+    # parent_rejected is a non-match: expose the candidate columns for context
+    # but leave the authority_* fields blank so it never reads as a resolution.
+    if all_candidates and match.match_type != 'parent_rejected':
         best_id = all_candidates[0]
         best_record = auth_cache.get(best_id, {})
         row['authority_name'] = field_str(best_record, 'Auth_Place_Name')

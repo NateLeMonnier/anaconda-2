@@ -1562,6 +1562,27 @@ class TestBuildResultRow:
         assert row['candidates'] == 3
         assert row['confidence'] == 'low'
 
+    def test_parent_rejected_hides_authority_keeps_candidates(self):
+        # parent_rejected must not look like a match: authority_* blank, but the
+        # candidate columns still carry the context.
+        rec = make_auth_record_full('tx', level='6', name='Texas',
+                                    jurisdiction='State')
+        rec['Type_Ahead_Value'] = 'Texas, United States'
+        auth_cache = {'tx': rec}
+        match = MatchResult(candidate_ids=['tx'], depth=1,
+                            match_type='parent_rejected',
+                            skipped_count=1, skipped_terms='Bad String')
+        row = build_result_row(match, 'Bad String, Texas', 'g4', '1', auth_cache)
+        assert row['authority_id'] == ''
+        assert row['authority_name'] == ''
+        assert row['type_ahead'] == ''
+        assert row['jurisdiction'] == ''
+        assert row['level'] == ''
+        assert row['candidate_ids'] == 'tx'
+        assert row['candidate_names'] == 'Texas, United States'
+        assert row['candidates'] == 1
+        assert row['confidence'] == 'low'
+
     def test_no_candidates_row(self):
         match = MatchResult(candidate_ids=[], depth=0, match_type='no_auth_match')
         row = build_result_row(match, 'nowhere', 'g3', '', {})
