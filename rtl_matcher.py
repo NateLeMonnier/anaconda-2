@@ -1868,38 +1868,15 @@ def _disambiguate_by_frequency(term, candidates, dict_freq):
     return None
 
 
-def _disambiguate_by_population(candidates, auth_cache):
-    """Apply Leafprint population rules to a set of same-tier candidates.
-    Returns (winner_uuid, 'parent_resolved') or (None, 'amb')."""
-    if len(candidates) == 1:
-        return (candidates[0], 'parent_resolved')
-
-    pops = [(uid, get_population(auth_cache.get(uid, {}))) for uid in candidates]
-    pops.sort(key=lambda x: (-x[1], x[0]))
-
-    if all(p == 0 for _, p in pops):
-        return (None, 'amb')
-
-    first_uid, first_pop = pops[0]
-    _second_uid, second_pop = pops[1]
-
-    if first_pop >= 50_000 and second_pop == 0:
-        return (first_uid, 'parent_resolved')
-
-    if second_pop > 0 and first_pop > 5 * second_pop:
-        return (first_uid, 'parent_resolved')
-
-    return (None, 'amb')
-
-
 def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
-    """Disambiguate parent_only candidates using population alone.
+    """Resolve parent_only candidates to a single answer only on strong signals.
 
-    No chain verification occurred, so level-based preference is unreliable
-    (a specific-looking candidate may be completely unrelated to the input).
-    Treat all candidates as peers and let population decide.
+    A single candidate resolves directly; a dictionary-frequency prior resolves
+    with medium confidence. Population never resolves a multi-candidate set — it
+    only orders the array surfaced by resolve_parent_match.
 
-    Returns (winner_uuid, 'parent_resolved') or (None, 'amb').
+    Returns (winner_uuid, 'parent_resolved'), (winner_uuid, 'freq_resolved'),
+    or (None, 'amb').
     """
     if not candidate_ids:
         return (None, 'amb')
@@ -1924,7 +1901,9 @@ def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
     if winner:
         return (winner, 'freq_resolved')
 
-    return _disambiguate_by_population(candidate_ids, auth_cache)
+    # Population never resolves a multi-candidate set. Fall through to amb;
+    # the ranked candidate array is surfaced by resolve_parent_match.
+    return (None, 'amb')
 
 
 def _get_parent_level(confirmed_set, auth_cache):
@@ -2523,8 +2502,11 @@ def resolve_parent_match(match, terms, auth_cache, client):
 
     if resolution in ('parent_resolved', 'freq_resolved'):
         if match.skipped_had_candidates:
+            # A resolvable specific was dropped, so the bare parent is suspect.
+            # Keep the parent_rejected label but carry the best-guess parent at
+            # low confidence rather than discarding it.
             return MatchResult(
-                candidate_ids=[],
+                candidate_ids=[winner],
                 depth=match.depth,
                 match_type='parent_rejected',
                 skipped_count=match.skipped_count,
@@ -2545,7 +2527,7 @@ def resolve_parent_match(match, terms, auth_cache, client):
         match_type='parent_amb',
         skipped_count=match.skipped_count,
         skipped_terms=match.skipped_terms,
-        tied_ids=list(match.candidate_ids),
+        tied_ids=cap_candidates(list(match.candidate_ids), "parent_amb"),
     )
 
 
