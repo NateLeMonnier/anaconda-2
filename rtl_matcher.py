@@ -78,7 +78,8 @@ PROXIMITY_THRESHOLD_KM = 50
 OUTPUT_FIELDS = [
     'original', 'guid', 'frequency', 'match_type', 'confidence', 'match_depth',
     'candidates', 'authority_name', 'type_ahead', 'jurisdiction',
-    'level', 'authority_id', 'skipped_count', 'skipped_terms',
+    'level', 'authority_id', 'candidate_ids', 'candidate_names',
+    'skipped_count', 'skipped_terms',
 ]
 
 TIE_OUTPUT_FIELDS = [
@@ -2300,6 +2301,44 @@ def _resolve_output_paths(input_path, output_dir):
     return output, tie_output, spelling_log
 
 
+def build_result_row(match, original, guid, frequency, auth_cache):
+    """Build one main-output row for a match. The ranked candidate list is
+    inlined into candidate_ids / candidate_names (pipe-delimited) so the main
+    file is self-contained: single-answer types carry one candidate, low-
+    confidence amb types carry the whole ranked array. authority_* mirror the
+    top-ranked candidate as the best guess."""
+    all_candidates = match.candidate_ids or match.tied_ids
+    names = [field_str(auth_cache.get(cid, {}), 'Auth_Place_Name')
+             for cid in all_candidates]
+    row = {
+        'original': original,
+        'guid': guid,
+        'frequency': frequency,
+        'match_type': match.match_type,
+        'confidence': match.confidence,
+        'match_depth': match.depth,
+        'candidates': len(all_candidates),
+        'authority_name': '',
+        'type_ahead': '',
+        'jurisdiction': '',
+        'level': '',
+        'authority_id': '',
+        'candidate_ids': '|'.join(all_candidates),
+        'candidate_names': '|'.join(names),
+        'skipped_count': match.skipped_count,
+        'skipped_terms': match.skipped_terms,
+    }
+    if all_candidates:
+        best_id = all_candidates[0]
+        best_record = auth_cache.get(best_id, {})
+        row['authority_name'] = field_str(best_record, 'Auth_Place_Name')
+        row['type_ahead'] = field_str(best_record, 'Type_Ahead_Value')
+        row['jurisdiction'] = field_str(best_record, 'Jurisdiction')
+        row['level'] = field_str(best_record, 'Level')
+        row['authority_id'] = best_id
+    return row
+
+
 def write_results(results, path):
     with open(path, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=OUTPUT_FIELDS, delimiter='\t')
@@ -2795,33 +2834,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                     'jurisdiction': rec.get('Jurisdiction', ''),
                 })
 
-        row = {
-            'original': place,
-            'guid': guid,
-            'frequency': frequency,
-            'match_type': match.match_type,
-            'confidence': match.confidence,
-            'match_depth': match.depth,
-            'candidates': len(match.candidate_ids),
-            'authority_name': '',
-            'type_ahead': '',
-            'jurisdiction': '',
-            'level': '',
-            'authority_id': '',
-            'skipped_count': match.skipped_count,
-            'skipped_terms': match.skipped_terms,
-        }
-
-        if match.candidate_ids:
-            best_id = match.candidate_ids[0]
-            best_record = auth_cache.get(best_id, {})
-            row['authority_name'] = best_record.get('Auth_Place_Name', '')
-            row['type_ahead'] = best_record.get('Type_Ahead_Value', '')
-            row['jurisdiction'] = best_record.get('Jurisdiction', '')
-            row['level'] = best_record.get('Level', '')
-            row['authority_id'] = best_id
-
-        results.append(row)
+        results.append(build_result_row(match, place, guid, frequency, auth_cache))
 
         if (idx + 1) % 50 == 0:
             log.info("  Matched %d/%d entries...", idx + 1, len(parsed))

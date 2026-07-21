@@ -11,6 +11,7 @@ from rtl_matcher import (
     CONFIDENCE_BY_TYPE,
     MAX_ARRAY,
     MatchResult,
+    build_result_row,
     cap_candidates,
     build_spelling_index,
     detect_jurisdiction_hint,
@@ -1524,6 +1525,44 @@ class TestResolveParentMatch:
         assert result.match_type == 'parent_amb'
         assert result.confidence == 'low'
         assert len(result.tied_ids) == MAX_ARRAY
+
+
+class TestBuildResultRow:
+    def test_single_answer_row(self):
+        auth_cache = {'a': make_auth_record_full('a', level='4', name='Alexandria',
+                                                 jurisdiction='City')}
+        match = MatchResult(candidate_ids=['a'], depth=2, match_type='chain_verified')
+        row = build_result_row(match, 'x, Alexandria', 'g1', '3', auth_cache)
+        assert row['authority_id'] == 'a'
+        assert row['authority_name'] == 'Alexandria'
+        assert row['candidate_ids'] == 'a'
+        assert row['candidate_names'] == 'Alexandria'
+        assert row['candidates'] == 1
+        assert row['confidence'] == 'high'
+
+    def test_amb_array_inlined(self):
+        auth_cache = {
+            'a': make_auth_record_full('a', level='4', name='Beverly'),
+            'b': make_auth_record_full('b', level='4', name='Beverley'),
+            'c': make_auth_record_full('c', level='4', name='Beverly'),
+        }
+        match = MatchResult(candidate_ids=[], depth=1, match_type='parent_amb',
+                            tied_ids=['a', 'b', 'c'])
+        row = build_result_row(match, '3 Phillips street, Beverly', 'g2', '1', auth_cache)
+        assert row['authority_id'] == 'a'          # best guess = top-ranked
+        assert row['authority_name'] == 'Beverly'
+        assert row['candidate_ids'] == 'a|b|c'
+        assert row['candidate_names'] == 'Beverly|Beverley|Beverly'
+        assert row['candidates'] == 3
+        assert row['confidence'] == 'low'
+
+    def test_no_candidates_row(self):
+        match = MatchResult(candidate_ids=[], depth=0, match_type='no_auth_match')
+        row = build_result_row(match, 'nowhere', 'g3', '', {})
+        assert row['authority_id'] == ''
+        assert row['candidate_ids'] == ''
+        assert row['candidate_names'] == ''
+        assert row['candidates'] == 0
 
 
 class TestSouthRegression:
