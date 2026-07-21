@@ -1541,18 +1541,24 @@ class TestBuildResultRow:
         assert row['confidence'] == 'high'
 
     def test_amb_array_inlined(self):
-        auth_cache = {
-            'a': make_auth_record_full('a', level='4', name='Beverly'),
-            'b': make_auth_record_full('b', level='4', name='Beverley'),
-            'c': make_auth_record_full('c', level='4', name='Beverly'),
-        }
+        # candidate_names uses the full type-ahead path so same-name candidates
+        # are distinguishable; missing type-ahead falls back to the place name.
+        rec_a = make_auth_record_full('a', level='4', name='Beverly')
+        rec_a['Type_Ahead_Value'] = 'Beverly, Essex, Massachusetts, United States'
+        rec_b = make_auth_record_full('b', level='4', name='Beverley')
+        rec_b['Type_Ahead_Value'] = 'Beverley, East Riding of Yorkshire, England'
+        rec_c = make_auth_record_full('c', level='4', name='Beverly')  # no type-ahead
+        auth_cache = {'a': rec_a, 'b': rec_b, 'c': rec_c}
         match = MatchResult(candidate_ids=[], depth=1, match_type='parent_amb',
                             tied_ids=['a', 'b', 'c'])
         row = build_result_row(match, '3 Phillips street, Beverly', 'g2', '1', auth_cache)
         assert row['authority_id'] == 'a'          # best guess = top-ranked
         assert row['authority_name'] == 'Beverly'
         assert row['candidate_ids'] == 'a|b|c'
-        assert row['candidate_names'] == 'Beverly|Beverley|Beverly'
+        assert row['candidate_names'] == (
+            'Beverly, Essex, Massachusetts, United States|'
+            'Beverley, East Riding of Yorkshire, England|'
+            'Beverly')                             # c falls back to place name
         assert row['candidates'] == 3
         assert row['confidence'] == 'low'
 

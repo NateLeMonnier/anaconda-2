@@ -2308,7 +2308,11 @@ def build_result_row(match, original, guid, frequency, auth_cache):
     confidence amb types carry the whole ranked array. authority_* mirror the
     top-ranked candidate as the best guess."""
     all_candidates = match.candidate_ids or match.tied_ids
-    names = [field_str(auth_cache.get(cid, {}), 'Auth_Place_Name')
+    # Use the full type-ahead path so same-name candidates are distinguishable
+    # (e.g. "Beverly, Essex, Massachusetts" vs "Beverly, ...); fall back to the
+    # bare place name when type-ahead is absent.
+    names = [(field_str(auth_cache.get(cid, {}), 'Type_Ahead_Value')
+              or field_str(auth_cache.get(cid, {}), 'Auth_Place_Name'))
              for cid in all_candidates]
     row = {
         'original': original,
