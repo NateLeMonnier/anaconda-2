@@ -9,7 +9,9 @@ from symspellpy import SymSpell, Verbosity
 from rtl_matcher import (
     BATCH,
     CONFIDENCE_BY_TYPE,
+    MAX_ARRAY,
     MatchResult,
+    cap_candidates,
     build_spelling_index,
     detect_jurisdiction_hint,
     detect_tie,
@@ -1622,3 +1624,22 @@ class TestConfidenceTier:
     def test_unknown_type_is_none(self):
         assert MatchResult(match_type='no_auth_match').confidence == 'none'
         assert MatchResult().confidence == 'none'  # default match_type is 'no_terms'
+
+
+class TestCapCandidates:
+    def test_under_cap_unchanged(self):
+        ids = ['a', 'b', 'c']
+        assert cap_candidates(ids) == ['a', 'b', 'c']
+
+    def test_at_cap_unchanged(self):
+        ids = [str(i) for i in range(MAX_ARRAY)]
+        assert cap_candidates(ids) == ids
+
+    def test_over_cap_truncates_preserving_order(self):
+        ids = [str(i) for i in range(MAX_ARRAY + 3)]
+        result = cap_candidates(ids, "test")
+        assert result == ids[:MAX_ARRAY]
+        assert len(result) == MAX_ARRAY
+
+    def test_empty(self):
+        assert cap_candidates([]) == []

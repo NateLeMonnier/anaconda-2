@@ -1833,6 +1833,17 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 FREQ_MIN = 10      # winner needs at least this many observations
 FREQ_RATIO = 5     # and at least this multiple of the runner-up
+MAX_ARRAY = 5      # low-confidence arrays keep at most this many ranked candidates
+
+
+def cap_candidates(ranked_ids, context=""):
+    """Trim a ranked candidate-id list to MAX_ARRAY, logging any drop so that
+    truncation of a possibly-correct low-population outlier is never silent."""
+    if len(ranked_ids) > MAX_ARRAY:
+        log.debug("    array truncated%s: %d candidates -> %d",
+                  f" ({context})" if context else "", len(ranked_ids), MAX_ARRAY)
+        return ranked_ids[:MAX_ARRAY]
+    return list(ranked_ids)
 
 
 def _disambiguate_by_frequency(term, candidates, dict_freq):
