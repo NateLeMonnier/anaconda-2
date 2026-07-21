@@ -8,6 +8,8 @@ from symspellpy import SymSpell, Verbosity
 
 from rtl_matcher import (
     BATCH,
+    CONFIDENCE_BY_TYPE,
+    MatchResult,
     build_spelling_index,
     detect_jurisdiction_hint,
     detect_tie,
@@ -18,6 +20,7 @@ from rtl_matcher import (
     query_spelling_corrections,
     rank_candidates,
     resolve_helper_term,
+    resolve_parent_match,
     resolve_parent_only,
     write_spelling_log,
 )
@@ -1495,3 +1498,118 @@ class TestFrequencyDisambiguation:
 
     def test_empty_freq_returns_none(self):
         assert _disambiguate_by_frequency('z', [U1, U2], {}) is None
+
+
+class TestSkippedHadCandidates:
+    """match_entry must flag whether any skipped (dropped) term had authority
+    candidates that failed chain verification -- the 'recoverable data' signal."""
+
+    def test_flag_false_when_skipped_term_has_no_candidates(self):
+        """'Bad String, USA': Bad String is absent from name_cache, so it is
+        skipped with no candidates -> skipped_had_candidates is False."""
+        auth_cache = {
+            'usa-1': make_auth_record_full(
+                'usa-1', level='8', name='United States of America',
+                population='330000000'),
+        }
+        name_cache = {'united states of america': {'usa-1'}}
+        client = MagicMock()
+        client.find.return_value = []
+        result = match_entry(['Bad String', 'United States of America'],
+                             name_cache, auth_cache, client,
+                             'Bad String, United States of America')
+        assert result.match_type == 'parent_only'
+        assert result.skipped_had_candidates is False
+
+    def test_flag_true_when_skipped_term_has_unchained_candidate(self):
+        """Springfield is in name_cache but its only candidate does not chain
+        up to USA -> skipped with a candidate -> skipped_had_candidates True."""
+        auth_cache = {
+            'usa-1': make_auth_record_full(
+                'usa-1', level='8', name='United States of America',
+                population='330000000'),
+            'spr-ca': make_auth_record_full(
+                'spr-ca', parent_uuid='canada-1', level='4',
+                name='Springfield', population='5000'),
+        }
+        name_cache = {
+            'united states of america': {'usa-1'},
+            'springfield': {'spr-ca'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        result = match_entry(['Springfield', 'United States of America'],
+                             name_cache, auth_cache, client,
+                             'Springfield, United States of America')
+        assert result.match_type == 'parent_only'
+        assert result.skipped_had_candidates is True
+
+
+class TestResolveParentMatch:
+    """The parent_only post-processing decision: resolve vs reject vs amb."""
+
+    def _parent_only(self, candidate_ids, had_candidates):
+        return MatchResult(
+            candidate_ids=list(candidate_ids),
+            depth=1,
+            match_type='parent_only',
+            skipped_count=1,
+            skipped_terms='Bad String',
+            skipped_had_candidates=had_candidates,
+        )
+
+    def test_resolves_when_no_recoverable_data(self):
+        """No recoverable specific -> parent stands as parent_resolved,
+        skipped terms preserved."""
+        auth_cache = {'tx': make_auth_record_full(
+            'tx', level='6', name='Texas', population='29000000')}
+        match = self._parent_only(['tx'], had_candidates=False)
+        result = resolve_parent_match(match, ['Bad String', 'Texas'],
+                                      auth_cache, MagicMock())
+        assert result.match_type == 'parent_resolved'
+        assert result.candidate_ids == ['tx']
+        assert result.skipped_terms == 'Bad String'
+
+    def test_rejects_when_recoverable_data_present(self):
+        """A recoverable specific that failed to chain -> parent_rejected,
+        empty candidates, skipped terms still recorded."""
+        auth_cache = {'tx': make_auth_record_full(
+            'tx', level='6', name='Texas', population='29000000')}
+        match = self._parent_only(['tx'], had_candidates=True)
+        result = resolve_parent_match(match, ['Bad String', 'Texas'],
+                                      auth_cache, MagicMock())
+        assert result.match_type == 'parent_rejected'
+        assert result.candidate_ids == []
+        assert result.skipped_terms == 'Bad String'
+
+    def test_ambiguous_parent_produces_parent_amb_with_tied_ids(self):
+        """Two zero-population parent candidates cannot be disambiguated ->
+        parent_amb, empty candidates, tie set exposed in tied_ids."""
+        auth_cache = {
+            'fl-a': make_auth_record_full('fl-a', level='6', population='0'),
+            'fl-b': make_auth_record_full('fl-b', level='6', population='0'),
+        }
+        match = self._parent_only(['fl-a', 'fl-b'], had_candidates=False)
+        result = resolve_parent_match(match, ['Bad String', 'Florida'],
+                                      auth_cache, MagicMock())
+        assert result.match_type == 'parent_amb'
+        assert result.candidate_ids == []
+        assert set(result.tied_ids) == {'fl-a', 'fl-b'}
+
+
+class TestConfidenceTier:
+    def test_high_types(self):
+        for mt in ('mnt_full_string', 'chain_verified', 'single_term', 'parent_resolved'):
+            assert MatchResult(match_type=mt).confidence == 'high'
+
+    def test_medium_types(self):
+        for mt in ('freq_resolved', 'chain_verified_proximity'):
+            assert MatchResult(match_type=mt).confidence == 'medium'
+
+    def test_low_types(self):
+        for mt in ('single_amb', 'chain_amb', 'parent_amb', 'parent_rejected'):
+            assert MatchResult(match_type=mt).confidence == 'low'
+
+    def test_unknown_type_is_none(self):
+        assert MatchResult(match_type='no_auth_match').confidence == 'none'
+        assert MatchResult().confidence == 'none'  # default match_type is 'no_terms'

@@ -76,13 +76,13 @@ FS_TYPE_CITY = "186"
 PROXIMITY_THRESHOLD_KM = 50
 
 OUTPUT_FIELDS = [
-    'original', 'guid', 'frequency', 'match_type', 'match_depth',
+    'original', 'guid', 'frequency', 'match_type', 'confidence', 'match_depth',
     'candidates', 'authority_name', 'type_ahead', 'jurisdiction',
     'level', 'authority_id', 'skipped_count', 'skipped_terms',
 ]
 
 TIE_OUTPUT_FIELDS = [
-    'original', 'guid', 'frequency', 'match_type', 'match_depth',
+    'original', 'guid', 'frequency', 'match_type', 'confidence', 'match_depth',
     'authority_id', 'authority_name', 'type_ahead', 'level', 'jurisdiction',
 ]
 
@@ -2024,6 +2024,20 @@ def detect_tie(ranked_with_scores):
     return (ranked_with_scores[0][0], [])
 
 
+CONFIDENCE_BY_TYPE = {
+    'mnt_full_string': 'high',
+    'chain_verified': 'high',
+    'single_term': 'high',
+    'parent_resolved': 'high',
+    'freq_resolved': 'medium',
+    'chain_verified_proximity': 'medium',
+    'single_amb': 'low',
+    'chain_amb': 'low',
+    'parent_amb': 'low',
+    'parent_rejected': 'low',
+}
+
+
 @dataclass
 class MatchResult:
     """Outcome of matching one place string: surviving candidates, how deep
@@ -2034,6 +2048,13 @@ class MatchResult:
     skipped_count: int = 0
     skipped_terms: str = ''
     tied_ids: list = field(default_factory=list)
+    skipped_had_candidates: bool = False
+
+    @property
+    def confidence(self):
+        """Trust tier derived from match_type. Population never resolves, so
+        match_type alone determines confidence."""
+        return CONFIDENCE_BY_TYPE.get(self.match_type, 'none')
 
 
 def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None, ascii_cache=None,
@@ -2214,7 +2235,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     skip_str = '; '.join(skipped)
     ranked = rank_candidates(list(confirmed), auth_cache, None)
     ids = [uuid for uuid, _ in ranked]
-    return MatchResult(ids, depth, 'parent_only', skip_count, skip_str)
+    return MatchResult(ids, depth, 'parent_only', skip_count, skip_str,
+                       skipped_had_candidates=bool(skipped_with_candidates))
 
 
 # ---------------------------------------------------------------------------
@@ -2463,34 +2485,53 @@ def resolve_helper_term(client, term_string, auth_cache, interactive=False):
     }
 
 
-def _parent_contradicts_input(winner_uuid, terms, skipped_terms_str, auth_cache):
-    """Check whether a parent_resolved match dropped the specific part of the input.
+def resolve_parent_match(match, terms, auth_cache, client):
+    """Decide the fate of a parent_only match: resolve, reject, or amb.
 
-    For a parent_resolved match, the rightmost term anchored the match but the
-    more specific terms (to the left) could not be verified as children. If none
-    of the specific terms' tokens appear in the matched record's type_ahead chain,
-    the match is almost certainly wrong — the place name was lost entirely.
+    The rightmost term anchored a parent, but no more-specific term to its left
+    verified as a child. resolve_parent_only picks a winner among the parent
+    candidates by frequency/population. What happens next turns on whether any
+    dropped specific term had authority candidates of its own:
 
-    Returns True if the match should be rejected.
+      - Recoverable data present (a specific term matched some authority record
+        but failed to chain to this parent): the parent is suspect — we dropped
+        a resolvable place. Reject -> parent_rejected.
+      - No recoverable data (specifics were pure noise / unmatchable): the parent
+        is the best available signal. Keep it -> parent_resolved / freq_resolved.
+      - Candidates can't be disambiguated: parent_amb, tie set exposed.
+
+    Skipped terms are carried through unchanged so the dropped specifics stay
+    recorded in the output regardless of outcome.
     """
-    rec = auth_cache.get(winner_uuid)
-    if not rec:
-        return False
+    winner, resolution = resolve_parent_only(
+        match.candidate_ids, auth_cache, client, term=terms[-1])
 
-    type_ahead = field_str(rec, 'Type_Ahead_Value')
-    if not type_ahead:
-        return False
+    if resolution in ('parent_resolved', 'freq_resolved'):
+        if match.skipped_had_candidates:
+            return MatchResult(
+                candidate_ids=[],
+                depth=match.depth,
+                match_type='parent_rejected',
+                skipped_count=match.skipped_count,
+                skipped_terms=match.skipped_terms,
+            )
+        return MatchResult(
+            candidate_ids=[winner],
+            depth=match.depth,
+            match_type=resolution,
+            skipped_count=match.skipped_count,
+            skipped_terms=match.skipped_terms,
+        )
 
-    skipped = set()
-    if skipped_terms_str:
-        for part in skipped_terms_str.split(';'):
-            skipped.update(tokenize(part))
-
-    if not skipped:
-        return False
-
-    ta_tokens = tokenize(type_ahead)
-    return not (skipped & ta_tokens)
+    # resolution == 'amb'
+    return MatchResult(
+        candidate_ids=[],
+        depth=match.depth,
+        match_type='parent_amb',
+        skipped_count=match.skipped_count,
+        skipped_terms=match.skipped_terms,
+        tied_ids=list(match.candidate_ids),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2704,7 +2745,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
     log.info("\nPhase 3: Right-to-left matching (chain walk + skip + rank) %s", elapsed())
     results = []
     ties = []
-    contradiction_rejects = 0
+    recoverable_rejects = 0
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
         fs_uid = (fs_hits or {}).get(place)
         if fs_uid and fs_uid in auth_cache:
@@ -2734,36 +2775,11 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                 match = retry
 
         if match.match_type == 'parent_only' and match.candidate_ids:
-            winner, resolution = resolve_parent_only(
-                match.candidate_ids, auth_cache, client, term=terms[-1])
-            if resolution in ('parent_resolved', 'freq_resolved'):
-                if _parent_contradicts_input(winner, terms, match.skipped_terms, auth_cache):
-                    match = MatchResult(
-                        candidate_ids=[],
-                        depth=match.depth,
-                        match_type='parent_rejected',
-                        skipped_count=match.skipped_count,
-                        skipped_terms=match.skipped_terms,
-                    )
-                    contradiction_rejects += 1
-                else:
-                    match = MatchResult(
-                        candidate_ids=[winner],
-                        depth=match.depth,
-                        match_type=resolution,
-                        skipped_count=match.skipped_count,
-                        skipped_terms=match.skipped_terms,
-                    )
-            elif resolution == 'amb':
-                match = MatchResult(
-                    candidate_ids=[],
-                    depth=match.depth,
-                    match_type='parent_amb',
-                    skipped_count=match.skipped_count,
-                    skipped_terms=match.skipped_terms,
-                )
+            match = resolve_parent_match(match, terms, auth_cache, client)
+            if match.match_type == 'parent_rejected':
+                recoverable_rejects += 1
 
-        if match.match_type in ('chain_amb', 'single_amb') and match.tied_ids:
+        if match.match_type in ('chain_amb', 'single_amb', 'parent_amb') and match.tied_ids:
             for tid in match.tied_ids:
                 rec = auth_cache.get(tid, {})
                 ties.append({
@@ -2771,6 +2787,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                     'guid': guid,
                     'frequency': frequency,
                     'match_type': match.match_type,
+                    'confidence': match.confidence,
                     'match_depth': match.depth,
                     'authority_id': tid,
                     'authority_name': rec.get('Auth_Place_Name', ''),
@@ -2784,6 +2801,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
             'guid': guid,
             'frequency': frequency,
             'match_type': match.match_type,
+            'confidence': match.confidence,
             'match_depth': match.depth,
             'candidates': len(match.candidate_ids),
             'authority_name': '',
@@ -2810,9 +2828,9 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
             log.info("  Matched %d/%d entries...", idx + 1, len(parsed))
 
     log.info("  Matched %d/%d entries", len(parsed), len(parsed))
-    if contradiction_rejects:
-        log.info("  Contradiction check rejected %d parent_resolved matches",
-                 contradiction_rejects)
+    if recoverable_rejects:
+        log.info("  Rejected %d parent matches with recoverable specific terms",
+                 recoverable_rejects)
 
     fm_calls = 0
     output_path, tie_path, spelling_log_path = _resolve_output_paths(
