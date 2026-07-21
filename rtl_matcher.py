@@ -2005,19 +2005,23 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
 
 
 def detect_tie(ranked_with_scores):
-    """Check if top candidates in a ranked list share the same score.
+    """Check if top candidates share the same STRUCTURAL score.
 
-    Returns (winner_uuid_or_None, tied_uuids).
-    If tied: winner is None, tied_uuids contains all candidates sharing the top score.
-    If not tied: winner is the top candidate, tied_uuids is empty.
+    A tie is equality on the structural axes (helper_miss, level_gap) only;
+    population (the third score component) is ignored. Population may order the
+    array but must never break a tie into a single winner.
+
+    Returns (winner_uuid_or_None, tied_uuids). If tied: winner is None and
+    tied_uuids holds every candidate sharing the top structural score, in
+    ranked order. If not tied: winner is the top candidate, tied_uuids is empty.
     """
     if not ranked_with_scores:
         return (None, [])
     if len(ranked_with_scores) == 1:
         return (ranked_with_scores[0][0], [])
 
-    top_score = ranked_with_scores[0][1]
-    tied = [uuid for uuid, s in ranked_with_scores if s == top_score]
+    top_structural = ranked_with_scores[0][1][:2]
+    tied = [uuid for uuid, s in ranked_with_scores if s[:2] == top_structural]
 
     if len(tied) > 1:
         return (None, tied)

@@ -506,10 +506,19 @@ class TestDetectTie:
         assert winner is None
         assert set(tied) == {'a', 'b', 'c'}
 
-    def test_same_gap_different_pop_not_tied(self):
+    def test_same_gap_different_pop_is_tie(self):
+        # Population differs but structural axes match -> tie (population must
+        # not break the tie into a single winner).
         ranked = [('big', (0, 2, -500000)), ('small', (0, 2, -100))]
         winner, tied = detect_tie(ranked)
-        assert winner == 'big'
+        assert winner is None
+        assert tied == ['big', 'small']
+
+    def test_different_level_gap_still_resolves(self):
+        # Structural separation (level_gap) still produces a single winner.
+        ranked = [('better', (0, 1, -100)), ('worse', (0, 3, -900000))]
+        winner, tied = detect_tie(ranked)
+        assert winner == 'better'
         assert tied == []
 
 
