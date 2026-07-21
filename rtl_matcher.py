@@ -76,13 +76,14 @@ FS_TYPE_CITY = "186"
 PROXIMITY_THRESHOLD_KM = 50
 
 OUTPUT_FIELDS = [
-    'original', 'guid', 'frequency', 'match_type', 'match_depth',
+    'original', 'guid', 'frequency', 'match_type', 'confidence', 'match_depth',
     'candidates', 'authority_name', 'type_ahead', 'jurisdiction',
-    'level', 'authority_id', 'skipped_count', 'skipped_terms',
+    'level', 'authority_id', 'candidate_ids', 'candidate_names',
+    'skipped_count', 'skipped_terms',
 ]
 
 TIE_OUTPUT_FIELDS = [
-    'original', 'guid', 'frequency', 'match_type', 'match_depth',
+    'original', 'guid', 'frequency', 'match_type', 'confidence', 'match_depth',
     'authority_id', 'authority_name', 'type_ahead', 'level', 'jurisdiction',
 ]
 
@@ -1833,6 +1834,17 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 FREQ_MIN = 10      # winner needs at least this many observations
 FREQ_RATIO = 5     # and at least this multiple of the runner-up
+MAX_ARRAY = 5      # low-confidence arrays keep at most this many ranked candidates
+
+
+def cap_candidates(ranked_ids, context=""):
+    """Trim a ranked candidate-id list to MAX_ARRAY, logging any drop so that
+    truncation of a possibly-correct low-population outlier is never silent."""
+    if len(ranked_ids) > MAX_ARRAY:
+        log.debug("    array truncated%s: %d candidates -> %d",
+                  f" ({context})" if context else "", len(ranked_ids), MAX_ARRAY)
+        return ranked_ids[:MAX_ARRAY]
+    return list(ranked_ids)
 
 
 def _disambiguate_by_frequency(term, candidates, dict_freq):
@@ -1857,38 +1869,15 @@ def _disambiguate_by_frequency(term, candidates, dict_freq):
     return None
 
 
-def _disambiguate_by_population(candidates, auth_cache):
-    """Apply Leafprint population rules to a set of same-tier candidates.
-    Returns (winner_uuid, 'parent_resolved') or (None, 'amb')."""
-    if len(candidates) == 1:
-        return (candidates[0], 'parent_resolved')
-
-    pops = [(uid, get_population(auth_cache.get(uid, {}))) for uid in candidates]
-    pops.sort(key=lambda x: (-x[1], x[0]))
-
-    if all(p == 0 for _, p in pops):
-        return (None, 'amb')
-
-    first_uid, first_pop = pops[0]
-    _second_uid, second_pop = pops[1]
-
-    if first_pop >= 50_000 and second_pop == 0:
-        return (first_uid, 'parent_resolved')
-
-    if second_pop > 0 and first_pop > 5 * second_pop:
-        return (first_uid, 'parent_resolved')
-
-    return (None, 'amb')
-
-
 def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
-    """Disambiguate parent_only candidates using population alone.
+    """Resolve parent_only candidates to a single answer only on strong signals.
 
-    No chain verification occurred, so level-based preference is unreliable
-    (a specific-looking candidate may be completely unrelated to the input).
-    Treat all candidates as peers and let population decide.
+    A single candidate resolves directly; a dictionary-frequency prior resolves
+    with medium confidence. Population never resolves a multi-candidate set — it
+    only orders the array surfaced by resolve_parent_match.
 
-    Returns (winner_uuid, 'parent_resolved') or (None, 'amb').
+    Returns (winner_uuid, 'parent_resolved'), (winner_uuid, 'freq_resolved'),
+    or (None, 'amb').
     """
     if not candidate_ids:
         return (None, 'amb')
@@ -1913,7 +1902,9 @@ def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
     if winner:
         return (winner, 'freq_resolved')
 
-    return _disambiguate_by_population(candidate_ids, auth_cache)
+    # Population never resolves a multi-candidate set. Fall through to amb;
+    # the ranked candidate array is surfaced by resolve_parent_match.
+    return (None, 'amb')
 
 
 def _get_parent_level(confirmed_set, auth_cache):
@@ -2005,23 +1996,41 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
 
 
 def detect_tie(ranked_with_scores):
-    """Check if top candidates in a ranked list share the same score.
+    """Check if top candidates share the same STRUCTURAL score.
 
-    Returns (winner_uuid_or_None, tied_uuids).
-    If tied: winner is None, tied_uuids contains all candidates sharing the top score.
-    If not tied: winner is the top candidate, tied_uuids is empty.
+    A tie is equality on the structural axes (helper_miss, level_gap) only;
+    population (the third score component) is ignored. Population may order the
+    array but must never break a tie into a single winner.
+
+    Returns (winner_uuid_or_None, tied_uuids). If tied: winner is None and
+    tied_uuids holds every candidate sharing the top structural score, in
+    ranked order. If not tied: winner is the top candidate, tied_uuids is empty.
     """
     if not ranked_with_scores:
         return (None, [])
     if len(ranked_with_scores) == 1:
         return (ranked_with_scores[0][0], [])
 
-    top_score = ranked_with_scores[0][1]
-    tied = [uuid for uuid, s in ranked_with_scores if s == top_score]
+    top_structural = ranked_with_scores[0][1][:2]
+    tied = [uuid for uuid, s in ranked_with_scores if s[:2] == top_structural]
 
     if len(tied) > 1:
         return (None, tied)
     return (ranked_with_scores[0][0], [])
+
+
+CONFIDENCE_BY_TYPE = {
+    'mnt_full_string': 'high',
+    'chain_verified': 'high',
+    'single_term': 'high',
+    'parent_resolved': 'high',
+    'freq_resolved': 'medium',
+    'chain_verified_proximity': 'medium',
+    'single_amb': 'low',
+    'chain_amb': 'low',
+    'parent_amb': 'low',
+    'parent_rejected': 'low',
+}
 
 
 @dataclass
@@ -2034,6 +2043,13 @@ class MatchResult:
     skipped_count: int = 0
     skipped_terms: str = ''
     tied_ids: list = field(default_factory=list)
+    skipped_had_candidates: bool = False
+
+    @property
+    def confidence(self):
+        """Trust tier derived from match_type. Population never resolves, so
+        match_type alone determines confidence."""
+        return CONFIDENCE_BY_TYPE.get(self.match_type, 'none')
 
 
 def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None, ascii_cache=None,
@@ -2072,7 +2088,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                                             _LOCAL.dict_freq or {})
         if winner:
             return MatchResult([winner], depth=1, match_type='freq_resolved')
-        return MatchResult([], depth=1, match_type='single_amb', tied_ids=all_ids)
+        return MatchResult([], depth=1, match_type='single_amb',
+                           tied_ids=cap_candidates(all_ids, "single_amb"))
 
     confirmed = parent_ids
     depth = 1
@@ -2204,7 +2221,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         skip_str = '; '.join(skip_parts)
 
         if tied:
-            return MatchResult([], depth, 'chain_amb', skip_count, skip_str, tied)
+            return MatchResult([], depth, 'chain_amb', skip_count, skip_str,
+                               cap_candidates(tied, "chain_amb"))
         mt = 'chain_verified_proximity' if proximity_matched else 'chain_verified'
         ids = [winner] if winner else []
         return MatchResult(ids, depth, mt, skip_count, skip_str)
@@ -2214,7 +2232,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     skip_str = '; '.join(skipped)
     ranked = rank_candidates(list(confirmed), auth_cache, None)
     ids = [uuid for uuid, _ in ranked]
-    return MatchResult(ids, depth, 'parent_only', skip_count, skip_str)
+    return MatchResult(ids, depth, 'parent_only', skip_count, skip_str,
+                       skipped_had_candidates=bool(skipped_with_candidates))
 
 
 # ---------------------------------------------------------------------------
@@ -2280,6 +2299,50 @@ def _resolve_output_paths(input_path, output_dir):
     tie_output = os.path.join(day_dir, f'{stem}_{num}_ties.tsv')
     spelling_log = os.path.join(day_dir, f'{stem}_{num}_spelling.tsv')
     return output, tie_output, spelling_log
+
+
+def build_result_row(match, original, guid, frequency, auth_cache):
+    """Build one main-output row for a match. The ranked candidate list is
+    inlined into candidate_ids / candidate_names (pipe-delimited) so the main
+    file is self-contained: single-answer types carry one candidate, low-
+    confidence amb types carry the whole ranked array. authority_* mirror the
+    top-ranked candidate as the best guess."""
+    all_candidates = match.candidate_ids or match.tied_ids
+    # Use the full type-ahead path so same-name candidates are distinguishable
+    # (e.g. "Beverly, Essex, Massachusetts" vs "Beverly, ...); fall back to the
+    # bare place name when type-ahead is absent.
+    names = [(field_str(auth_cache.get(cid, {}), 'Type_Ahead_Value')
+              or field_str(auth_cache.get(cid, {}), 'Auth_Place_Name'))
+             for cid in all_candidates]
+    row = {
+        'original': original,
+        'guid': guid,
+        'frequency': frequency,
+        'match_type': match.match_type,
+        'confidence': match.confidence,
+        'match_depth': match.depth,
+        'candidates': len(all_candidates),
+        'authority_name': '',
+        'type_ahead': '',
+        'jurisdiction': '',
+        'level': '',
+        'authority_id': '',
+        'candidate_ids': '|'.join(all_candidates),
+        'candidate_names': '|'.join(names),
+        'skipped_count': match.skipped_count,
+        'skipped_terms': match.skipped_terms,
+    }
+    # parent_rejected is a non-match: expose the candidate columns for context
+    # but leave the authority_* fields blank so it never reads as a resolution.
+    if all_candidates and match.match_type != 'parent_rejected':
+        best_id = all_candidates[0]
+        best_record = auth_cache.get(best_id, {})
+        row['authority_name'] = field_str(best_record, 'Auth_Place_Name')
+        row['type_ahead'] = field_str(best_record, 'Type_Ahead_Value')
+        row['jurisdiction'] = field_str(best_record, 'Jurisdiction')
+        row['level'] = field_str(best_record, 'Level')
+        row['authority_id'] = best_id
+    return row
 
 
 def write_results(results, path):
@@ -2463,34 +2526,56 @@ def resolve_helper_term(client, term_string, auth_cache, interactive=False):
     }
 
 
-def _parent_contradicts_input(winner_uuid, terms, skipped_terms_str, auth_cache):
-    """Check whether a parent_resolved match dropped the specific part of the input.
+def resolve_parent_match(match, terms, auth_cache, client):
+    """Decide the fate of a parent_only match: resolve, reject, or amb.
 
-    For a parent_resolved match, the rightmost term anchored the match but the
-    more specific terms (to the left) could not be verified as children. If none
-    of the specific terms' tokens appear in the matched record's type_ahead chain,
-    the match is almost certainly wrong — the place name was lost entirely.
+    The rightmost term anchored a parent, but no more-specific term to its left
+    verified as a child. resolve_parent_only picks a winner among the parent
+    candidates by frequency/population. What happens next turns on whether any
+    dropped specific term had authority candidates of its own:
 
-    Returns True if the match should be rejected.
+      - Recoverable data present (a specific term matched some authority record
+        but failed to chain to this parent): the parent is suspect — we dropped
+        a resolvable place. Reject -> parent_rejected.
+      - No recoverable data (specifics were pure noise / unmatchable): the parent
+        is the best available signal. Keep it -> parent_resolved / freq_resolved.
+      - Candidates can't be disambiguated: parent_amb, tie set exposed.
+
+    Skipped terms are carried through unchanged so the dropped specifics stay
+    recorded in the output regardless of outcome.
     """
-    rec = auth_cache.get(winner_uuid)
-    if not rec:
-        return False
+    winner, resolution = resolve_parent_only(
+        match.candidate_ids, auth_cache, client, term=terms[-1])
 
-    type_ahead = field_str(rec, 'Type_Ahead_Value')
-    if not type_ahead:
-        return False
+    if resolution in ('parent_resolved', 'freq_resolved'):
+        if match.skipped_had_candidates:
+            # A resolvable specific was dropped, so the bare parent is suspect.
+            # Keep the parent_rejected label but carry the best-guess parent at
+            # low confidence rather than discarding it.
+            return MatchResult(
+                candidate_ids=[winner],
+                depth=match.depth,
+                match_type='parent_rejected',
+                skipped_count=match.skipped_count,
+                skipped_terms=match.skipped_terms,
+            )
+        return MatchResult(
+            candidate_ids=[winner],
+            depth=match.depth,
+            match_type=resolution,
+            skipped_count=match.skipped_count,
+            skipped_terms=match.skipped_terms,
+        )
 
-    skipped = set()
-    if skipped_terms_str:
-        for part in skipped_terms_str.split(';'):
-            skipped.update(tokenize(part))
-
-    if not skipped:
-        return False
-
-    ta_tokens = tokenize(type_ahead)
-    return not (skipped & ta_tokens)
+    # resolution == 'amb'
+    return MatchResult(
+        candidate_ids=[],
+        depth=match.depth,
+        match_type='parent_amb',
+        skipped_count=match.skipped_count,
+        skipped_terms=match.skipped_terms,
+        tied_ids=cap_candidates(list(match.candidate_ids), "parent_amb"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2704,7 +2789,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
     log.info("\nPhase 3: Right-to-left matching (chain walk + skip + rank) %s", elapsed())
     results = []
     ties = []
-    contradiction_rejects = 0
+    recoverable_rejects = 0
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
         fs_uid = (fs_hits or {}).get(place)
         if fs_uid and fs_uid in auth_cache:
@@ -2734,36 +2819,11 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                 match = retry
 
         if match.match_type == 'parent_only' and match.candidate_ids:
-            winner, resolution = resolve_parent_only(
-                match.candidate_ids, auth_cache, client, term=terms[-1])
-            if resolution in ('parent_resolved', 'freq_resolved'):
-                if _parent_contradicts_input(winner, terms, match.skipped_terms, auth_cache):
-                    match = MatchResult(
-                        candidate_ids=[],
-                        depth=match.depth,
-                        match_type='parent_rejected',
-                        skipped_count=match.skipped_count,
-                        skipped_terms=match.skipped_terms,
-                    )
-                    contradiction_rejects += 1
-                else:
-                    match = MatchResult(
-                        candidate_ids=[winner],
-                        depth=match.depth,
-                        match_type=resolution,
-                        skipped_count=match.skipped_count,
-                        skipped_terms=match.skipped_terms,
-                    )
-            elif resolution == 'amb':
-                match = MatchResult(
-                    candidate_ids=[],
-                    depth=match.depth,
-                    match_type='parent_amb',
-                    skipped_count=match.skipped_count,
-                    skipped_terms=match.skipped_terms,
-                )
+            match = resolve_parent_match(match, terms, auth_cache, client)
+            if match.match_type == 'parent_rejected':
+                recoverable_rejects += 1
 
-        if match.match_type in ('chain_amb', 'single_amb') and match.tied_ids:
+        if match.match_type in ('chain_amb', 'single_amb', 'parent_amb') and match.tied_ids:
             for tid in match.tied_ids:
                 rec = auth_cache.get(tid, {})
                 ties.append({
@@ -2771,6 +2831,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                     'guid': guid,
                     'frequency': frequency,
                     'match_type': match.match_type,
+                    'confidence': match.confidence,
                     'match_depth': match.depth,
                     'authority_id': tid,
                     'authority_name': rec.get('Auth_Place_Name', ''),
@@ -2779,40 +2840,15 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                     'jurisdiction': rec.get('Jurisdiction', ''),
                 })
 
-        row = {
-            'original': place,
-            'guid': guid,
-            'frequency': frequency,
-            'match_type': match.match_type,
-            'match_depth': match.depth,
-            'candidates': len(match.candidate_ids),
-            'authority_name': '',
-            'type_ahead': '',
-            'jurisdiction': '',
-            'level': '',
-            'authority_id': '',
-            'skipped_count': match.skipped_count,
-            'skipped_terms': match.skipped_terms,
-        }
-
-        if match.candidate_ids:
-            best_id = match.candidate_ids[0]
-            best_record = auth_cache.get(best_id, {})
-            row['authority_name'] = best_record.get('Auth_Place_Name', '')
-            row['type_ahead'] = best_record.get('Type_Ahead_Value', '')
-            row['jurisdiction'] = best_record.get('Jurisdiction', '')
-            row['level'] = best_record.get('Level', '')
-            row['authority_id'] = best_id
-
-        results.append(row)
+        results.append(build_result_row(match, place, guid, frequency, auth_cache))
 
         if (idx + 1) % 50 == 0:
             log.info("  Matched %d/%d entries...", idx + 1, len(parsed))
 
     log.info("  Matched %d/%d entries", len(parsed), len(parsed))
-    if contradiction_rejects:
-        log.info("  Contradiction check rejected %d parent_resolved matches",
-                 contradiction_rejects)
+    if recoverable_rejects:
+        log.info("  Rejected %d parent matches with recoverable specific terms",
+                 recoverable_rejects)
 
     fm_calls = 0
     output_path, tie_path, spelling_log_path = _resolve_output_paths(

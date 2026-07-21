@@ -8,6 +8,11 @@ from symspellpy import SymSpell, Verbosity
 
 from rtl_matcher import (
     BATCH,
+    CONFIDENCE_BY_TYPE,
+    MAX_ARRAY,
+    MatchResult,
+    build_result_row,
+    cap_candidates,
     build_spelling_index,
     detect_jurisdiction_hint,
     detect_tie,
@@ -18,6 +23,7 @@ from rtl_matcher import (
     query_spelling_corrections,
     rank_candidates,
     resolve_helper_term,
+    resolve_parent_match,
     resolve_parent_only,
     write_spelling_log,
 )
@@ -171,19 +177,30 @@ class TestResolveParentOnly:
         result = resolve_parent_only([uid], auth_cache, MagicMock())
         assert result == (uid, 'parent_resolved')
 
-    def test_all_zero_populations_mixed_levels_amb(self):
-        state = 'state-001'
-        city_a = 'city-001'
-        city_b = 'city-002'
+    def test_multi_candidate_population_no_longer_resolves(self):
+        # Big population candidate must NOT win by population anymore.
+        big = 'city-big'
+        small = 'city-small'
         auth_cache = {
-            state: make_auth_record_full(state, level='6', name='New York', population='0'),
-            city_a: make_auth_record_full(city_a, level='4', name='Syracuse', population='0'),
-            city_b: make_auth_record_full(city_b, level='4', name='Syracuse', population='0'),
+            big: make_auth_record_full(big, level='4', population='675000'),
+            small: make_auth_record_full(small, level='4', population='2000'),
         }
-        result = resolve_parent_only([state, city_a, city_b], auth_cache, MagicMock())
+        result = resolve_parent_only([big, small], auth_cache, MagicMock())
         assert result == (None, 'amb')
 
-    def test_pop_over_50k_rest_zero_wins(self):
+    def test_multi_candidate_cross_level_is_amb(self):
+        # The "South" -> "South Africa" bug: country vs villages -> amb.
+        country = 'za-1'
+        village = 'v-1'
+        auth_cache = {
+            country: make_auth_record_full(country, level='8', population='60000000'),
+            village: make_auth_record_full(village, level='4', population='0'),
+        }
+        result = resolve_parent_only([country, village], auth_cache, MagicMock())
+        assert result == (None, 'amb')
+
+    def test_multi_candidate_pop_over_50k_still_amb(self):
+        # Even the "pop >= 50k, rest zero" case no longer resolves.
         big_city = 'city-big'
         small_city = 'city-small'
         auth_cache = {
@@ -191,112 +208,6 @@ class TestResolveParentOnly:
             small_city: make_auth_record_full(small_city, level='4', population='0'),
         }
         result = resolve_parent_only([big_city, small_city], auth_cache, MagicMock())
-        assert result == (big_city, 'parent_resolved')
-
-    def test_low_pop_under_50k_escalates_to_high(self):
-        city = 'city-001'
-        state = 'state-001'
-        auth_cache = {
-            city: make_auth_record_full(city, level='4', population='5000'),
-            state: make_auth_record_full(state, level='6', population='3000000'),
-        }
-        result = resolve_parent_only([city, state], auth_cache, MagicMock())
-        assert result == (state, 'parent_resolved')
-
-    def test_highest_pop_wins_5x_rule_across_levels(self):
-        # Candidates are unverified peers: level does not shield a lower-level
-        # candidate from losing to a much larger higher-level one.
-        big_city = 'city-big'
-        small_city = 'city-small'
-        state = 'state-001'
-        auth_cache = {
-            big_city: make_auth_record_full(big_city, level='4', population='675000'),
-            small_city: make_auth_record_full(small_city, level='4', population='2000'),
-            state: make_auth_record_full(state, level='6', population='10000000'),
-        }
-        result = resolve_parent_only([big_city, small_city, state], auth_cache, MagicMock())
-        assert result == (state, 'parent_resolved')
-
-    def test_low_pop_close_escalates_to_high(self):
-        city_a = 'city-a'
-        city_b = 'city-b'
-        state = 'state-001'
-        auth_cache = {
-            city_a: make_auth_record_full(city_a, level='4', population='60000'),
-            city_b: make_auth_record_full(city_b, level='4', population='55000'),
-            state: make_auth_record_full(state, level='6', population='8000000'),
-        }
-        result = resolve_parent_only([city_a, city_b, state], auth_cache, MagicMock())
-        assert result == (state, 'parent_resolved')
-
-    def test_no_high_and_low_ambiguous_returns_amb(self):
-        city_a = 'city-a'
-        city_b = 'city-b'
-        auth_cache = {
-            city_a: make_auth_record_full(city_a, level='4', population='60000'),
-            city_b: make_auth_record_full(city_b, level='4', population='55000'),
-        }
-        result = resolve_parent_only([city_a, city_b], auth_cache, MagicMock())
-        assert result == (None, 'amb')
-
-    def test_no_low_single_high_returns_it(self):
-        state = 'state-001'
-        auth_cache = {
-            state: make_auth_record_full(state, level='6', population='5000000'),
-        }
-        result = resolve_parent_only([state], auth_cache, MagicMock())
-        assert result == (state, 'parent_resolved')
-
-    def test_multiple_high_amb_when_both_populated(self):
-        state = 'state-001'
-        country = 'country-001'
-        auth_cache = {
-            state: make_auth_record_full(state, level='6', population='10700000'),
-            country: make_auth_record_full(country, level='8', population='3700000'),
-        }
-        result = resolve_parent_only([state, country], auth_cache, MagicMock())
-        assert result == (None, 'amb')
-
-    def test_multiple_high_5x_rule(self):
-        big_state = 'state-big'
-        small_region = 'region-small'
-        auth_cache = {
-            big_state: make_auth_record_full(big_state, level='6', population='10000000'),
-            small_region: make_auth_record_full(small_region, level='5', population='500'),
-        }
-        result = resolve_parent_only([big_state, small_region], auth_cache, MagicMock())
-        assert result == (big_state, 'parent_resolved')
-
-    def test_multiple_high_all_zero_amb(self):
-        state_a = 'state-a'
-        state_b = 'state-b'
-        auth_cache = {
-            state_a: make_auth_record_full(state_a, level='6', population='0'),
-            state_b: make_auth_record_full(state_b, level='6', population='0'),
-        }
-        result = resolve_parent_only([state_a, state_b], auth_cache, MagicMock())
-        assert result == (None, 'amb')
-
-    def test_missing_population_treated_as_zero(self):
-        city_no_pop = 'city-nopop'
-        state = 'state-001'
-        rec = make_auth_record_full(city_no_pop, level='4')
-        del rec['Population']
-        auth_cache = {
-            city_no_pop: rec,
-            state: make_auth_record_full(state, level='6', population='5000000'),
-        }
-        result = resolve_parent_only([city_no_pop, state], auth_cache, MagicMock())
-        assert result == (state, 'parent_resolved')
-
-    def test_low_all_zero_no_high_returns_amb(self):
-        city_a = 'city-a'
-        city_b = 'city-b'
-        auth_cache = {
-            city_a: make_auth_record_full(city_a, level='4', population='0'),
-            city_b: make_auth_record_full(city_b, level='4', population='0'),
-        }
-        result = resolve_parent_only([city_a, city_b], auth_cache, MagicMock())
         assert result == (None, 'amb')
 
 
@@ -503,10 +414,19 @@ class TestDetectTie:
         assert winner is None
         assert set(tied) == {'a', 'b', 'c'}
 
-    def test_same_gap_different_pop_not_tied(self):
+    def test_same_gap_different_pop_is_tie(self):
+        # Population differs but structural axes match -> tie (population must
+        # not break the tie into a single winner).
         ranked = [('big', (0, 2, -500000)), ('small', (0, 2, -100))]
         winner, tied = detect_tie(ranked)
-        assert winner == 'big'
+        assert winner is None
+        assert tied == ['big', 'small']
+
+    def test_different_level_gap_still_resolves(self):
+        # Structural separation (level_gap) still produces a single winner.
+        ranked = [('better', (0, 1, -100)), ('worse', (0, 3, -900000))]
+        winner, tied = detect_tie(ranked)
+        assert winner == 'better'
         assert tied == []
 
 
@@ -1495,3 +1415,254 @@ class TestFrequencyDisambiguation:
 
     def test_empty_freq_returns_none(self):
         assert _disambiguate_by_frequency('z', [U1, U2], {}) is None
+
+
+class TestSkippedHadCandidates:
+    """match_entry must flag whether any skipped (dropped) term had authority
+    candidates that failed chain verification -- the 'recoverable data' signal."""
+
+    def test_flag_false_when_skipped_term_has_no_candidates(self):
+        """'Bad String, USA': Bad String is absent from name_cache, so it is
+        skipped with no candidates -> skipped_had_candidates is False."""
+        auth_cache = {
+            'usa-1': make_auth_record_full(
+                'usa-1', level='8', name='United States of America',
+                population='330000000'),
+        }
+        name_cache = {'united states of america': {'usa-1'}}
+        client = MagicMock()
+        client.find.return_value = []
+        result = match_entry(['Bad String', 'United States of America'],
+                             name_cache, auth_cache, client,
+                             'Bad String, United States of America')
+        assert result.match_type == 'parent_only'
+        assert result.skipped_had_candidates is False
+
+    def test_flag_true_when_skipped_term_has_unchained_candidate(self):
+        """Springfield is in name_cache but its only candidate does not chain
+        up to USA -> skipped with a candidate -> skipped_had_candidates True."""
+        auth_cache = {
+            'usa-1': make_auth_record_full(
+                'usa-1', level='8', name='United States of America',
+                population='330000000'),
+            'spr-ca': make_auth_record_full(
+                'spr-ca', parent_uuid='canada-1', level='4',
+                name='Springfield', population='5000'),
+        }
+        name_cache = {
+            'united states of america': {'usa-1'},
+            'springfield': {'spr-ca'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        result = match_entry(['Springfield', 'United States of America'],
+                             name_cache, auth_cache, client,
+                             'Springfield, United States of America')
+        assert result.match_type == 'parent_only'
+        assert result.skipped_had_candidates is True
+
+
+class TestResolveParentMatch:
+    """The parent_only post-processing decision: resolve vs reject vs amb."""
+
+    def _parent_only(self, candidate_ids, had_candidates):
+        return MatchResult(
+            candidate_ids=list(candidate_ids),
+            depth=1,
+            match_type='parent_only',
+            skipped_count=1,
+            skipped_terms='Bad String',
+            skipped_had_candidates=had_candidates,
+        )
+
+    def test_resolves_when_no_recoverable_data(self):
+        """No recoverable specific -> parent stands as parent_resolved,
+        skipped terms preserved."""
+        auth_cache = {'tx': make_auth_record_full(
+            'tx', level='6', name='Texas', population='29000000')}
+        match = self._parent_only(['tx'], had_candidates=False)
+        result = resolve_parent_match(match, ['Bad String', 'Texas'],
+                                      auth_cache, MagicMock())
+        assert result.match_type == 'parent_resolved'
+        assert result.candidate_ids == ['tx']
+        assert result.skipped_terms == 'Bad String'
+
+    def test_rejects_when_recoverable_data_present(self):
+        """A recoverable specific that failed to chain -> parent_rejected, low
+        confidence, but the best-guess parent is carried, not discarded."""
+        auth_cache = {'tx': make_auth_record_full(
+            'tx', level='6', name='Texas', population='29000000')}
+        match = self._parent_only(['tx'], had_candidates=True)
+        result = resolve_parent_match(match, ['Bad String', 'Texas'],
+                                      auth_cache, MagicMock())
+        assert result.match_type == 'parent_rejected'
+        assert result.candidate_ids == ['tx']
+        assert result.confidence == 'low'
+        assert result.skipped_terms == 'Bad String'
+
+    def test_ambiguous_parent_produces_parent_amb_with_tied_ids(self):
+        """Two zero-population parent candidates cannot be disambiguated ->
+        parent_amb, empty candidates, tie set exposed in tied_ids."""
+        auth_cache = {
+            'fl-a': make_auth_record_full('fl-a', level='6', population='0'),
+            'fl-b': make_auth_record_full('fl-b', level='6', population='0'),
+        }
+        match = self._parent_only(['fl-a', 'fl-b'], had_candidates=False)
+        result = resolve_parent_match(match, ['Bad String', 'Florida'],
+                                      auth_cache, MagicMock())
+        assert result.match_type == 'parent_amb'
+        assert result.candidate_ids == []
+        assert result.confidence == 'low'
+        assert set(result.tied_ids) == {'fl-a', 'fl-b'}
+
+    def test_parent_amb_array_capped(self):
+        """A large ambiguous parent set is capped at MAX_ARRAY in tied_ids."""
+        ids = [f'c-{i}' for i in range(MAX_ARRAY + 4)]
+        auth_cache = {i: make_auth_record_full(i, level='4', population='0')
+                      for i in ids}
+        match = self._parent_only(ids, had_candidates=False)
+        result = resolve_parent_match(match, ['South'], auth_cache, MagicMock())
+        assert result.match_type == 'parent_amb'
+        assert result.confidence == 'low'
+        assert len(result.tied_ids) == MAX_ARRAY
+
+
+class TestBuildResultRow:
+    def test_single_answer_row(self):
+        auth_cache = {'a': make_auth_record_full('a', level='4', name='Alexandria',
+                                                 jurisdiction='City')}
+        match = MatchResult(candidate_ids=['a'], depth=2, match_type='chain_verified')
+        row = build_result_row(match, 'x, Alexandria', 'g1', '3', auth_cache)
+        assert row['authority_id'] == 'a'
+        assert row['authority_name'] == 'Alexandria'
+        assert row['candidate_ids'] == 'a'
+        assert row['candidate_names'] == 'Alexandria'
+        assert row['candidates'] == 1
+        assert row['confidence'] == 'high'
+
+    def test_amb_array_inlined(self):
+        # candidate_names uses the full type-ahead path so same-name candidates
+        # are distinguishable; missing type-ahead falls back to the place name.
+        rec_a = make_auth_record_full('a', level='4', name='Beverly')
+        rec_a['Type_Ahead_Value'] = 'Beverly, Essex, Massachusetts, United States'
+        rec_b = make_auth_record_full('b', level='4', name='Beverley')
+        rec_b['Type_Ahead_Value'] = 'Beverley, East Riding of Yorkshire, England'
+        rec_c = make_auth_record_full('c', level='4', name='Beverly')  # no type-ahead
+        auth_cache = {'a': rec_a, 'b': rec_b, 'c': rec_c}
+        match = MatchResult(candidate_ids=[], depth=1, match_type='parent_amb',
+                            tied_ids=['a', 'b', 'c'])
+        row = build_result_row(match, '3 Phillips street, Beverly', 'g2', '1', auth_cache)
+        assert row['authority_id'] == 'a'          # best guess = top-ranked
+        assert row['authority_name'] == 'Beverly'
+        assert row['candidate_ids'] == 'a|b|c'
+        assert row['candidate_names'] == (
+            'Beverly, Essex, Massachusetts, United States|'
+            'Beverley, East Riding of Yorkshire, England|'
+            'Beverly')                             # c falls back to place name
+        assert row['candidates'] == 3
+        assert row['confidence'] == 'low'
+
+    def test_parent_rejected_hides_authority_keeps_candidates(self):
+        # parent_rejected must not look like a match: authority_* blank, but the
+        # candidate columns still carry the context.
+        rec = make_auth_record_full('tx', level='6', name='Texas',
+                                    jurisdiction='State')
+        rec['Type_Ahead_Value'] = 'Texas, United States'
+        auth_cache = {'tx': rec}
+        match = MatchResult(candidate_ids=['tx'], depth=1,
+                            match_type='parent_rejected',
+                            skipped_count=1, skipped_terms='Bad String')
+        row = build_result_row(match, 'Bad String, Texas', 'g4', '1', auth_cache)
+        assert row['authority_id'] == ''
+        assert row['authority_name'] == ''
+        assert row['type_ahead'] == ''
+        assert row['jurisdiction'] == ''
+        assert row['level'] == ''
+        assert row['candidate_ids'] == 'tx'
+        assert row['candidate_names'] == 'Texas, United States'
+        assert row['candidates'] == 1
+        assert row['confidence'] == 'low'
+
+    def test_no_candidates_row(self):
+        match = MatchResult(candidate_ids=[], depth=0, match_type='no_auth_match')
+        row = build_result_row(match, 'nowhere', 'g3', '', {})
+        assert row['authority_id'] == ''
+        assert row['candidate_ids'] == ''
+        assert row['candidate_names'] == ''
+        assert row['candidates'] == 0
+
+
+class TestSouthRegression:
+    def test_generic_parent_with_garbage_siblings_is_parent_amb(self):
+        # "Garbage, garbage, South": only "south" matches authority; it pulls a
+        # country and a village. Must NOT resolve to the country by population.
+        country = 'za-1'
+        village = 'v-1'
+        auth_cache = {
+            country: make_auth_record_full(country, level='8', name='South Africa',
+                                           population='60000000'),
+            village: make_auth_record_full(village, level='4', name='South',
+                                           population='500'),
+        }
+        name_cache = {'south': {country, village}}
+        match = match_entry(['Garbage', 'garbage', 'South'], name_cache,
+                            auth_cache, MagicMock(), 'Garbage, garbage, South')
+        # rightmost "south" anchors parent_only with two candidates
+        assert match.match_type == 'parent_only'
+        resolved = resolve_parent_match(match, ['Garbage', 'garbage', 'South'],
+                                        auth_cache, MagicMock())
+        assert resolved.match_type == 'parent_amb'
+        assert resolved.confidence == 'low'
+        assert set(resolved.tied_ids) == {country, village}
+
+
+class TestMatchEntryArrayCap:
+    def test_single_amb_capped(self):
+        # MAX_ARRAY + 3 same-level candidates for one term -> single_amb, capped.
+        n = MAX_ARRAY + 3
+        ids = [f'city-{i}' for i in range(n)]
+        auth_cache = {i: make_auth_record_full(i, level='4', population=str(1000 * (n - k)))
+                      for k, i in enumerate(ids)}
+        name_cache = {'springfield': set(ids)}
+        result = match_entry(['Springfield'], name_cache, auth_cache, MagicMock(),
+                             'Springfield')
+        assert result.match_type == 'single_amb'
+        assert result.confidence == 'low'
+        assert len(result.tied_ids) == MAX_ARRAY
+
+
+class TestConfidenceTier:
+    def test_high_types(self):
+        for mt in ('mnt_full_string', 'chain_verified', 'single_term', 'parent_resolved'):
+            assert MatchResult(match_type=mt).confidence == 'high'
+
+    def test_medium_types(self):
+        for mt in ('freq_resolved', 'chain_verified_proximity'):
+            assert MatchResult(match_type=mt).confidence == 'medium'
+
+    def test_low_types(self):
+        for mt in ('single_amb', 'chain_amb', 'parent_amb', 'parent_rejected'):
+            assert MatchResult(match_type=mt).confidence == 'low'
+
+    def test_unknown_type_is_none(self):
+        assert MatchResult(match_type='no_auth_match').confidence == 'none'
+        assert MatchResult().confidence == 'none'  # default match_type is 'no_terms'
+
+
+class TestCapCandidates:
+    def test_under_cap_unchanged(self):
+        ids = ['a', 'b', 'c']
+        assert cap_candidates(ids) == ['a', 'b', 'c']
+
+    def test_at_cap_unchanged(self):
+        ids = [str(i) for i in range(MAX_ARRAY)]
+        assert cap_candidates(ids) == ids
+
+    def test_over_cap_truncates_preserving_order(self):
+        ids = [str(i) for i in range(MAX_ARRAY + 3)]
+        result = cap_candidates(ids, "test")
+        assert result == ids[:MAX_ARRAY]
+        assert len(result) == MAX_ARRAY
+
+    def test_empty(self):
+        assert cap_candidates([]) == []
