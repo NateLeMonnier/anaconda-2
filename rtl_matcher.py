@@ -594,6 +594,43 @@ def query_fallback_transforms_local(unmatched_terms, name_cache, transform_term_
     return added
 
 
+def query_preposition_extractions_local(unmatched_terms, name_cache):
+    """For terms still unmatched after prefix-anchored transforms, scan for
+    spatial prepositions anywhere in the string and try matching the substring
+    after them.  Results stored under the ORIGINAL term key in name_cache."""
+    added = 0
+    tried = 0
+    for term in unmatched_terms:
+        key = term.lower()
+        candidates = extract_after_preposition(term)
+        if not candidates:
+            continue
+        tried += 1
+        for candidate in candidates:
+            cleaned, jurisdiction = transform_term(candidate)
+            names_to_try = [candidate]
+            if cleaned:
+                names_to_try.append(cleaned)
+            for name in names_to_try:
+                if jurisdiction:
+                    records = _LOCAL.pa_by_name.get(name.lower(), [])
+                    for rec in records:
+                        if rec['UUID'] and rec['Jurisdiction'].lower() == jurisdiction.lower():
+                            if rec['UUID'] not in name_cache.get(key, set()):
+                                name_cache[key].add(rec['UUID'])
+                                added += 1
+                else:
+                    uuids = _query_name_local(name)
+                    new_uuids = uuids - name_cache.get(key, set())
+                    if new_uuids:
+                        name_cache[key].update(new_uuids)
+                        added += len(new_uuids)
+            if name_cache.get(key):
+                break
+    log.info("  Preposition extractions (local): %d terms tried, %d UUIDs added", tried, added)
+    return added
+
+
 def query_spelling_corrections_local(terms, name_cache, sym_spell,
                                      transform_map=None):
     """Find edit-distance-1 corrections via SymSpell and add their PA UUIDs.
@@ -1020,6 +1057,46 @@ def transform_term(term):
     return cleaned, jurisdiction
 
 
+SPATIAL_PREPOSITIONS = frozenset({
+    'near', 'from', 'outside', 'at', 'in', 'to',
+})
+
+DIRECTIONAL_PREPOSITIONS = frozenset({
+    'north', 'south', 'east', 'west',
+    'northeast', 'northwest', 'southeast', 'southwest',
+})
+
+
+def extract_after_preposition(term):
+    """Extract candidate place names found after spatial prepositions anywhere
+    in the term.  Returns a list of candidates, shortest (most specific) first.
+    Only called when transform_term already failed — handles mid-string noise
+    like 'home of her daughter near Luana' or 'one mile north of Buffalo'."""
+    candidates = []
+    words = term.split()
+    for i, word in enumerate(words):
+        w = word.lower().rstrip('.,;:')
+        if w in SPATIAL_PREPOSITIONS:
+            rest = ' '.join(words[i + 1:]).strip()
+            if rest:
+                candidates.append(rest)
+        elif w in DIRECTIONAL_PREPOSITIONS:
+            if i + 1 < len(words) and words[i + 1].lower().rstrip('.,;:') == 'of':
+                rest = ' '.join(words[i + 2:]).strip()
+                if rest:
+                    candidates.append(rest)
+        elif w == 'of' and i > 0:
+            prev = words[i - 1].lower().rstrip('.,;:')
+            if prev not in DIRECTIONAL_PREPOSITIONS:
+                rest = ' '.join(words[i + 1:]).strip()
+                if rest:
+                    candidates.append(rest)
+
+    candidates.sort(key=len)
+    seen = set()
+    return [c for c in candidates if not (c.lower() in seen or seen.add(c.lower()))]
+
+
 # ---------------------------------------------------------------------------
 # Phase 1: Build name_cache
 #
@@ -1203,6 +1280,71 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
                      done, len(non_jurisdiction_terms), non_jurisdiction_added)
 
     return added + non_jurisdiction_added
+
+
+def query_preposition_extractions(client, unmatched_terms, name_cache):
+    """FM version: for terms still unmatched after prefix-anchored transforms,
+    scan for spatial prepositions anywhere and try matching the substring after
+    them.  Results stored under the ORIGINAL term key in name_cache."""
+    extractions = {}
+    for term in unmatched_terms:
+        candidates = extract_after_preposition(term)
+        if not candidates:
+            continue
+        names_for_term = []
+        for candidate in candidates:
+            cleaned, jurisdiction = transform_term(candidate)
+            names_for_term.append((candidate, jurisdiction))
+            if cleaned:
+                names_for_term.append((cleaned, jurisdiction))
+        if names_for_term:
+            extractions[term] = names_for_term
+
+    if not extractions:
+        log.info("  No preposition-extractable terms")
+        return 0
+
+    added = 0
+    all_names = []
+    for orig, names_for_term in extractions.items():
+        for name, _jur in names_for_term:
+            all_names.append((orig, name, _jur))
+
+    for i in range(0, len(all_names), BATCH):
+        batch = all_names[i:i + BATCH]
+        lookup = defaultdict(list)
+        for orig, name, jur in batch:
+            lookup[name.lower()].append((orig, jur))
+
+        mnt_query = [{"Input_Original": f"=={name}"} for _, name, _ in batch]
+        mnt_records = client.find("Master%20Normalization%20Table", mnt_query, limit=10000)
+        for rec in mnt_records:
+            field_data = rec['fieldData']
+            input_original = field_str(field_data, 'Input_Original')
+            authority_id = field_str(field_data, 'Match_Authority_ID')
+            if input_original and authority_id and is_valid_uuid(authority_id) and input_original.lower() in lookup:
+                for orig, _jur in lookup[input_original.lower()]:
+                    name_cache[orig.lower()].add(authority_id)
+                    added += 1
+
+        authority_query = [{"Auth_Place_Name": f"=={name}"} for _, name, _ in batch]
+        authority_records = client.find("Authority_Place", authority_query, limit=10000)
+        for rec in authority_records:
+            field_data = rec['fieldData']
+            name = field_str(field_data, 'Auth_Place_Name')
+            uuid = field_str(field_data, 'UUID')
+            record_jurisdiction = field_str(field_data, 'Jurisdiction')
+            if uuid and name and name.lower() in lookup:
+                for orig, jur in lookup[name.lower()]:
+                    if jur and record_jurisdiction.lower() != jur.lower():
+                        continue
+                    name_cache[orig.lower()].add(uuid)
+                    added += 1
+
+        done = min(i + BATCH, len(all_names))
+        log.info("  Preposition extractions: %d/%d lookups, %d UUIDs", done, len(all_names), added)
+
+    return added
 
 
 def query_abbreviation_expansions(client, all_terms, name_cache):
@@ -2603,6 +2745,7 @@ def main(args):
                               generate_name_variants_fn=_generate_name_variants)
         fn_transforms = partial(query_fallback_transforms_local,
                                 transform_term_fn=transform_term)
+        fn_preposition = query_preposition_extractions_local
         fn_spelling = query_spelling_corrections_local
         fn_auth_batch = query_authority_batch_local
         fn_prefetch = prefetch_parent_chains_local
@@ -2619,6 +2762,7 @@ def main(args):
         fn_abbrev = partial(query_abbreviation_expansions, client)
         fn_variants = partial(query_name_variants, client)
         fn_transforms = partial(query_fallback_transforms, client)
+        fn_preposition = partial(query_preposition_extractions, client)
         fn_spelling = partial(query_spelling_corrections, client)
         fn_auth_batch = partial(query_authority_batch, client)
         fn_prefetch = partial(prefetch_parent_chains, client)
@@ -2713,6 +2857,14 @@ def main(args):
                  tv_added, after_tv, elapsed())
     else:
         log.info("  No transform variants to try")
+
+    log.info("\nPhase 1c3: Preposition-based extraction for remaining unmatched %s", elapsed())
+    still_unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
+    log.info("  %d terms still unmatched, scanning for embedded place names...", len(still_unmatched))
+    preposition_added = fn_preposition(still_unmatched, name_cache)
+    after_preposition = sum(1 for v in name_cache.values() if v)
+    log.info("  After preposition extraction: %d terms matched (+%d new) %s",
+             after_preposition, after_preposition - after, elapsed())
 
     log.info("\nPhase 1d: Spelling correction via symspellpy %s", elapsed())
     transform_map = {}
