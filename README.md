@@ -11,6 +11,10 @@ Right-to-left location matcher with fallback transforms. Reads a TSV of raw plac
 ```
 python rtl_matcher.py --input places.tsv --pa pa_export.tsv --mnt mnt_export.tsv
 python rtl_matcher.py --api --env .env --input places.tsv   # FileMaker mode
+
+# Atomized dictionary mode
+python rtl_matcher.py --input places.tsv --pa pa.tsv --mnt mnt.tsv --dict --env .env # Default live Supabase pull
+python rtl_matcher.py --input places.tsv --pa pa.tsv --mnt mnt.tsv --dict /path/to/tsv_dir
 ```
 
 Run without flags to be prompted for paths. `--helper-term "Utah, USA"` supplies geographic context for disambiguating single-term matches.

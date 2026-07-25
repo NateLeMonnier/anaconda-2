@@ -631,6 +631,28 @@ def query_preposition_extractions_local(unmatched_terms, name_cache):
     return added
 
 
+def query_cardinal_strip_local(unmatched_terms, name_cache, transform_map):
+    """Last-resort fallback: strip bare cardinal prefixes (and upper/lower)
+    from the cleaned form of still-unmatched terms and try matching the
+    remainder.  Results stored under the ORIGINAL term key in name_cache."""
+    added = 0
+    tried = 0
+    for term in unmatched_terms:
+        key = term.lower()
+        cleaned = transform_map.get(term, term)
+        stripped = CARDINAL_PREFIX_RE.sub('', cleaned).strip()
+        if not stripped or stripped.lower() == cleaned.lower():
+            continue
+        tried += 1
+        uuids = _query_name_local(stripped)
+        new_uuids = uuids - name_cache.get(key, set())
+        if new_uuids:
+            name_cache[key].update(new_uuids)
+            added += len(new_uuids)
+    log.info("  Cardinal strip (local): %d terms tried, %d UUIDs added", tried, added)
+    return added
+
+
 def query_spelling_corrections_local(terms, name_cache, sym_spell,
                                      transform_map=None):
     """Find edit-distance-1 corrections via SymSpell and add their PA UUIDs.
@@ -887,6 +909,15 @@ TRAILING_DESCRIPTORS = [
     re.compile(r'\s+Route\s+\d+$', re.I),
     re.compile(r'\s+R\.?\s?R\.?\s*\d*$', re.I),
 ]
+
+COMPOUND_PLACE_RE = [
+    (re.compile(r'Washington\s*,\s*(?:D\.?\s*C\.?\s*(?:,\s*District\s+of\s+Columbia)?|District\s+of\s+Columbia)', re.I), 'Washington D.C.'),
+]
+
+CARDINAL_PREFIX_RE = re.compile(
+    r'^(?:(?:upper|lower)\s+)?(?:north|south|east|west|northeast|northwest|southeast|southwest)\s+',
+    re.I,
+)
 
 NOISE_TERM_RE = re.compile(
     r'^(?:Route|Rt\.?|R\.?\s?D\.?|R\.?\s?R\.?)\s*\d*$', re.I
@@ -1344,6 +1375,45 @@ def query_preposition_extractions(client, unmatched_terms, name_cache):
         done = min(i + BATCH, len(all_names))
         log.info("  Preposition extractions: %d/%d lookups, %d UUIDs", done, len(all_names), added)
 
+    return added
+
+
+def query_cardinal_strip(client, unmatched_terms, name_cache, transform_map):
+    """FM version: strip bare cardinal prefixes from cleaned forms of
+    still-unmatched terms and query FileMaker for the remainder."""
+    to_query = {}
+    for term in unmatched_terms:
+        cleaned = transform_map.get(term, term)
+        stripped = CARDINAL_PREFIX_RE.sub('', cleaned).strip()
+        if stripped and stripped.lower() != cleaned.lower():
+            to_query[term] = stripped
+
+    if not to_query:
+        log.info("  No cardinal-strippable terms")
+        return 0
+
+    added = 0
+    items = list(to_query.items())
+    for i in range(0, len(items), BATCH):
+        batch = items[i:i + BATCH]
+        lookup = defaultdict(list)
+        for orig, stripped in batch:
+            lookup[stripped.lower()].append(orig)
+
+        query = [{"Auth_Place_Name": f"=={stripped}"} for _, stripped in batch]
+        records = client.find("Authority_Place", query, limit=10000)
+        for rec in records:
+            field_data = rec['fieldData']
+            name = field_str(field_data, 'Auth_Place_Name')
+            uuid = field_str(field_data, 'UUID')
+            if uuid and name and name.lower() in lookup:
+                for orig in lookup[name.lower()]:
+                    key = orig.lower()
+                    if uuid not in name_cache.get(key, set()):
+                        name_cache[key].add(uuid)
+                        added += 1
+
+    log.info("  Cardinal strip (FM): %d terms tried, %d UUIDs added", len(to_query), added)
     return added
 
 
@@ -2268,14 +2338,19 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
             skipped_with_candidates.append((right_to_left[i], child_ids))
 
     # --- Proximity fallback ---
-    # When depth >= 2 and skipped terms had candidates that failed chain
-    # verification against the confirmed county, check if any verify against
-    # the state (parent of confirmed county) and are within PROXIMITY_THRESHOLD_KM
-    # of the confirmed county. This catches likely wrong-county data-entry
-    # errors (e.g. a city recorded under the wrong adjacent county).
+    # When skipped terms had candidates that failed chain verification against
+    # the confirmed county, check if any verify against the state (parent of
+    # confirmed county) and are within PROXIMITY_THRESHOLD_KM of the confirmed
+    # county. This catches likely wrong-county data-entry errors (e.g. a city
+    # recorded under the wrong adjacent county).
+    #
+    # Fires at depth >= 2 (state+county confirmed) unconditionally, or at
+    # depth == 1 (county only) when the county is unambiguous (single UUID).
+    # The single-UUID guard prevents false positives from county names that
+    # repeat across states (e.g. "Wayne Co." in 16+ states).
     proximity_matched = False
     proximity_annotations = []
-    if depth >= 2 and skipped_with_candidates:
+    if skipped_with_candidates and (depth >= 2 or len(confirmed) == 1):
         confirmed_county_ids = set(confirmed)
         state_ids = set()
         for uid in confirmed:
@@ -2405,7 +2480,10 @@ def parse_entries(entries):
     all_terms = set()
     jurisdiction_hints = {}
     for entry in entries:
-        raw_terms = [t.strip() for t in re.split(r'[,;]', entry['place']) if t.strip()]
+        place = entry['place']
+        for pattern, replacement in COMPOUND_PLACE_RE:
+            place = pattern.sub(replacement, place)
+        raw_terms = [t.strip() for t in re.split(r'[,;]', place) if t.strip()]
         terms = [t for t in raw_terms if not NOISE_TERM_RE.match(t)]
         if not terms:
             terms = raw_terms
@@ -2474,9 +2552,10 @@ def build_result_row(match, original, guid, frequency, auth_cache):
         'skipped_count': match.skipped_count,
         'skipped_terms': match.skipped_terms,
     }
-    # parent_rejected is a non-match: expose the candidate columns for context
-    # but leave the authority_* fields blank so it never reads as a resolution.
-    if all_candidates and match.match_type != 'parent_rejected':
+    # Non-resolutions: expose candidate columns for context but leave
+    # authority_* fields blank so they never read as a resolution.
+    non_resolution = {'parent_rejected', 'single_amb', 'chain_amb', 'parent_amb'}
+    if all_candidates and match.match_type not in non_resolution:
         best_id = all_candidates[0]
         best_record = auth_cache.get(best_id, {})
         row['authority_name'] = field_str(best_record, 'Auth_Place_Name')
@@ -2747,6 +2826,7 @@ def main(args):
                                 transform_term_fn=transform_term)
         fn_preposition = query_preposition_extractions_local
         fn_spelling = query_spelling_corrections_local
+        fn_cardinal = query_cardinal_strip_local
         fn_auth_batch = query_authority_batch_local
         fn_prefetch = prefetch_parent_chains_local
         fn_helper = resolve_helper_term_local
@@ -2764,6 +2844,7 @@ def main(args):
         fn_transforms = partial(query_fallback_transforms, client)
         fn_preposition = partial(query_preposition_extractions, client)
         fn_spelling = partial(query_spelling_corrections, client)
+        fn_cardinal = partial(query_cardinal_strip, client)
         fn_auth_batch = partial(query_authority_batch, client)
         fn_prefetch = partial(prefetch_parent_chains, client)
         fn_helper = partial(resolve_helper_term, client)
@@ -2890,6 +2971,14 @@ def main(args):
              after_spelling, after_spelling - after, spelling_added, elapsed())
     if spelling_corrections:
         log.info("  %d corrections to log", len(spelling_corrections))
+
+    log.info("\nPhase 1d2: Cardinal prefix strip for remaining unmatched %s", elapsed())
+    still_unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
+    log.info("  %d terms still unmatched, trying cardinal strip...", len(still_unmatched))
+    cardinal_added = fn_cardinal(still_unmatched, name_cache, transform_map)
+    after_cardinal = sum(1 for v in name_cache.values() if v)
+    log.info("  After cardinal strip: %d terms matched (+%d new) %s",
+             after_cardinal, after_cardinal - after_spelling, elapsed())
 
     if fn_fs:
         log.info("\nPhase 1e: FamilySearch lookups for unresolved city terms %s", elapsed())
