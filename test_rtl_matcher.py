@@ -1666,3 +1666,477 @@ class TestCapCandidates:
 
     def test_empty(self):
         assert cap_candidates([]) == []
+
+
+from rtl_matcher import (
+    BARE_JURISDICTION_WORDS,
+    COUNTRY_ABBREVIATIONS,
+    SEGMENT_LOG_FIELDS,
+    CommalessSegmenter,
+    _absorb_bare_jurisdiction,
+    _is_bare_jurisdiction,
+    _resolve_output_paths,
+    _strip_bare_jurisdiction,
+    build_cli,
+    write_segment_log,
+)
+
+U3 = '33333333-3333-3333-3333-333333333333'
+U4 = '44444444-4444-4444-4444-444444444444'
+U5 = '55555555-5555-5555-5555-555555555555'
+
+
+def _segmenter(tier1=None, tier2=None, levels=None, aliases=None):
+    """Build a CommalessSegmenter over literal indexes.
+
+    tier1  {name: uuid} canonical names, i.e. PA Term / MNT _value
+    tier2  {name: uuid} raw MNT input strings
+    levels {uuid: level string}
+    """
+    levels = levels or {}
+    pa_by_name = defaultdict(list)
+    for name, uuid in (tier1 or {}).items():
+        pa_by_name[name.lower()].append({'UUID': uuid})
+    pa_by_uuid = {uuid: {'Level': str(level)} for uuid, level in levels.items()}
+    mnt_by_raw = defaultdict(set)
+    for name, uuid in (tier2 or {}).items():
+        mnt_by_raw[name.lower()].add(uuid)
+    return CommalessSegmenter(
+        pa_by_name=pa_by_name, pa_by_uuid=pa_by_uuid,
+        mnt_by_raw=mnt_by_raw, mnt_by_value=defaultdict(set),
+        country_aliases=aliases if aliases is not None else COUNTRY_ABBREVIATIONS)
+
+
+class TestBareJurisdictionWords:
+    def test_derived_from_jurisdiction_tables(self):
+        for word in ('county', 'township', 'parish', 'borough', 'town',
+                     'city', 'district', 'village', 'state', 'province'):
+            assert word in BARE_JURISDICTION_WORDS
+
+    def test_does_not_contain_real_place_names(self):
+        for word in ('york', 'hampton', 'bend', 'macon', 'georgia', 'madison'):
+            assert word not in BARE_JURISDICTION_WORDS
+
+    def test_is_bare_jurisdiction(self):
+        assert _is_bare_jurisdiction('City')
+        assert _is_bare_jurisdiction('Twp.')
+        assert not _is_bare_jurisdiction('Hampton City')
+        assert not _is_bare_jurisdiction('')
+
+    def test_strip_trailing_only(self):
+        assert _strip_bare_jurisdiction('Hampton City') == 'Hampton'
+        assert _strip_bare_jurisdiction('WEST BEND TOWN') == 'WEST BEND'
+        assert _strip_bare_jurisdiction('Hampton') is None
+
+    def test_does_not_strip_leading(self):
+        # Stripping the leading word would make every "<descriptor> <place>"
+        # span resolve, so the walk would prefer "County Iowa" over "Iowa".
+        assert _strip_bare_jurisdiction('County Iowa') is None
+
+    def test_absorb_merges_left(self):
+        assert _absorb_bare_jurisdiction([('Hampton', 1), ('City', 0)]) == \
+            [('Hampton City', 1)]
+
+    def test_absorb_leading_segment_merges_right(self):
+        assert _absorb_bare_jurisdiction([('Township', 0), ('Macon', 1)]) == \
+            [('Township Macon', 1)]
+
+
+class TestCommalessOracle:
+    def test_tier1_canonical_name(self):
+        seg = _segmenter(tier1={'Utah': U1}, levels={U1: 6})
+        assert seg.tier('Utah') == 1
+        assert seg.max_level('Utah') == 6
+
+    def test_tier2_raw_input_string(self):
+        seg = _segmenter(tier2={'fort madison': U1}, levels={U1: 4})
+        assert seg.tier('Fort Madison') == 2
+
+    def test_unknown_span(self):
+        seg = _segmenter(tier1={'Utah': U1})
+        assert seg.tier('Nowheresville') is None
+        assert seg.max_level('Nowheresville') == 0
+
+    def test_comma_bearing_key_never_matches_a_span(self):
+        # A comma-bearing MNT raw is a whole multi-term input string. Admitting
+        # it would merge "Illinois US" into one span.
+        seg = _segmenter(tier2={'illinois, us': U1})
+        assert seg.tier('Illinois US') is None
+        assert seg.tier('Illinois, US') is None
+
+    def test_transform_term_fallback_strips_county(self):
+        seg = _segmenter(tier1={'Clark': U1}, levels={U1: 5})
+        assert seg.tier('Clark County') == 1
+
+    def test_jurisdiction_strip_fallback(self):
+        seg = _segmenter(tier1={'Hampton': U1}, levels={U1: 4})
+        assert seg.tier('Hampton City') == 1
+
+    def test_country_alias_resolves_via_pa_name(self):
+        seg = _segmenter(tier1={'USA': U1}, levels={U1: 8})
+        assert seg.tier('US') == 1
+        assert seg.max_level('US') == 8
+
+    def test_ascii_fold_variant(self):
+        seg = _segmenter(tier1={'Mexico': U1}, levels={U1: 8})
+        assert seg.tier('México') == 1
+
+    def test_max_level_takes_the_broadest_reading(self):
+        # "England" is both a level-4 city and a level-8 country.
+        seg = _segmenter(levels={U1: 4, U2: 8})
+        seg.pa_by_name['england'] = [{'UUID': U1}, {'UUID': U2}]
+        assert seg.max_level('England') == 8
+
+    def test_indexes_are_not_copied(self):
+        pa_by_name = defaultdict(list)
+        pa_by_uuid, mnt_by_raw, mnt_by_value = {}, defaultdict(set), defaultdict(set)
+        seg = CommalessSegmenter(pa_by_name=pa_by_name, pa_by_uuid=pa_by_uuid,
+                                 mnt_by_raw=mnt_by_raw, mnt_by_value=mnt_by_value)
+        assert seg.pa_by_name is pa_by_name
+        assert seg.pa_by_uuid is pa_by_uuid
+        assert seg.mnt_by_raw is mnt_by_raw
+        assert seg.mnt_by_value is mnt_by_value
+
+
+class TestCommalessSegmentation:
+    def test_city_state(self):
+        seg = _segmenter(tier1={'Swift': U1, 'Minnesota': U2},
+                         levels={U1: 4, U2: 6})
+        assert seg('Swift Minnesota') == ['Swift', 'Minnesota']
+
+    def test_city_state_country(self):
+        seg = _segmenter(tier1={'Sydney': U1, 'Nova Scotia': U2, 'Canada': U3},
+                         levels={U1: 4, U2: 6, U3: 8})
+        assert seg('Sydney Nova Scotia Canada') == ['Sydney', 'Nova Scotia', 'Canada']
+
+    def test_longest_tier1_span_wins(self):
+        seg = _segmenter(tier1={'Salt Lake City': U1, 'Salt Lake': U2,
+                                'Utah': U3, 'USA': U4},
+                         levels={U1: 4, U2: 5, U3: 6, U4: 8})
+        assert seg('Salt Lake City Utah USA') == ['Salt Lake City', 'Utah', 'USA']
+
+    def test_tier1_tail_beats_longer_tier2_span(self):
+        # "Illinois US" exists as a raw input string but must still split.
+        seg = _segmenter(tier1={'Illinois': U1, 'USA': U2},
+                         tier2={'illinois us': U3},
+                         levels={U1: 6, U2: 8, U3: 6})
+        assert seg('Illinois US') == ['Illinois', 'US']
+
+    def test_place_name_prefix_keeps_tier2_name_intact(self):
+        # "Fort Madison" is only a raw string while "Madison" is a canonical
+        # county, so tier-1 preference alone would shatter the city name.
+        seg = _segmenter(tier1={'Madison': U1, 'Iowa': U2},
+                         tier2={'fort madison': U3},
+                         levels={U1: 5, U2: 6, U3: 4})
+        assert seg('Fort Madison Iowa') == ['Fort Madison', 'Iowa']
+
+    def test_cardinal_prefix_keeps_tier2_name_intact(self):
+        seg = _segmenter(tier1={'Prussia': U1, 'Germany': U2},
+                         tier2={'west prussia': U3},
+                         levels={U1: 10, U2: 8, U3: 6})
+        assert seg('West Prussia Germany') == ['West Prussia', 'Germany']
+
+    def test_prefix_exception_never_applies_at_the_rightmost_boundary(self):
+        # terms[-1] is the jurisdiction anchor, so the canonical reading must
+        # win there or the whole string collapses into one segment.
+        seg = _segmenter(tier1={'Madison': U1, 'Iowa': U2},
+                         tier2={'fort madison': U3, 'fort madison iowa': U4},
+                         levels={U1: 5, U2: 6, U3: 4, U4: 4})
+        assert seg('Fort Madison Iowa') == ['Fort Madison', 'Iowa']
+
+    def test_bare_jurisdiction_word_absorbed_left(self):
+        seg = _segmenter(tier1={'Hampton': U1, 'Virginia': U2, 'USA': U3},
+                         levels={U1: 4, U2: 6, U3: 8})
+        assert seg('Hampton Hampton City Virginia USA') == \
+            ['Hampton', 'Hampton City', 'Virginia', 'USA']
+
+    def test_abbreviated_jurisdiction_suffix(self):
+        seg = _segmenter(tier1={'Synnes': U1, 'Minnesota': U2},
+                         levels={U1: 4, U2: 6})
+        assert seg('Synnes Twp Minnesota') == ['Synnes Twp', 'Minnesota']
+
+    def test_unmatched_words_glue_into_one_segment(self):
+        seg = _segmenter(tier1={'Utah': U1, 'USA': U2}, levels={U1: 6, U2: 8})
+        assert seg.walk('Foo Bar Baz Utah USA'.split()) == [
+            ('Foo Bar Baz', 0), ('Utah', 1), ('USA', 1)]
+
+    def test_repeated_segment_is_preserved_not_deduped(self):
+        # A city and its county sharing a name is normal; match_entry already
+        # skips adjacent duplicates.
+        seg = _segmenter(tier1={'Monroe': U1, 'Wisconsin': U2},
+                         levels={U1: 4, U2: 6})
+        assert seg('Monroe Monroe Wisconsin') == ['Monroe', 'Monroe', 'Wisconsin']
+
+    def test_rightmost_segment_is_the_broadest(self):
+        seg = _segmenter(tier1={'Smiths Bridge': U1, 'Macon': U2,
+                                'North Carolina': U3},
+                         levels={U1: 4, U2: 5, U3: 6})
+        result = seg('Smiths Bridge Township Macon North Carolina')
+        assert result[-1] == 'North Carolina'
+
+    def test_max_span_words_respected(self):
+        seg = _segmenter(tier1={'a b c d e f g': U1, 'g': U2}, levels={U1: 6, U2: 6})
+        assert seg.tier('a b c d e f g') == 1
+        # 7 words exceeds SEGMENT_MAX_SPAN_WORDS, so the walk cannot take it
+        assert seg._best_span_start('a b c d e f g'.split(), 7) != (0, 1)
+
+
+class TestCommalessGate:
+    def test_single_word_input_makes_no_record(self):
+        seg = _segmenter(tier1={'Utah': U1}, levels={U1: 6})
+        assert seg('Utah') is None
+        assert seg.decisions == []
+
+    def test_rejects_single_segment(self):
+        # Whole string is a tier-2 raw only, so whole_known does not fire but
+        # the walk still yields one segment.
+        seg = _segmenter(tier2={'eagles club rooms': U1}, levels={U1: 4})
+        assert seg('Eagles club rooms') is None
+        assert seg.decisions[-1]['reason'] == 'single_segment'
+
+    def test_jurisdiction_suffixed_name_is_whole_known(self):
+        # "Rost township" strips to the known place "Rost", so it is a single
+        # term in its own right and must not be split.
+        seg = _segmenter(tier1={'Rost': U1}, levels={U1: 4})
+        assert seg('Rost township') is None
+        assert seg.decisions[-1]['reason'] == 'whole_known'
+
+    def test_rejects_whole_string_already_known(self):
+        seg = _segmenter(tier1={'East Georgia': U1, 'East': U2, 'Georgia': U3},
+                         levels={U1: 4, U2: 4, U3: 6})
+        assert seg('East Georgia') is None
+        assert seg.decisions[-1]['reason'] == 'whole_known'
+
+    def test_whole_known_ignores_tier2(self):
+        # These inputs commonly exist as comma-less MNT raws; rejecting on that
+        # basis discarded 3% of City/State rows.
+        seg = _segmenter(tier1={'Swift': U1, 'Minnesota': U2},
+                         tier2={'swift minnesota': U3}, levels={U1: 4, U2: 6})
+        assert seg('Swift Minnesota') == ['Swift', 'Minnesota']
+
+    def test_rejects_leading_digit(self):
+        seg = _segmenter(tier1={'Rosalia': U1, 'Lane': U2}, levels={U1: 6, U2: 6})
+        assert seg('1617 Rosalia Lane') is None
+        assert seg.decisions[-1]['reason'] == 'digits'
+
+    def test_rejects_long_digit_run(self):
+        seg = _segmenter(tier1={'Highway': U1, 'Utah': U2}, levels={U1: 6, U2: 6})
+        assert seg('Highway 101 Utah') is None
+        assert seg.decisions[-1]['reason'] == 'digits'
+
+    def test_rejects_prose_stopword(self):
+        seg = _segmenter(tier1={'hospital': U1, 'Germany': U2}, levels={U1: 4, U2: 8})
+        assert seg('a hospital in Germany') is None
+        assert seg.decisions[-1]['reason'] == 'stopword'
+
+    def test_stopword_inside_a_canonical_name_is_allowed(self):
+        seg = _segmenter(tier1={'Isle of Wight': U1, 'England': U2},
+                         levels={U1: 5, U2: 8})
+        assert seg('Isle of Wight England') == ['Isle of Wight', 'England']
+
+    def test_rejects_unresolved_segment(self):
+        seg = _segmenter(tier1={'Utah': U1, 'USA': U2}, levels={U1: 6, U2: 8})
+        assert seg('Foo Bar Utah USA') is None
+        assert seg.decisions[-1]['reason'].startswith('unresolved:')
+
+    def test_rejects_short_segment(self):
+        seg = _segmenter(tier1={'B': U1, 'C': U2, 'Canada': U3},
+                         levels={U1: 6, U2: 6, U3: 8})
+        assert seg('B C Canada') is None
+        assert seg.decisions[-1]['reason'] == 'short_segment'
+
+    def test_rejects_rightmost_level_below_six(self):
+        seg = _segmenter(tier1={'Sandy': U1, 'Salt Lake': U2}, levels={U1: 4, U2: 5})
+        assert seg('Sandy Salt Lake') is None
+        assert seg.decisions[-1]['reason'] == 'rightmost_level:5'
+
+    def test_rejects_over_word_cap(self):
+        seg = _segmenter(tier1={'Utah': U1}, levels={U1: 6})
+        assert seg(' '.join(['word'] * 13)) is None
+        assert seg.decisions[-1]['reason'] == 'word_count'
+
+    def test_counters_and_reasons(self):
+        seg = _segmenter(tier1={'Swift': U1, 'Minnesota': U2}, levels={U1: 4, U2: 6})
+        seg('Swift Minnesota')
+        seg('1617 Rosalia Lane')
+        assert seg.examined == 2
+        assert seg.accepted == 1
+        assert seg.reasons == {'digits': 1}
+
+    def test_accepted_decision_record(self):
+        seg = _segmenter(tier1={'Swift': U1, 'Minnesota': U2}, levels={U1: 4, U2: 6})
+        seg('Swift Minnesota', guid='g1', frequency='7')
+        record = seg.decisions[-1]
+        assert record['decision'] == 'accepted'
+        assert record['reason'] == ''
+        assert record['guid'] == 'g1'
+        assert record['frequency'] == '7'
+        assert record['segment_count'] == 2
+        assert record['segments'] == 'Swift|Minnesota'
+        assert record['tiers'] == '1|1'
+        assert record['rightmost_level'] == 6
+
+    def test_log_is_capped(self):
+        seg = _segmenter(tier1={'Swift': U1, 'Minnesota': U2}, levels={U1: 4, U2: 6})
+        seg.log_max = 1
+        seg('Swift Minnesota')
+        seg('Swift Minnesota')
+        assert len(seg.decisions) == 1
+        assert seg.examined == 2
+
+
+class TestParseEntriesSegmentation:
+    def test_absent_segment_fn_is_unchanged_behavior(self):
+        entries = [{'place': 'Salt Lake City Utah USA', 'guid': 'g', 'frequency': '1'}]
+        parsed, all_terms, _hints = parse_entries(entries)
+        assert parsed[0][3] == ['Salt Lake City Utah USA']
+        assert all_terms == {'Salt Lake City Utah USA'}
+
+    def test_segments_replace_the_single_term(self):
+        entries = [{'place': 'Salt Lake City Utah USA', 'guid': 'g', 'frequency': '1'}]
+        parsed, all_terms, _hints = parse_entries(
+            entries, segment_fn=lambda t, **kw: ['Salt Lake City', 'Utah', 'USA'])
+        assert parsed[0][3] == ['Salt Lake City', 'Utah', 'USA']
+        assert all_terms == {'Salt Lake City', 'Utah', 'USA'}
+
+    def test_none_return_keeps_single_term(self):
+        entries = [{'place': 'Eagles club rooms', 'guid': 'g', 'frequency': '1'}]
+        parsed, _all_terms, _hints = parse_entries(entries,
+                                                   segment_fn=lambda t, **kw: None)
+        assert parsed[0][3] == ['Eagles club rooms']
+
+    def test_not_called_for_comma_row(self):
+        calls = []
+
+        def stub(term, **kw):
+            calls.append(term)
+            return ['x', 'y']
+
+        entries = [{'place': 'Provo, Utah', 'guid': 'g', 'frequency': '1'}]
+        parsed, _all_terms, _hints = parse_entries(entries, segment_fn=stub)
+        assert calls == []
+        assert parsed[0][3] == ['Provo', 'Utah']
+
+    def test_not_called_for_semicolon_row(self):
+        calls = []
+        entries = [{'place': 'Provo; Utah', 'guid': 'g', 'frequency': '1'}]
+        parse_entries(entries, segment_fn=lambda t, **kw: calls.append(t))
+        assert calls == []
+
+    def test_original_guid_frequency_preserved(self):
+        entries = [{'place': 'Swift Minnesota', 'guid': 'g9', 'frequency': '42'}]
+        parsed, _all_terms, _hints = parse_entries(
+            entries, segment_fn=lambda t, **kw: ['Swift', 'Minnesota'])
+        assert parsed[0][0] == 'Swift Minnesota'
+        assert parsed[0][1] == 'g9'
+        assert parsed[0][2] == '42'
+
+    def test_guid_and_frequency_passed_to_segmenter(self):
+        seen = {}
+
+        def stub(term, guid='', frequency=''):
+            seen.update(term=term, guid=guid, frequency=frequency)
+            return None
+
+        parse_entries([{'place': 'Swift Minnesota', 'guid': 'g1',
+                        'frequency': '3'}], segment_fn=stub)
+        assert seen == {'term': 'Swift Minnesota', 'guid': 'g1', 'frequency': '3'}
+
+    def test_noise_filter_runs_after_segmentation(self):
+        entries = [{'place': 'Route 66 Utah USA', 'guid': 'g', 'frequency': '1'}]
+        parsed, _all_terms, _hints = parse_entries(
+            entries, segment_fn=lambda t, **kw: ['Route 66', 'Utah', 'USA'])
+        assert parsed[0][3] == ['Utah', 'USA']
+
+    def test_all_noise_segments_fall_back_unfiltered(self):
+        entries = [{'place': 'Route 66 RR 2', 'guid': 'g', 'frequency': '1'}]
+        parsed, _all_terms, _hints = parse_entries(
+            entries, segment_fn=lambda t, **kw: ['Route 66', 'RR 2'])
+        assert parsed[0][3] == ['Route 66', 'RR 2']
+
+    def test_jurisdiction_hints_detected_on_segments(self):
+        entries = [{'place': 'Mount Pleasant Henry County Iowa',
+                    'guid': 'g', 'frequency': '1'}]
+        _parsed, _all_terms, hints = parse_entries(
+            entries,
+            segment_fn=lambda t, **kw: ['Mount Pleasant', 'Henry County', 'Iowa'])
+        assert hints['henry county'] == 'County'
+
+    def test_compound_place_substitution_applies_first(self):
+        seen = []
+        entries = [{'place': 'Washington, D.C.', 'guid': 'g', 'frequency': '1'}]
+        parse_entries(entries, segment_fn=lambda t, **kw: seen.append(t))
+        assert seen == ['Washington D.C.']
+
+
+class TestWriteSegmentLog:
+    def test_writes_tsv_with_header(self):
+        decisions = [{
+            'original': 'Swift Minnesota', 'guid': 'g1', 'frequency': '1',
+            'decision': 'accepted', 'reason': '', 'segment_count': 2,
+            'segments': 'Swift|Minnesota', 'tiers': '1|1', 'rightmost_level': 6,
+        }]
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.tsv',
+                                        delete=False) as f:
+            path = f.name
+        try:
+            write_segment_log(decisions, path)
+            with open(path) as f:
+                lines = f.read().strip().split('\n')
+            assert lines[0] == '\t'.join(SEGMENT_LOG_FIELDS)
+            assert 'Swift|Minnesota' in lines[1]
+        finally:
+            os.unlink(path)
+
+    def test_writes_rejection_reason(self):
+        decisions = [{
+            'original': '1617 Rosalia Lane', 'guid': '', 'frequency': '',
+            'decision': 'rejected', 'reason': 'digits', 'segment_count': 0,
+            'segments': '', 'tiers': '', 'rightmost_level': '',
+        }]
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.tsv',
+                                        delete=False) as f:
+            path = f.name
+        try:
+            write_segment_log(decisions, path)
+            with open(path) as f:
+                body = f.read()
+            assert 'rejected\tdigits' in body
+        finally:
+            os.unlink(path)
+
+
+class TestSegmentCommalessFlag:
+    def _args(self, extra):
+        return build_cli().parse_args(['--input', 'i.tsv'] + extra)
+
+    def test_default_on(self):
+        assert self._args([]).segment_commaless is True
+
+    def test_negated_flag_disables(self):
+        assert self._args(['--no-segment-commaless']).segment_commaless is False
+
+    def test_explicit_flag_enables(self):
+        assert self._args(['--segment-commaless']).segment_commaless is True
+
+    def test_parses_alongside_api(self):
+        args = self._args(['--api', '--segment-commaless'])
+        assert args.local is False and args.segment_commaless is True
+
+
+class TestResolveOutputPaths:
+    def test_returns_four_paths(self, tmp_path):
+        output, ties, spelling, segments = _resolve_output_paths(
+            'places.tsv', str(tmp_path))
+        assert output.endswith('places_01.tsv')
+        assert ties.endswith('places_01_ties.tsv')
+        assert spelling.endswith('places_01_spelling.tsv')
+        assert segments.endswith('places_01_segments.tsv')
+
+    def test_segments_file_does_not_disturb_numbering(self, tmp_path):
+        output, _t, _s, segments = _resolve_output_paths('places.tsv', str(tmp_path))
+        open(output, 'w').close()
+        open(segments, 'w').close()
+        next_output, _t2, _s2, _g2 = _resolve_output_paths('places.tsv',
+                                                          str(tmp_path))
+        assert next_output.endswith('places_02.tsv')

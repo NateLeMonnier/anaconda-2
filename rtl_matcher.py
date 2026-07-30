@@ -87,6 +87,11 @@ TIE_OUTPUT_FIELDS = [
     'authority_id', 'authority_name', 'type_ahead', 'level', 'jurisdiction',
 ]
 
+SEGMENT_LOG_FIELDS = [
+    'original', 'guid', 'frequency', 'decision', 'reason', 'segment_count',
+    'segments', 'tiers', 'rightmost_level',
+]
+
 
 def field_str(field_data, key):
     """Safely extract a string field from a FileMaker record, returning '' if null."""
@@ -1021,6 +1026,27 @@ JURISDICTION_ABBREVIATION_MULTI = {
     'nl': ['Newfoundland and Labrador', 'Nuevo Leon'],
 }
 
+# Country-level forms the Place Authority does not carry as names. The PA stores
+# only "USA", so "United States" / "US" / "U.S.A." resolve to nothing on their
+# own — which matters because a comma-less hierarchy usually ends on one of
+# them, and the segmenter gates on the rightmost term's level.
+#
+# Every value MUST be a name present in pa_by_name, so a segment keyed on the
+# alias is also resolvable by Phase 1b2 downstream. Otherwise segmentation
+# would split "Illinois US" correctly and then leave "US" with no name_cache
+# entry, turning a resolvable row into no_auth_match.
+COUNTRY_ABBREVIATIONS = {
+    'us': 'USA',
+    'u.s.': 'USA',
+    'u.s.a.': 'USA',
+    'united states': 'USA',
+    'united states of america': 'USA',
+    'uk': 'United Kingdom',
+    'u.k.': 'United Kingdom',
+    'great britain': 'United Kingdom',
+    'gb': 'United Kingdom',
+}
+
 
 def detect_jurisdiction_hint(term):
     """Check if a term contains a jurisdiction suffix (County, Township, etc.).
@@ -1126,6 +1152,371 @@ def extract_after_preposition(term):
     candidates.sort(key=len)
     seen = set()
     return [c for c in candidates if not (c.lower() in seen or seen.add(c.lower()))]
+
+
+# ---------------------------------------------------------------------------
+# Phase 0: comma-less segmentation
+#
+# A place string with no comma is one term after parse_entries splits on [,;],
+# so right-to-left matching has nothing to walk and the row can only ever come
+# back single_term / single_amb / no_auth_match. This section splits such a
+# string into hierarchy terms ("Swift Minnesota" -> ["Swift", "Minnesota"])
+# before Phase 1 runs, leaving everything downstream unchanged.
+#
+# The method is right-to-left greedy longest match against a two-tier oracle
+# over the in-memory PA/MNT indexes, followed by an accept gate. When the gate
+# rejects, the caller keeps today's single-term behavior exactly.
+# ---------------------------------------------------------------------------
+
+# Single words that describe a jurisdiction rather than name a place. Derived
+# from the labels in JURISDICTION_SUFFIXES / JURISDICTION_PREFIXES so those two
+# tables stay the source of truth. Needed because several of these words are
+# themselves indexed as place names, which otherwise splits "Hampton City" into
+# ["Hampton", "City"].
+_EXTRA_JURISDICTION_WORDS = frozenset({
+    'twp', 'co', 'ward', 'precinct', 'municipality', 'municipio', 'prov',
+})
+
+
+def _derive_bare_jurisdiction_words():
+    words = {label.lower() for _pattern, label in JURISDICTION_SUFFIXES}
+    words |= {label.lower() for _pattern, label in JURISDICTION_PREFIXES}
+    return frozenset(words | _EXTRA_JURISDICTION_WORDS)
+
+
+BARE_JURISDICTION_WORDS = _derive_bare_jurisdiction_words()
+
+# Prose markers. A comma-less string containing one of these outside a
+# dictionary-matched span is a sentence fragment, not a hierarchy — those rows
+# belong to the Phase 1c3 preposition extraction, so segmentation stands down.
+SEGMENT_STOPWORDS = SPATIAL_PREPOSITIONS | frozenset({'of', 'the', 'a', 'an', 'and'})
+
+SEGMENT_MAX_SPAN_WORDS = 6          # "Sault Sainte Marie", "Newcastle upon Tyne"
+SEGMENT_MAX_INPUT_WORDS = 12        # longer strings are prose, not hierarchies
+SEGMENT_MIN_SEGMENT_CHARS = 2
+SEGMENT_MIN_RIGHTMOST_LEVEL = 6     # PA level: state/province or broader
+SEGMENT_LOG_MAX = 250_000           # cap the decision log on very large inputs
+_SEGMENT_CACHE_MAX = 200_000
+
+_LEAD_DIGIT_RE = re.compile(r'^\s*\d')
+_DIGIT_RUN_RE = re.compile(r'\d{3,}')
+
+# Prefixes of multi-word place names that the authority often stores only as a
+# raw string ("Fort Madison", "Mount Pleasant"). Used to keep the greedy walk
+# from splitting them on a canonical match of their trailing word.
+PLACE_NAME_PREFIX_RE = re.compile(
+    r'^(?:fort|ft\.?|mount|mt\.?|saint|st\.?|lake|port|cape)\s+', re.I)
+
+
+def _segment_words(text):
+    """Lowercased, punctuation-trimmed words of a span, for stopword testing."""
+    return {w.lower().strip('.,;:') for w in text.split()}
+
+
+def _is_bare_jurisdiction(text):
+    """True when every word in text is a jurisdiction descriptor."""
+    words = [w.lower().strip('.') for w in text.split()]
+    return bool(words) and all(w in BARE_JURISDICTION_WORDS for w in words)
+
+
+def _strip_bare_jurisdiction(text):
+    """Drop trailing bare jurisdiction words.
+
+    "Hampton City" -> "Hampton"; "WEST BEND TOWN" -> "WEST BEND". Returns None
+    when nothing was stripped or nothing would be left. This is what lets the
+    merge-left post-pass survive the gate: it produces spans like "Hampton
+    City" that are not themselves in the index.
+
+    Trailing only. Stripping leading words too would make every
+    "<jurisdiction word> <place>" span resolve, so the greedy walk would prefer
+    "County Iowa" over "Iowa" and swallow the descriptor into the wrong term.
+    Leading forms ("County of X", "City of X") are already handled by
+    transform_term via JURISDICTION_PREFIXES.
+    """
+    words = text.split()
+    while words and words[-1].lower().strip('.') in BARE_JURISDICTION_WORDS:
+        words.pop()
+    stripped = ' '.join(words)
+    if not stripped or stripped == text:
+        return None
+    return stripped
+
+
+def _absorb_bare_jurisdiction(segments):
+    """Merge a segment that is only jurisdiction words into its neighbor.
+
+    Merges leftward ("Hampton" + "City" -> "Hampton City"); a leading such
+    segment merges rightward instead. segments is [(text, tier), ...]; the
+    merged tier is stale by design and re-resolved by the caller.
+    """
+    merged = []
+    for text, tier in segments:
+        if merged and _is_bare_jurisdiction(text):
+            prev_text, prev_tier = merged[-1]
+            merged[-1] = (prev_text + ' ' + text, prev_tier)
+        else:
+            merged.append((text, tier))
+    if len(merged) > 1 and _is_bare_jurisdiction(merged[0][0]):
+        lead_text, _lead_tier = merged.pop(0)
+        next_text, next_tier = merged[0]
+        merged[0] = (lead_text + ' ' + next_text, next_tier)
+    return merged
+
+
+class CommalessSegmenter:
+    """Two-tier membership oracle plus the right-to-left segmenter and its gate.
+
+    Holds references to the caller's index dicts — nothing is copied, so
+    construction is O(len(country_aliases)) and adds no measurable memory.
+
+    Tier 1 is canonical names (PA Term, MNT _value); tier 2 is raw MNT input
+    strings. Tier 1 wins outright at every boundary, which is what keeps
+    "Illinois US" from collapsing into one span via the tier-2 raw string
+    somebody once typed.
+
+    Comma-bearing mnt_by_raw keys must never match a span. They are whole
+    multi-term input strings, and admitting them was the largest single source
+    of wrong splits measured. A span is a whitespace join of words from a
+    comma-less input, so exact-dict lookup already excludes them; the explicit
+    guard in _lookup_keys states the intent. The mistake to avoid is
+    normalizing commas to spaces when keying tier 2.
+    """
+
+    def __init__(self, pa_by_name, pa_by_uuid, mnt_by_raw, mnt_by_value,
+                 country_aliases=None, log_max=SEGMENT_LOG_MAX):
+        self.pa_by_name = pa_by_name
+        self.pa_by_uuid = pa_by_uuid
+        self.mnt_by_raw = mnt_by_raw
+        self.mnt_by_value = mnt_by_value
+        self.country_aliases = country_aliases or {}
+        self.log_max = log_max
+        self.decisions = []
+        self.examined = 0
+        self.accepted = 0
+        self.reasons = defaultdict(int)
+        self._cache = {}
+
+    # --- oracle ---------------------------------------------------------
+
+    def _lookup_keys(self, span):
+        """Lookup keys to try for a span, most literal first."""
+        keys = []
+
+        def push(value):
+            if not value:
+                return
+            key = value.strip().lower()
+            if not key or ',' in key or ';' in key or key in keys:
+                return
+            keys.append(key)
+
+        push(span)
+        push(_normalize_hyphens(span))
+        push(ascii_fold(span))
+        cleaned, _jurisdiction = transform_term(span)
+        if cleaned:
+            push(cleaned)
+            push(ascii_fold(cleaned))
+        push(_strip_bare_jurisdiction(span))
+        literal = span.strip().lower()
+        push(self.country_aliases.get(literal)
+             or self.country_aliases.get(literal.replace('.', '')))
+        return keys
+
+    def resolve(self, span):
+        """Return (tier, uuids) for a span: tier 1, 2, or None."""
+        cached = self._cache.get(span)
+        if cached is not None:
+            return cached
+        raw_uuids = None
+        result = (None, frozenset())
+        for key in self._lookup_keys(span):
+            uuids = set()
+            for record in self.pa_by_name.get(key) or ():
+                if record.get('UUID'):
+                    uuids.add(record['UUID'])
+            uuids.update(self.mnt_by_value.get(key) or ())
+            if uuids:
+                result = (1, frozenset(uuids))
+                break
+            if raw_uuids is None:
+                hits = self.mnt_by_raw.get(key)
+                if hits:
+                    raw_uuids = frozenset(hits)
+        else:
+            if raw_uuids:
+                result = (2, raw_uuids)
+        if len(self._cache) < _SEGMENT_CACHE_MAX:
+            self._cache[span] = result
+        return result
+
+    def tier(self, span):
+        return self.resolve(span)[0]
+
+    def max_level(self, span):
+        """Highest PA level across a span's candidates; 0 when unknown.
+
+        Max, not min: "England" is both a level-4 city and a level-8 country,
+        and the broadest reading is the one that matters for the tail check.
+        """
+        best = 0
+        for uuid in self.resolve(span)[1]:
+            level = (self.pa_by_uuid.get(uuid) or {}).get('Level', '')
+            if level.isdigit():
+                best = max(best, int(level))
+        return best
+
+    # --- segmentation ---------------------------------------------------
+
+    def _best_span_start(self, words, end, rightmost=False):
+        """Preferred span ending at `end`: (start, tier), or (None, 0).
+
+        Takes the longest tier-1 span and the longest tier-2 span, then picks.
+        Spans that are nothing but jurisdiction words are never returned.
+
+        Tier 1 normally wins even when a tier-2 span is longer, because the
+        tier-2 index is raw input text: "Illinois US" is in there as a whole
+        string and must still split on the canonical "US".
+
+        The exception is a multi-word place name that the authority only carries
+        as a raw string — "Fort Madison" is tier 2 while "Madison" alone is a
+        canonical county, so tier-1 preference would shatter it into
+        ["Fort", "Madison"] and the match would land on Madison County instead
+        of the city. Those names are recognizable by their prefix (Fort, Mount,
+        Saint, Lake, or a cardinal), so prefer the longer tier-2 span there.
+
+        Never at the rightmost boundary: that term is the jurisdiction anchor
+        (match_entry reads terms[-1] as the broadest level), so the canonical
+        state/country reading has to win. Allowing the exception there let
+        "Fort Madison Iowa" collapse into a single segment.
+        """
+        start1 = start2 = None
+        for start in range(max(0, end - SEGMENT_MAX_SPAN_WORDS), end):
+            span = ' '.join(words[start:end])
+            if _is_bare_jurisdiction(span):
+                continue
+            tier = self.tier(span)
+            if tier == 1 and start1 is None:
+                start1 = start
+            elif tier == 2 and start2 is None:
+                start2 = start
+            if start1 is not None and start2 is not None:
+                break
+        if start1 is None:
+            return (start2, 2) if start2 is not None else (None, 0)
+        if start2 is None or start2 >= start1:
+            return start1, 1
+        if not rightmost:
+            span2 = ' '.join(words[start2:end])
+            if CARDINAL_PREFIX_RE.match(span2) or PLACE_NAME_PREFIX_RE.match(span2):
+                return start2, 2
+        return start1, 1
+
+    def walk(self, words):
+        """Greedy right-to-left longest match.
+
+        Returns [(text, tier), ...] in left-to-right order, so the rightmost
+        hierarchy term is last — which is the ordering match_entry reverses and
+        resolve_parent_match reads as terms[-1]. Runs of unmatched words glue
+        into a single segment (tier 0) rather than becoming lone words.
+        """
+        out = []
+        unmatched = []
+        end = len(words)
+        while end > 0:
+            start, tier = self._best_span_start(words, end,
+                                                rightmost=(end == len(words)))
+            if start is None:
+                unmatched.insert(0, words[end - 1])
+                end -= 1
+                continue
+            if unmatched:
+                out.append((' '.join(unmatched), 0))
+                unmatched = []
+            out.append((' '.join(words[start:end]), tier))
+            end = start
+        if unmatched:
+            out.append((' '.join(unmatched), 0))
+        out.reverse()
+        return out
+
+    # --- gate -----------------------------------------------------------
+
+    def _whole_known(self, term):
+        """True when the input is already a canonical name in its own right.
+
+        Tier 1 only, deliberately not tier 2: these inputs frequently exist as
+        comma-less MNT raw strings, and rejecting on that basis discarded 3% of
+        City/State rows. Still protects "East Georgia", "Washington D.C.".
+        """
+        return self.tier(term) == 1
+
+    def _gate(self, segments):
+        """Return a rejection reason, or None to accept."""
+        if len(segments) < 2:
+            return 'single_segment'
+        for text, tier in segments:
+            if tier != 1 and (_segment_words(text) & SEGMENT_STOPWORDS):
+                return 'stopword'
+        for text, _tier in segments:
+            if len(text.replace('.', '').strip()) < SEGMENT_MIN_SEGMENT_CHARS:
+                return 'short_segment'
+        for text, tier in segments:
+            if tier is None:
+                return 'unresolved:' + text
+        level = self.max_level(segments[-1][0])
+        if level < SEGMENT_MIN_RIGHTMOST_LEVEL:
+            return 'rightmost_level:%d' % level
+        return None
+
+    def __call__(self, term, guid='', frequency=''):
+        """Segment a comma-less term, or return None to keep it as one term.
+
+        Checks are ordered cheapest-first so the quadratic span walk is never
+        paid on a row that cannot pass.
+        """
+        words = term.split()
+        if len(words) < 2:
+            return None
+
+        self.examined += 1
+        segments = []
+        if len(words) > SEGMENT_MAX_INPUT_WORDS:
+            reason = 'word_count'
+        elif _LEAD_DIGIT_RE.match(term) or _DIGIT_RUN_RE.search(term):
+            reason = 'digits'
+        elif self._whole_known(term):
+            reason = 'whole_known'
+        else:
+            walked = _absorb_bare_jurisdiction(self.walk(words))
+            # Re-resolve after the merge: absorbing a jurisdiction word changes
+            # the span, so the tier carried over from walk() is stale.
+            segments = [(text, self.tier(text)) for text, _tier in walked]
+            reason = self._gate(segments)
+
+        accepted = reason is None
+        if accepted:
+            self.accepted += 1
+        else:
+            self.reasons[reason.split(':')[0]] += 1
+        self._record(term, guid, frequency, segments, accepted, reason)
+        return [text for text, _tier in segments] if accepted else None
+
+    def _record(self, term, guid, frequency, segments, accepted, reason):
+        if len(self.decisions) >= self.log_max:
+            return
+        self.decisions.append({
+            'original': term,
+            'guid': guid,
+            'frequency': frequency,
+            'decision': 'accepted' if accepted else 'rejected',
+            'reason': '' if accepted else reason,
+            'segment_count': len(segments),
+            'segments': '|'.join(text for text, _tier in segments),
+            'tiers': '|'.join('glue' if not tier else str(tier)
+                              for _text, tier in segments),
+            'rightmost_level': self.max_level(segments[-1][0]) if segments else '',
+        })
 
 
 # ---------------------------------------------------------------------------
@@ -2484,11 +2875,16 @@ def load_entries(path):
         return entries
 
 
-def parse_entries(entries):
+def parse_entries(entries, segment_fn=None):
     """Split each entry's place string into comma/semicolon-separated terms
     and collect the full set of unique terms across all entries for bulk lookup.
     Also detects jurisdiction hints (County, Township, etc.) for each term.
     Filters out noise terms (standalone Route/RD/RR references).
+
+    segment_fn, when given, is called on any place string that produced a single
+    term because it contains no comma or semicolon. It returns a list of
+    hierarchy terms, or None to keep the string as one term. Passing None
+    reproduces the pre-segmentation behavior exactly.
     """
     parsed = []
     all_terms = set()
@@ -2498,6 +2894,15 @@ def parse_entries(entries):
         for pattern, replacement in COMPOUND_PLACE_RE:
             place = pattern.sub(replacement, place)
         raw_terms = [t.strip() for t in re.split(r'[,;]', place) if t.strip()]
+        # Phase 0: a comma-less string is one term here, so right-to-left
+        # matching has nothing to walk. Split it before anything downstream
+        # runs — above the noise filter and above all_terms, so every emitted
+        # segment reaches Phase 1.
+        if segment_fn is not None and len(raw_terms) == 1:
+            segments = segment_fn(raw_terms[0], guid=entry.get('guid', ''),
+                                  frequency=entry.get('frequency', ''))
+            if segments:
+                raw_terms = segments
         terms = [t for t in raw_terms if not NOISE_TERM_RE.match(t)]
         if not terms:
             terms = raw_terms
@@ -2532,7 +2937,8 @@ def _resolve_output_paths(input_path, output_dir):
     output = os.path.join(day_dir, f'{stem}_{num}.tsv')
     tie_output = os.path.join(day_dir, f'{stem}_{num}_ties.tsv')
     spelling_log = os.path.join(day_dir, f'{stem}_{num}_spelling.tsv')
-    return output, tie_output, spelling_log
+    segment_log = os.path.join(day_dir, f'{stem}_{num}_segments.tsv')
+    return output, tie_output, spelling_log, segment_log
 
 
 def build_result_row(match, original, guid, frequency, auth_cache):
@@ -2592,6 +2998,18 @@ def write_ties(ties, path):
         writer = csv.DictWriter(f, fieldnames=TIE_OUTPUT_FIELDS, delimiter='\t')
         writer.writeheader()
         writer.writerows(ties)
+
+
+def write_segment_log(decisions, path):
+    """Write the comma-less segmentation side file.
+
+    Rejected rows carry their provisional segments when the walk ran, which is
+    what makes this a tuning instrument rather than a receipt.
+    """
+    with open(path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=SEGMENT_LOG_FIELDS, delimiter='\t')
+        writer.writeheader()
+        writer.writerows(decisions)
 
 
 def print_summary(results, call_count, elapsed_sec, output_path):
@@ -2830,10 +3248,18 @@ def main(args):
         _LOCAL.load(args.mnt, args.pa, dict_source=args.dict, env_path=args.env)
         log.info("Local data ready. %s", elapsed())
 
+        # Country aliases go into the abbreviation table as well as the
+        # segmenter, so a segment like "US" is index-backed end to end. Without
+        # this, splitting "Illinois US" would leave "US" with no name_cache
+        # entry and turn a resolvable row into no_auth_match.
+        abbreviations = dict(JURISDICTION_ABBREVIATIONS)
+        if args.segment_commaless:
+            abbreviations.update(COUNTRY_ABBREVIATIONS)
+
         fn_query_mnt = query_mnt_local
         fn_authority_by_name = query_authority_by_name_local
         fn_abbrev = partial(query_abbreviation_expansions_local,
-                            jurisdiction_abbreviations=JURISDICTION_ABBREVIATIONS)
+                            jurisdiction_abbreviations=abbreviations)
         fn_variants = partial(query_name_variants_local,
                               generate_name_variants_fn=_generate_name_variants)
         fn_transforms = partial(query_fallback_transforms_local,
@@ -2845,6 +3271,13 @@ def main(args):
         fn_prefetch = prefetch_parent_chains_local
         fn_helper = resolve_helper_term_local
         fn_fs = None
+
+        fn_segment = None
+        if args.segment_commaless:
+            fn_segment = CommalessSegmenter(
+                pa_by_name=_LOCAL.pa_by_name, pa_by_uuid=_LOCAL.pa_by_uuid,
+                mnt_by_raw=_LOCAL.mnt_by_raw, mnt_by_value=_LOCAL.mnt_by_value,
+                country_aliases=COUNTRY_ABBREVIATIONS)
     else:
         client = FileMakerClient(args.env)
         log.info("Authenticating with FileMaker...")
@@ -2864,11 +3297,24 @@ def main(args):
         fn_helper = partial(resolve_helper_term, client)
         fn_fs = partial(query_fs_places, client)
 
+        fn_segment = None
+        if args.segment_commaless:
+            log.warning("--segment-commaless is local-mode only; comma-less "
+                        "segmentation skipped under --api")
+
     entries = load_entries(args.input)
     log.info("Loaded %d entries", len(entries))
 
-    parsed, all_terms, jurisdiction_hints = parse_entries(entries)
+    parsed, all_terms, jurisdiction_hints = parse_entries(entries, segment_fn=fn_segment)
     log.info("Unique terms to look up: %d", len(all_terms))
+    if fn_segment is not None and fn_segment.examined:
+        log.info("Phase 0: %d of %d comma-less multi-word rows segmented",
+                 fn_segment.accepted, fn_segment.examined)
+        if fn_segment.reasons:
+            log.info("  left as single term: %s",
+                     ', '.join(f'{reason}={count}' for reason, count
+                               in sorted(fn_segment.reasons.items(),
+                                         key=lambda kv: -kv[1])))
 
     fs_hits = {}
     if args.local and _LOCAL.fs_by_raw:
@@ -3034,12 +3480,13 @@ def main(args):
 
     _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
                 ascii_cache, helper_term, spelling_corrections, start, elapsed,
-                fs_hits=fs_hits)
+                fs_hits=fs_hits,
+                segment_decisions=(fn_segment.decisions if fn_segment else None))
 
 
 def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
                 ascii_cache, helper_term, spelling_corrections, start, elapsed,
-                fs_hits=None):
+                fs_hits=None, segment_decisions=None):
     """Phase 3 + output — shared by both local and FM modes."""
     log.info("\nPhase 3: Right-to-left matching (chain walk + skip + rank) %s", elapsed())
 
@@ -3117,7 +3564,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                  recoverable_rejects)
 
     fm_calls = 0
-    output_path, tie_path, spelling_log_path = _resolve_output_paths(
+    output_path, tie_path, spelling_log_path, segment_log_path = _resolve_output_paths(
         args.input, args.output_dir)
     write_results(results, output_path)
     if ties:
@@ -3126,6 +3573,9 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
     if spelling_corrections:
         write_spelling_log(spelling_corrections, spelling_log_path)
         log.info("  Corrections log: %s", spelling_log_path)
+    if segment_decisions:
+        write_segment_log(segment_decisions, segment_log_path)
+        log.info("  Segmentation log: %s", segment_log_path)
     print_summary(results, fm_calls, time.time() - start, output_path)
 
 
@@ -3164,6 +3614,15 @@ def build_cli():
                              "(union). Pass a directory of TSV exports, or no "
                              "value for a live connection (needs SUPABASE_PASSWORD "
                              "via --env or the environment). Local mode only.")
+    parser.add_argument('--segment-commaless',
+                        action=argparse.BooleanOptionalAction, default=True,
+                        help="Split comma-less place strings into hierarchy "
+                             "terms before matching, e.g. 'Swift Minnesota' -> "
+                             "['Swift', 'Minnesota'] (default: on). Local mode "
+                             "only; ignored under --api. Writes a "
+                             "<stem>_NN_segments.tsv side file. Use "
+                             "--no-segment-commaless to reproduce pre-"
+                             "segmentation output for A/B comparison.")
     parser.add_argument('--verbose', '-v', action='store_true',
                         help="Enable debug-level logging")
 
