@@ -2143,11 +2143,14 @@ FILTERED_JURISDICTIONS = frozenset({
 
 
 def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None,
-                    helper_term=None):
-    """Rank candidates by helper-term match, level gap, then population.
+                    helper_term=None, correction_uuids=None):
+    """Rank candidates by exact-vs-correction, helper-term match, level gap,
+    then population.
 
     Returns list of (uuid, score) tuples sorted best-first.
-    score is (helper_miss, level_gap, neg_population) — lower is better on all axes.
+    score is (is_correction, helper_miss, level_gap, neg_population) — lower
+    is better on all axes.  Exact-match UUIDs (is_correction=0) always rank
+    above spelling-correction UUIDs (is_correction=1).
     When parent_level is None (single_term case), level_gap is always 0.
     When helper_term is provided, candidates whose parent chain reaches the
     helper term's UUID get helper_miss=0; others get a penalty that scales
@@ -2186,21 +2189,24 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
             current = parent_uuid
         return False
 
+    _correction_set = correction_uuids or set()
+
     def score(uuid):
         rec = auth_cache.get(uuid, {})
         pop = get_population(rec)
+        is_correction = 1 if uuid in _correction_set else 0
         helper_miss = 0
         if helper_targets:
             if not _in_helper_chain(uuid):
                 helper_miss = helper_boost
         if parent_level is None:
-            return (helper_miss, 0, -pop)
+            return (is_correction, helper_miss, 0, -pop)
         try:
             level = int(field_str(rec, 'Level'))
         except (ValueError, TypeError):
             level = 0
         gap = abs(parent_level - level)
-        return (helper_miss, gap, -pop)
+        return (is_correction, helper_miss, gap, -pop)
 
     scored = [(uuid, score(uuid)) for uuid in candidates]
     scored.sort(key=lambda x: (x[1], x[0]))
@@ -2210,9 +2216,11 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
 def detect_tie(ranked_with_scores):
     """Check if top candidates share the same STRUCTURAL score.
 
-    A tie is equality on the structural axes (helper_miss, level_gap) only;
-    population (the third score component) is ignored. Population may order the
-    array but must never break a tie into a single winner.
+    A tie is equality on the structural axes (is_correction, helper_miss,
+    level_gap) only; population (the fourth score component) is ignored.
+    Population may order the array but must never break a tie into a single
+    winner.  An exact match and a spelling correction are never tied even if
+    their other structural axes match.
 
     Returns (winner_uuid_or_None, tied_uuids). If tied: winner is None and
     tied_uuids holds every candidate sharing the top structural score, in
@@ -2223,8 +2231,8 @@ def detect_tie(ranked_with_scores):
     if len(ranked_with_scores) == 1:
         return (ranked_with_scores[0][0], [])
 
-    top_structural = ranked_with_scores[0][1][:2]
-    tied = [uuid for uuid, s in ranked_with_scores if s[:2] == top_structural]
+    top_structural = ranked_with_scores[0][1][:3]
+    tied = [uuid for uuid, s in ranked_with_scores if s[:3] == top_structural]
 
     if len(tied) > 1:
         return (None, tied)
@@ -2265,7 +2273,7 @@ class MatchResult:
 
 
 def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None, ascii_cache=None,
-                helper_term=None):
+                helper_term=None, correction_uuids_by_term=None):
     """Run the right-to-left matching algorithm on a single place string.
 
     Match types returned:
@@ -2288,11 +2296,14 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     if not parent_ids:
         return MatchResult(match_type='no_auth_match')
 
+    _corr = correction_uuids_by_term or {}
+
     if len(right_to_left) == 1:
         term_key = right_to_left[0].lower()
         hint = (jurisdiction_hints or {}).get(term_key)
         ranked = rank_candidates(list(parent_ids), auth_cache, None,
-                                 jurisdiction_hint=hint, helper_term=helper_term)
+                                 jurisdiction_hint=hint, helper_term=helper_term,
+                                 correction_uuids=_corr.get(term_key))
         if len(ranked) == 1:
             return MatchResult([ranked[0][0]], depth=1, match_type='single_term')
         all_ids = [uuid for uuid, _ in ranked]
@@ -2429,7 +2440,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                 break
         hint = (jurisdiction_hints or {}).get(leftmost_key)
         ranked = rank_candidates(list(confirmed), auth_cache, parent_level_for_ranking,
-                                 jurisdiction_hint=hint)
+                                 jurisdiction_hint=hint,
+                                 correction_uuids=_corr.get(leftmost_key))
         winner, tied = detect_tie(ranked)
 
         skip_count = len(skipped)
@@ -2447,7 +2459,9 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     # parent_only: pass UUIDs through for resolve_parent_only in main()
     skip_count = len(skipped)
     skip_str = '; '.join(skipped)
-    ranked = rank_candidates(list(confirmed), auth_cache, None)
+    parent_term_key = right_to_left[0].lower()
+    ranked = rank_candidates(list(confirmed), auth_cache, None,
+                             correction_uuids=_corr.get(parent_term_key))
     ids = [uuid for uuid, _ in ranked]
     return MatchResult(ids, depth, 'parent_only', skip_count, skip_str,
                        skipped_had_candidates=bool(skipped_with_candidates))
@@ -3028,6 +3042,15 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                 fs_hits=None):
     """Phase 3 + output — shared by both local and FM modes."""
     log.info("\nPhase 3: Right-to-left matching (chain walk + skip + rank) %s", elapsed())
+
+    correction_uuids_by_term = defaultdict(set)
+    for sc in (spelling_corrections or []):
+        key = sc['original_term']
+        for uid in sc['authority_uuid'].split(';'):
+            uid = uid.strip()
+            if uid:
+                correction_uuids_by_term[key].add(uid)
+
     results = []
     ties = []
     recoverable_rejects = 0
@@ -3040,7 +3063,8 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
             match = match_entry(terms, name_cache, auth_cache, client, place,
                                 jurisdiction_hints=jurisdiction_hints,
                                 ascii_cache=ascii_cache,
-                                helper_term=helper_term)
+                                helper_term=helper_term,
+                                correction_uuids_by_term=correction_uuids_by_term)
 
         if (match.match_type == 'no_auth_match' and _LOCAL.illegible
                 and all(t.lower() in _LOCAL.illegible for t in terms)):
@@ -3055,7 +3079,8 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                                 client, place,
                                 jurisdiction_hints=jurisdiction_hints,
                                 ascii_cache=ascii_cache,
-                                helper_term=helper_term)
+                                helper_term=helper_term,
+                                correction_uuids_by_term=correction_uuids_by_term)
             if retry.match_type in ('chain_verified', 'chain_verified_proximity'):
                 match = retry
 

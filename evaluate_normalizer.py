@@ -79,8 +79,20 @@ def is_valid_uuid(val):
     return bool(val) and UUID_PATTERN.match(val.strip())
 
 
+AMB_MATCH_TYPES = frozenset({'parent_amb', 'chain_amb', 'single_amb'})
+
+
 def is_amb(val):
     return val and val.strip().lower() == 'amb'
+
+
+def is_amb_row(row):
+    """Ambiguous rows carry either the legacy 'amb' sentinel or an amb match_type.
+
+    Since c466620 the matcher blanks authority fields for non-resolution match
+    types, so match_type is the only surviving signal for these rows.
+    """
+    return is_amb(row['authority_id']) or row.get('match_type') in AMB_MATCH_TYPES
 
 
 def is_ill(val):
@@ -234,14 +246,21 @@ def compute_match_rate(unified):
     total_freq = sum(r['frequency'] for r in unified)
 
     matched = [r for r in unified if is_valid_uuid(r['authority_id'])]
-    amb = [r for r in unified if is_amb(r['authority_id'])]
+    amb = [r for r in unified if not is_valid_uuid(r['authority_id']) and is_amb_row(r)]
     ill = [r for r in unified if is_ill(r['authority_id'])]
-    unmatched = [r for r in unified if not r['authority_id'].strip()]
+    unmatched = [
+        r for r in unified
+        if not r['authority_id'].strip() and not is_amb_row(r)
+    ]
 
     matched_freq = sum(r['frequency'] for r in matched)
     amb_freq = sum(r['frequency'] for r in amb)
     ill_freq = sum(r['frequency'] for r in ill)
     unmatched_freq = sum(r['frequency'] for r in unmatched)
+
+    amb_by_type = Counter(
+        r.get('match_type') or 'amb_sentinel' for r in amb
+    )
 
     return {
         'total_rows': total_rows,
@@ -252,6 +271,13 @@ def compute_match_rate(unified):
         'matched_freq_rate': matched_freq / total_freq if total_freq else 0,
         'amb_rows': len(amb),
         'amb_frequency': amb_freq,
+        'amb_row_rate': len(amb) / total_rows if total_rows else 0,
+        'amb_freq_rate': amb_freq / total_freq if total_freq else 0,
+        'amb_by_match_type': dict(amb_by_type.most_common()),
+        'candidate_rows': len(matched) + len(amb),
+        'candidate_frequency': matched_freq + amb_freq,
+        'candidate_row_rate': (len(matched) + len(amb)) / total_rows if total_rows else 0,
+        'candidate_freq_rate': (matched_freq + amb_freq) / total_freq if total_freq else 0,
         'ill_rows': len(ill),
         'ill_frequency': ill_freq,
         'unmatched_rows': len(unmatched),
@@ -520,7 +546,15 @@ def print_summary(name, metrics):
     print("\nMatch Rate")
     print(f"  Rows:      {mr['matched_rows']:>7,} / {mr['total_rows']:,}  ({mr['matched_row_rate']:.1%})")
     print(f"  Frequency: {mr['matched_frequency']:>7,} / {mr['total_frequency']:,}  ({mr['matched_freq_rate']:.1%})")
-    print(f"  Amb: {mr['amb_rows']} ({mr['amb_frequency']:,} freq) | Ill: {mr['ill_rows']} ({mr['ill_frequency']:,} freq) | Unmatched: {mr['unmatched_rows']} ({mr['unmatched_frequency']:,} freq)")
+    print(f"  Ill: {mr['ill_rows']} ({mr['ill_frequency']:,} freq) | Unmatched: {mr['unmatched_rows']} ({mr['unmatched_frequency']:,} freq)")
+
+    print("\nAmbiguous (candidates found, no single resolution)")
+    print(f"  Rows:      {mr['amb_rows']:>7,} / {mr['total_rows']:,}  ({mr['amb_row_rate']:.1%})")
+    print(f"  Frequency: {mr['amb_frequency']:>7,} / {mr['total_frequency']:,}  ({mr['amb_freq_rate']:.1%})")
+    if mr['amb_by_match_type']:
+        breakdown = ' | '.join(f"{k}: {v}" for k, v in mr['amb_by_match_type'].items())
+        print(f"  By type: {breakdown}")
+    print(f"  Matched + amb: {mr['candidate_rows']:,} / {mr['total_rows']:,}  ({mr['candidate_row_rate']:.1%} rows, {mr['candidate_freq_rate']:.1%} freq)")
 
     depth = metrics.get('resolution_depth')
     if depth:
