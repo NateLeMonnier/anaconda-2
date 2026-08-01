@@ -267,7 +267,9 @@ class TestRankCandidates:
         result = rank_candidates(['aaa'], auth_cache, parent_level=8)
         uuid, score = result[0]
         assert uuid == 'aaa'
-        assert score == (0, 2, -300000)
+        # 026bc81 prepended a correction-provenance axis, so the tuple is
+        # (correction_miss, helper_miss, level_gap, -population).
+        assert score == (0, 0, 2, -300000)
 
 
 class TestRankCandidatesJurisdictionFilter:
@@ -416,8 +418,9 @@ class TestDetectTie:
 
     def test_same_gap_different_pop_is_tie(self):
         # Population differs but structural axes match -> tie (population must
-        # not break the tie into a single winner).
-        ranked = [('big', (0, 2, -500000)), ('small', (0, 2, -100))]
+        # not break the tie into a single winner). detect_tie compares the
+        # first three axes, which 026bc81 widened by one.
+        ranked = [('big', (0, 0, 2, -500000)), ('small', (0, 0, 2, -100))]
         winner, tied = detect_tie(ranked)
         assert winner is None
         assert tied == ['big', 'small']
@@ -1552,8 +1555,11 @@ class TestBuildResultRow:
         match = MatchResult(candidate_ids=[], depth=1, match_type='parent_amb',
                             tied_ids=['a', 'b', 'c'])
         row = build_result_row(match, '3 Phillips street, Beverly', 'g2', '1', auth_cache)
-        assert row['authority_id'] == 'a'          # best guess = top-ranked
-        assert row['authority_name'] == 'Beverly'
+        # ffddab7 blanks authority_* on non-resolutions so an unresolved row
+        # never reads as an answer; the ranked array is what survives.
+        assert row['authority_id'] == ''
+        assert row['authority_name'] == ''
+        assert row['matched_uuid'] == 'a'          # best guess, kept separately
         assert row['candidate_ids'] == 'a|b|c'
         assert row['candidate_names'] == (
             'Beverly, Essex, Massachusetts, United States|'
@@ -2125,18 +2131,353 @@ class TestSegmentCommalessFlag:
 
 
 class TestResolveOutputPaths:
-    def test_returns_four_paths(self, tmp_path):
-        output, ties, spelling, segments = _resolve_output_paths(
+    def test_returns_five_paths(self, tmp_path):
+        output, ties, spelling, segments, levels = _resolve_output_paths(
             'places.tsv', str(tmp_path))
         assert output.endswith('places_01.tsv')
         assert ties.endswith('places_01_ties.tsv')
         assert spelling.endswith('places_01_spelling.tsv')
         assert segments.endswith('places_01_segments.tsv')
+        assert levels.endswith('places_01_levels.tsv')
 
-    def test_segments_file_does_not_disturb_numbering(self, tmp_path):
-        output, _t, _s, segments = _resolve_output_paths('places.tsv', str(tmp_path))
+    def test_side_files_do_not_disturb_numbering(self, tmp_path):
+        output, _t, _s, segments, levels = _resolve_output_paths(
+            'places.tsv', str(tmp_path))
         open(output, 'w').close()
         open(segments, 'w').close()
-        next_output, _t2, _s2, _g2 = _resolve_output_paths('places.tsv',
-                                                          str(tmp_path))
+        open(levels, 'w').close()
+        next_output, _t2, _s2, _g2, _l2 = _resolve_output_paths('places.tsv',
+                                                                str(tmp_path))
         assert next_output.endswith('places_02.tsv')
+
+
+# ---------------------------------------------------------------------------
+# Export-defect fixes: source-defect reporting, resolution kinds, level scope,
+# candidate provenance, and term-to-level attribution.
+# ---------------------------------------------------------------------------
+
+from rtl_matcher import (
+    NameCache,
+    build_level_provenance,
+    build_ascii_index,
+    deepest_supported_ancestor,
+    has_encoding_corruption,
+    is_supported_level,
+    lookup_name,
+    lookup_name_with_origin,
+    record_level,
+    resolution_kind,
+    source_shape_tags,
+)
+
+
+class TestSourceDefectFlags:
+    def test_detects_cp437_signatures(self):
+        # UTF-8 bytes decoded as code page 437, with and without the
+        # transliteration of the Greek gamma to a Latin G.
+        assert has_encoding_corruption('near Vend+¦me, France')
+        assert has_encoding_corruption('train crossing in ErieGÇÖs West Side')
+        assert has_encoding_corruption('ΓÇÖ raw form')
+
+    def test_leaves_legitimate_characters_alone(self):
+        # C-cedilla is a real letter, and '+' and 'G' are real characters in
+        # place text, so none of them is a signature on its own.
+        assert not has_encoding_corruption('Besançon, Doubs, France')
+        assert not has_encoding_corruption('Çankaya, Ankara, Turkey')
+        assert not has_encoding_corruption('Ciudad de México')
+        assert not has_encoding_corruption('Hartwell, Gwinnett? or nearest GA county')
+        assert not has_encoding_corruption('@24 I, street northeast')
+
+    def test_tags_redundancy_shapes(self):
+        assert source_shape_tags('five miles north of Danville, Danville') == ['embedded']
+        assert source_shape_tags('Madison, route 6, Madison') == ['restated']
+        assert source_shape_tags('Koolik, Koolik') == ['adjacent', 'doubled']
+        assert source_shape_tags('hospital, Nashville; Tenn.') == ['joined']
+        assert source_shape_tags('Last Chance restaurant, Newark, Ohio') == []
+
+    def test_pipe_counts_as_a_join(self):
+        tags = source_shape_tags('Washington, Pa., hospital, Washington|Pennsylvania')
+        assert 'joined' in tags and 'restated' in tags
+
+    def test_adjacent_repeat_is_reported_not_judged(self):
+        # Indistinguishable from the ordinary city/county homonym convention
+        # without an authority lookup, so the shape is reported either way.
+        assert source_shape_tags('Albany, Albany, New York') == ['adjacent']
+
+    def test_row_carries_the_flags(self):
+        match = MatchResult(candidate_ids=[], depth=0, match_type='no_auth_match')
+        row = build_result_row(match, 'near Vend+¦me, France', 'g1', '1', {})
+        assert row['source_encoding_suspect'] == 'true'
+        row = build_result_row(match, 'Koolik, Koolik', 'g2', '1', {})
+        assert row['source_encoding_suspect'] == ''
+        assert row['source_shape'] == 'adjacent;doubled'
+
+
+class TestResolutionKind:
+    def test_ties_are_ties(self):
+        for match_type in ('single_amb', 'chain_amb', 'parent_amb'):
+            assert resolution_kind(match_type) == 'tie'
+
+    def test_parent_rejected_is_suspect_not_a_tie(self):
+        assert resolution_kind('parent_rejected') == 'suspect'
+
+    def test_everything_else_resolves(self):
+        for match_type in ('chain_verified', 'single_term', 'parent_resolved',
+                           'freq_resolved', 'no_auth_match'):
+            assert resolution_kind(match_type) == 'resolved'
+
+    def test_suspect_row_has_one_candidate_and_blank_authority(self):
+        # The shape that made parent_rejected read as ambiguous: a single
+        # candidate, carried at low confidence, with authority_* left blank.
+        auth = {'a': make_auth_record_full('a', name='Trego')}
+        match = MatchResult(candidate_ids=['a'], depth=1,
+                            match_type='parent_rejected')
+        row = build_result_row(match, 'District Court, County of Trego',
+                               'g1', '1', auth)
+        assert row['resolution_kind'] == 'suspect'
+        assert row['candidates'] == 1
+        assert row['authority_id'] == ''
+
+    def test_tie_row_keeps_its_array(self):
+        auth = {'a': make_auth_record_full('a'), 'b': make_auth_record_full('b')}
+        match = MatchResult(candidate_ids=[], depth=1, match_type='parent_amb',
+                            tied_ids=['a', 'b'])
+        row = build_result_row(match, 'Bartholdi Hotel, New York', 'g1', '1', auth)
+        assert row['resolution_kind'] == 'tie'
+        assert row['candidates'] == 2
+
+
+class TestSupportedLevelScope:
+    def _nyc_chain(self):
+        return {
+            'hk': make_auth_record_full('hk', 'man', "Hell's Kitchen", level='2',
+                                        jurisdiction='Neighborhood'),
+            'man': make_auth_record_full('man', 'nyc', 'Manhattan', level='4'),
+            'nyc': make_auth_record_full('nyc', 'ny', 'New York City', level='5'),
+            'ny': make_auth_record_full('ny', 'usa', 'New York', level='6'),
+            'usa': make_auth_record_full('usa', None, 'USA', level='8'),
+        }
+
+    def test_level_two_is_outside_the_supported_range(self):
+        assert not is_supported_level(2)
+        assert is_supported_level(3)
+        assert is_supported_level(10)
+        assert not is_supported_level(11)
+        assert not is_supported_level(None)
+
+    def test_record_level_survives_junk(self):
+        auth = {'a': make_auth_record_full('a', level='4'),
+                'b': make_auth_record_full('b', level='')}
+        assert record_level('a', auth) == 4
+        assert record_level('b', auth) is None
+        assert record_level('missing', auth) is None
+
+    def test_supported_match_is_its_own_ancestor(self):
+        auth = self._nyc_chain()
+        assert deepest_supported_ancestor('man', auth) == ('man', 4)
+
+    def test_unsupported_match_climbs_to_the_first_supported_level(self):
+        auth = self._nyc_chain()
+        assert deepest_supported_ancestor('hk', auth) == ('man', 4)
+
+    def test_orphan_below_the_range_has_no_supported_answer(self):
+        auth = {'orph': make_auth_record_full('orph', None, 'Cemetery', level='2')}
+        assert deepest_supported_ancestor('orph', auth) == (None, None)
+
+    def test_non_resolution_still_reports_its_level(self):
+        # The defect: a parent_amb row landing on a level-2 record showed no
+        # level at all, because authority_* is blanked for non-resolutions.
+        auth = self._nyc_chain()
+        match = MatchResult(candidate_ids=[], depth=1, match_type='parent_amb',
+                            tied_ids=['hk'])
+        row = build_result_row(match, 'Woodlawn Convalescent Home, Clinton',
+                               'g1', '1', auth)
+        assert row['authority_id'] == ''
+        assert row['matched_uuid'] == 'hk'
+        assert row['matched_level'] == 2
+        assert row['below_supported'] == 'true'
+        assert row['supported_leaf_id'] == 'man'
+
+    def test_supported_match_is_not_flagged(self):
+        auth = self._nyc_chain()
+        match = MatchResult(candidate_ids=['man'], depth=2,
+                            match_type='chain_verified')
+        row = build_result_row(match, 'Manhattan, New York', 'g1', '1', auth)
+        assert row['below_supported'] == ''
+        assert row['supported_leaf_id'] == 'man'
+
+    def test_losing_unsupported_candidate_is_counted(self):
+        # Influence that otherwise leaves no trace: the level-2 record shaped
+        # the tie without winning it.
+        auth = self._nyc_chain()
+        match = MatchResult(candidate_ids=[], depth=1, match_type='chain_amb',
+                            tied_ids=['man', 'hk'])
+        row = build_result_row(match, 'somewhere', 'g1', '1', auth)
+        assert row['below_supported'] == ''
+        assert row['unsupported_in_candidates'] == 'true'
+
+
+class TestNameCacheProvenance:
+    def test_records_the_phase_that_supplied_each_uuid(self):
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['roanoke'].add('U-ROANOKE')
+        cache.current_origin = 'spelling'
+        cache['roannke'].add('U-ROANOKE')
+        assert cache.origin_of('roanoke', 'U-ROANOKE') == 'exact'
+        assert cache.origin_of('roannke', 'U-ROANOKE') == 'spelling'
+
+    def test_first_writer_wins(self):
+        # A later, more permissive phase that rediscovers a term must not
+        # relabel what an exact lookup already found.
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['dumas'].add('U-DUMAS')
+        cache.current_origin = 'variant'
+        cache['dumas'].update({'U-DUMAS'})
+        assert cache.origin_of('dumas', 'U-DUMAS') == 'exact'
+
+    def test_update_and_assignment_are_both_recorded(self):
+        cache = NameCache()
+        cache.current_origin = 'mnt'
+        cache['a'].update({'U-1', 'U-2'})
+        cache['b'] = {'U-3'}
+        assert cache.origin_of('a', 'U-1') == 'mnt'
+        assert cache.origin_of('a', 'U-2') == 'mnt'
+        assert cache.origin_of('b', 'U-3') == 'mnt'
+
+    def test_behaves_like_the_defaultdict_it_replaced(self):
+        cache = NameCache()
+        assert cache.get('absent') is None
+        cache['fresh'].add('U-1')
+        assert cache['fresh'] == {'U-1'}
+        assert sum(1 for v in cache.values() if v) == 1
+
+    def test_lookup_reports_origin_per_term(self):
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['roanoke'].add('U-ROANOKE')
+        cache.current_origin = 'spelling'
+        cache['roannke'].add('U-ROANOKE')
+        ascii_cache = build_ascii_index(cache)
+        assert lookup_name_with_origin('Roanoke', cache, ascii_cache) == {
+            'U-ROANOKE': 'exact'}
+        assert lookup_name_with_origin('Roannke', cache, ascii_cache) == {
+            'U-ROANOKE': 'spelling'}
+
+    def test_ascii_fold_is_its_own_origin(self):
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['méxico'].add('U-MEXICO')
+        ascii_cache = build_ascii_index(cache)
+        # Reached only by folding the input, so folding is what matched.
+        assert lookup_name_with_origin('Mexico', cache, ascii_cache) == {
+            'U-MEXICO': 'ascii_fold'}
+        # Written with the accent, it is a direct hit.
+        assert lookup_name_with_origin('México', cache, ascii_cache) == {
+            'U-MEXICO': 'exact'}
+
+    def test_lookup_name_still_returns_a_plain_set(self):
+        cache = NameCache()
+        cache['albany'].add('U-ALBANY')
+        assert lookup_name('Albany', cache, {}) == {'U-ALBANY'}
+
+    def test_plain_dict_caches_still_work(self):
+        assert lookup_name_with_origin('x', {'x': {'U-X'}}, {}) == {'U-X': 'exact'}
+
+
+class TestTermAttribution:
+    def _virginia(self):
+        cache = NameCache()
+        cache.current_origin = 'abbrev'
+        cache['va'].add('U-VA')
+        cache.current_origin = 'spelling'
+        cache['roannke'].add('U-ROANOKE')
+        auth = {
+            'U-ROANOKE': make_auth_record_full('U-ROANOKE', 'U-VA', 'Roanoke',
+                                               level='4', jurisdiction='City'),
+            'U-VA': make_auth_record_full('U-VA', 'U-USA', 'Virginia',
+                                          level='6', jurisdiction='State'),
+            'U-USA': make_auth_record_full('U-USA', None, 'USA',
+                                           level='8', jurisdiction='Country'),
+        }
+        return cache, auth
+
+    def test_walk_records_the_term_behind_each_step(self):
+        cache, auth = self._virginia()
+        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+                            'Roannke, Va', ascii_cache=build_ascii_index(cache))
+        assert match.match_type == 'chain_verified'
+        assert [s.term for s in match.steps] == ['Va', 'Roannke']
+
+    def test_fuzzy_match_reports_the_token_that_drove_it(self):
+        # The report's central complaint: a fuzzy match recorded nothing, so
+        # an auditor could not tell what produced the answer.
+        cache, auth = self._virginia()
+        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+                            'Roannke, Va', ascii_cache=build_ascii_index(cache))
+        by_level = {r['level']: r for r in build_level_provenance(match, 'g1', auth)}
+        assert by_level['4']['raw_term'] == 'Roannke'
+        assert by_level['4']['name'] == 'Roanoke'
+        assert by_level['4']['match_method'] == 'fuzzy'
+        assert by_level['4']['origin'] == 'spelling'
+
+    def test_abbreviation_reads_as_normalized(self):
+        cache, auth = self._virginia()
+        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+                            'Roannke, Va', ascii_cache=build_ascii_index(cache))
+        by_level = {r['level']: r for r in build_level_provenance(match, 'g1', auth)}
+        assert by_level['6']['raw_term'] == 'Va'
+        assert by_level['6']['match_method'] == 'normalized'
+        assert by_level['6']['origin'] == 'abbrev'
+
+    def test_levels_no_term_reached_are_inferred(self):
+        # A null raw term must mean "supplied by the hierarchy", never
+        # "the term was not in the input".
+        cache, auth = self._virginia()
+        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+                            'Roannke, Va', ascii_cache=build_ascii_index(cache))
+        by_level = {r['level']: r for r in build_level_provenance(match, 'g1', auth)}
+        assert by_level['8']['raw_term'] == ''
+        assert by_level['8']['match_method'] == 'inferred'
+
+    def test_chain_is_emitted_leaf_first(self):
+        cache, auth = self._virginia()
+        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+                            'Roannke, Va', ascii_cache=build_ascii_index(cache))
+        rows = build_level_provenance(match, 'g1', auth)
+        assert [r['name'] for r in rows] == ['Roanoke', 'Virginia', 'USA']
+        assert [r['depth_from_leaf'] for r in rows] == [0, 1, 2]
+        assert all(r['guid'] == 'g1' for r in rows)
+
+    def test_single_term_carries_its_anchor(self):
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['ohio'].add('U-OH')
+        auth = {'U-OH': make_auth_record_full('U-OH', None, 'Ohio', level='6')}
+        match = match_entry(['Ohio'], cache, auth, MagicMock(), 'Ohio')
+        assert [s.term for s in match.steps] == ['Ohio']
+        rows = build_level_provenance(match, 'g1', auth)
+        assert rows[0]['raw_term'] == 'Ohio'
+        assert rows[0]['match_method'] == 'verbatim'
+
+    def test_no_candidates_yields_no_rows(self):
+        match = MatchResult(candidate_ids=[], depth=0, match_type='no_auth_match')
+        assert build_level_provenance(match, 'g1', {}) == []
+
+    def test_unsupported_leaf_still_appears_in_provenance(self):
+        # The level-2 match is kept, so the export can show what actually
+        # matched rather than only reporting that something did.
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['hollis'].add('hk')
+        auth = {
+            'hk': make_auth_record_full('hk', 'man', 'Hollis', level='2',
+                                        jurisdiction='Neighborhood'),
+            'man': make_auth_record_full('man', None, 'Queens', level='4'),
+        }
+        match = match_entry(['Hollis'], cache, auth, MagicMock(), 'Flint Pond Road, Hollis')
+        rows = build_level_provenance(match, 'g1', auth)
+        assert rows[0]['level'] == '2'
+        assert rows[0]['raw_term'] == 'Hollis'
+        assert rows[1]['name'] == 'Queens'

@@ -52,7 +52,7 @@ import time
 import unicodedata
 import urllib.request
 import urllib.error
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from dataclasses import dataclass, field
@@ -75,11 +75,28 @@ FS_TYPE_CITY = "186"
 # as a likely wrong-county data-entry issue rather than a genuine mismatch.
 PROXIMITY_THRESHOLD_KM = 50
 
+# Jurisdiction levels the project supports. authority_place also holds level 2
+# (neighborhoods and institutions: cemeteries, schools, churches) and level 11
+# (continent), and level 2 is being retired. Matching still considers those
+# records — excluding them would change results, not just reporting — but a
+# match that lands on one is reported as such so the audit can measure how
+# much of the accuracy depends on data the target architecture will not have.
+# There is no level 1 in authority_place.
+SUPPORTED_MIN_LEVEL = 3
+SUPPORTED_MAX_LEVEL = 10
+
 OUTPUT_FIELDS = [
     'original', 'guid', 'frequency', 'match_type', 'confidence', 'match_depth',
     'candidates', 'authority_name', 'type_ahead', 'jurisdiction',
     'level', 'authority_id', 'candidate_ids', 'candidate_names',
     'skipped_count', 'skipped_terms',
+    # Why the row is not a plain answer: resolved / tie / suspect.
+    'resolution_kind',
+    # Level scope: what was actually matched, and the supported answer above it.
+    'matched_uuid', 'matched_level', 'below_supported', 'supported_leaf_id',
+    'unsupported_in_candidates',
+    # Defects present in the delivered input, reported rather than repaired.
+    'source_encoding_suspect', 'source_shape',
 ]
 
 TIE_OUTPUT_FIELDS = [
@@ -91,6 +108,33 @@ SEGMENT_LOG_FIELDS = [
     'original', 'guid', 'frequency', 'decision', 'reason', 'segment_count',
     'segments', 'tiers', 'rightmost_level',
 ]
+
+# One row per level of the winning chain: which input token produced that
+# level and by what route. Without this the export can only guess, by
+# string-matching level names back against the input, which cannot see a
+# fuzzy match at all and misreads a null as "the term was not in the input".
+LEVEL_PROVENANCE_FIELDS = [
+    'guid', 'depth_from_leaf', 'level', 'uuid', 'name', 'jurisdiction',
+    'raw_term', 'match_method', 'origin',
+]
+
+# The lookup phase that supplied a candidate, collapsed to the four methods
+# an auditor needs to tell apart. The fine-grained origin travels alongside,
+# since ranking wants the distinction between, say, an abbreviation expansion
+# and an edit-distance correction that the audit view does not.
+ORIGIN_TO_METHOD = {
+    'mnt': 'verbatim',
+    'exact': 'verbatim',
+    'abbrev': 'normalized',
+    'variant': 'normalized',
+    'transform': 'normalized',
+    'transform_variant': 'normalized',
+    'cardinal_strip': 'normalized',
+    'preposition': 'normalized',
+    'ascii_fold': 'normalized',
+    'spelling': 'fuzzy',
+    'fs': 'external',
+}
 
 
 def field_str(field_data, key):
@@ -108,6 +152,83 @@ def tokenize(s):
 def ascii_fold(s):
     """Normalize a Unicode string to its ASCII equivalent (e.g. México -> mexico)."""
     return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii').lower()
+
+
+# ---------------------------------------------------------------------------
+# Candidate provenance
+#
+# Phase 1 fills name_cache from a series of increasingly permissive lookups —
+# the MNT, exact authority names, abbreviation expansion, name variants,
+# prefix/suffix transforms, preposition extraction, spelling correction,
+# FamilySearch — and every one of them unions its UUIDs into the same set
+# under the same term key. The union is what Phase 3 matches against, so by
+# the time a candidate wins, nothing records whether the term matched it
+# outright or reached it through an edit-distance-1 correction.
+#
+# That gap has two costs. The export cannot tell an auditor which input token
+# drove a match or by what method, and ranking cannot demote a fuzzy candidate
+# below an exact one, which is what manufactures most of the ambiguous rows.
+#
+# Rather than thread an origin argument through two dozen call sites, the
+# cache records its own writes: callers set current_origin once per phase and
+# every add lands in origins keyed by (term, uuid).
+# ---------------------------------------------------------------------------
+
+class _TrackedSet(set):
+    """A name_cache value that reports additions back to its owning cache."""
+
+    def __init__(self, iterable=(), owner=None, key=None):
+        super().__init__(iterable)
+        self._owner = owner
+        self._key = key
+
+    def add(self, value):
+        super().add(value)
+        if self._owner is not None:
+            self._owner.record(self._key, (value,))
+
+    def update(self, *others):
+        merged = [item for other in others for item in other]
+        super().update(merged)
+        if self._owner is not None:
+            self._owner.record(self._key, merged)
+
+
+class NameCache(dict):
+    """term -> {uuid}, remembering which lookup phase supplied each uuid.
+
+    Drop-in for the defaultdict(set) it replaces: a missing key still yields
+    an empty set that can be added to in place.
+    """
+
+    #: Origin recorded when nothing set current_origin, and the answer used
+    #: for caches that predate the instrumentation (plain dicts in tests).
+    DEFAULT_ORIGIN = 'exact'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.origins = {}
+        self.current_origin = self.DEFAULT_ORIGIN
+
+    def __missing__(self, key):
+        value = _TrackedSet(owner=self, key=key)
+        dict.__setitem__(self, key, value)
+        return value
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, _TrackedSet(value, owner=self, key=key))
+        self.record(key, value)
+
+    def record(self, key, uuids):
+        """Attribute uuids to the current phase. First writer wins, so a term
+        that an exact lookup already found is not relabelled by a later,
+        more permissive phase that happens to rediscover it."""
+        origin = self.current_origin
+        for uuid in uuids:
+            self.origins.setdefault((key, uuid), origin)
+
+    def origin_of(self, key, uuid):
+        return self.origins.get((key, uuid), self.DEFAULT_ORIGIN)
 
 
 def build_ascii_index(name_cache):
@@ -129,18 +250,33 @@ def _normalize_hyphens(s):
     return s.replace('-', ' ')
 
 
+def lookup_name_with_origin(term, name_cache, ascii_cache):
+    """Look up a term and report how each uuid was reached.
+
+    Returns {uuid: origin}. Direct hits carry the phase that put them in the
+    cache; a uuid reachable only through the ASCII-folded index is tagged
+    'ascii_fold', since folding is what bridged the term to the authority
+    name (an input of 'Mexico' against 'México').
+    """
+    key = term.lower()
+    dehyphenated = _normalize_hyphens(key)
+    keys = [key] if dehyphenated == key else [key, dehyphenated]
+
+    found = {}
+    for lookup_key in keys:
+        for uuid in name_cache.get(lookup_key, ()):
+            found.setdefault(uuid, name_cache.origin_of(lookup_key, uuid)
+                             if isinstance(name_cache, NameCache)
+                             else NameCache.DEFAULT_ORIGIN)
+    for lookup_key in keys:
+        for uuid in ascii_cache.get(ascii_fold(lookup_key), ()):
+            found.setdefault(uuid, 'ascii_fold')
+    return found
+
+
 def lookup_name(term, name_cache, ascii_cache):
     """Look up a term in name_cache and merge with ascii_cache matches."""
-    key = term.lower()
-    result = set(name_cache.get(key, set()))
-    folded = ascii_fold(key)
-    result.update(ascii_cache.get(folded, set()))
-    dehyphenated = _normalize_hyphens(key)
-    if dehyphenated != key:
-        result.update(name_cache.get(dehyphenated, set()))
-        folded_dh = ascii_fold(dehyphenated)
-        result.update(ascii_cache.get(folded_dh, set()))
-    return result
+    return set(lookup_name_with_origin(term, name_cache, ascii_cache))
 
 
 # ---------------------------------------------------------------------------
@@ -272,6 +408,83 @@ def canonicalize_place(s):
     and lookups run through this so spacing variants collapse."""
     parts = [p.strip() for p in re.split(r'[,;]', s.lower()) if p.strip()]
     return ', '.join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Source-defect detection
+#
+# Two defects arrive already present in the delivered input and cannot be
+# repaired here: text mangled by a wrong-codepage decode, and place strings
+# that state the same place twice. Both are flagged per row so the audit can
+# see and stratify them. Neither detector touches the string — repairing the
+# encoding would mean mapping '+' and 'G' back to bytes, and those are real
+# characters in place text, so the repair would corrupt clean rows.
+# ---------------------------------------------------------------------------
+
+# UTF-8 bytes decoded as code page 437, with and without the transliteration
+# pass that turns the Greek gamma into a Latin G:
+#   '’' (U+2019) -> E2 80 99 -> 'ΓÇÖ' -> 'GÇÖ'
+#   'ô'      (U+00F4) -> C3 B4    -> '├┤'  -> '+¦'
+# Also catches the untransliterated forms and the Latin-1 variant of the same
+# mistake. Ç alone is not a signature: Besançon and Çankaya are real places.
+CP437_SIGNATURE_RE = re.compile(
+    r'[ΓG]Ç'          # ΓÇ / GÇ
+    r'|\+¦'                # +¦
+    r'|[─-╿]'         # box-drawing, the undegraded form
+    '|\u0393[\u0080-\u00ff]'          # gamma then high Latin-1
+    '|[\u00c3\u00c2][\u0080-\u00bf]'  # UTF-8 bytes read as Latin-1
+)
+
+
+def has_encoding_corruption(s):
+    """True when a string carries a wrong-codepage decode signature."""
+    return bool(s) and bool(CP437_SIGNATURE_RE.search(s))
+
+
+def _defect_segments(s):
+    return [seg.strip().lower() for seg in re.split(r'[,;|]', s or '') if seg.strip()]
+
+
+def source_shape_tags(s):
+    """Tag the redundancy shapes present in a raw place string.
+
+    The audit needs these rows identifiable because they match far better
+    than ordinary input — a repeated token gives the tokenizer a second,
+    cleaner attempt at the same place. Each tag names one observable shape
+    and none of them asserts a defect on its own:
+
+      embedded   a segment sits inside a longer earlier segment
+                 ('five miles north of Danville, Danville')
+      restated   a segment equals an earlier non-adjacent one
+                 ('Madison, route 6, Madison')
+      adjacent   a segment equals the one before it. Mechanical in
+                 'Railroad Shop, Mendville, Mendville; Pennsylvania' and
+                 ordinary hierarchy in 'Albany, Albany, New York'; nothing
+                 short of an authority lookup separates the two, so the
+                 shape is reported and the judgement is left to the audit
+      doubled    the whole string is one segment stated twice
+                 ('Koolik, Koolik', and also the legitimate
+                 'New York, New York')
+      joined     a semicolon or pipe marks where separate fields were
+                 concatenated ('hospital, Nashville; Tenn.'), which repeats
+                 nothing and still shows the join
+    """
+    segments = _defect_segments(s)
+    tags = set()
+    if len(segments) == 2 and segments[0] == segments[1]:
+        tags.add('doubled')
+    for i, seg in enumerate(segments[1:], start=1):
+        if len(seg) < 3:
+            continue
+        span = re.compile(r'\b' + re.escape(seg) + r'\b')
+        for j, earlier in enumerate(segments[:i]):
+            if earlier == seg:
+                tags.add('adjacent' if j == i - 1 else 'restated')
+            elif span.search(earlier):
+                tags.add('embedded')
+    if s and (';' in s or '|' in s):
+        tags.add('joined')
+    return sorted(tags)
 
 
 class LocalData:
@@ -471,7 +684,8 @@ def _query_name_local(name):
 
 def query_mnt_local(terms):
     """Build a name_cache of term -> UUIDs from the in-memory MNT indexes."""
-    name_cache = defaultdict(set)
+    name_cache = NameCache()
+    name_cache.current_origin = 'mnt'
     matched = 0
     for term in terms:
         key = term.lower()
@@ -1537,7 +1751,8 @@ def query_mnt(client, terms):
     The MNT contains some non-UUID values in Match_Authority_ID (legacy data
     artifacts), so we validate each ID before adding it to the cache.
     """
-    name_cache = defaultdict(set)
+    name_cache = NameCache()
+    name_cache.current_origin = 'mnt'
     junk_count = 0
 
     def extract(field_data):
@@ -2076,7 +2291,7 @@ def query_spelling_corrections(client, terms, name_cache, sym_spell,
 
 def write_spelling_log(corrections, path):
     """Write the spelling-correction side file (TSV)."""
-    with open(path, 'w', newline='') as f:
+    with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=SPELLING_LOG_FIELDS, delimiter='\t')
         writer.writeheader()
         writer.writerows(corrections)
@@ -2524,6 +2739,39 @@ def _get_parent_level(confirmed_set, auth_cache):
     return None
 
 
+def record_level(uuid, auth_cache):
+    """Jurisdiction level of a cached authority record, or None."""
+    try:
+        return int(field_str(auth_cache.get(uuid, {}), 'Level'))
+    except (ValueError, TypeError):
+        return None
+
+
+def is_supported_level(level):
+    return level is not None and SUPPORTED_MIN_LEVEL <= level <= SUPPORTED_MAX_LEVEL
+
+
+def deepest_supported_ancestor(uuid, auth_cache, max_hops=15):
+    """Walk up from uuid to the first record inside the supported range.
+
+    Returns (uuid, level), or (None, None) when the chain runs out before
+    reaching a supported level or a parent is missing from the cache. The
+    match itself is returned unchanged when it is already in range, so this
+    is the identity for the overwhelming majority of rows.
+    """
+    current = uuid
+    seen = set()
+    for _ in range(max_hops):
+        if not current or current in seen or current not in auth_cache:
+            return (None, None)
+        seen.add(current)
+        level = record_level(current, auth_cache)
+        if is_supported_level(level):
+            return (current, level)
+        current = field_str(auth_cache.get(current, {}), 'Parent_UUID')
+    return (None, None)
+
+
 PREFERRED_JURISDICTIONS = frozenset({
     'City', 'Town', 'Borough', 'Village', 'Comune', 'Kommune', 'Municipality',
 })
@@ -2643,6 +2891,42 @@ CONFIDENCE_BY_TYPE = {
     'parent_rejected': 'low',
 }
 
+# Why a row is not a plain answer. Three kinds, and conflating them is what
+# made parent_rejected read as ambiguous with a single candidate:
+#
+#   tie      the ranking could not separate two or more candidates, so the
+#            array is the answer and no one candidate is claimed
+#   suspect  a single candidate won, but the walk dropped a more specific
+#            term that had authority candidates of its own, so the answer
+#            is a parent standing in for a place that was discarded
+#   resolved a single answer, or no candidates at all
+#
+# Consumers that want "is this ambiguous" should test for 'tie' rather than
+# pattern-matching a set of match_type names.
+NON_RESOLUTION_KIND = {
+    'single_amb': 'tie',
+    'chain_amb': 'tie',
+    'parent_amb': 'tie',
+    'parent_rejected': 'suspect',
+}
+
+
+def resolution_kind(match_type):
+    """Classify a match_type as 'tie', 'suspect', or 'resolved'."""
+    return NON_RESOLUTION_KIND.get(match_type, 'resolved')
+
+
+class MatchStep(namedtuple('MatchStep', 'term uuids origins')):
+    """One term of the walk and the candidates it confirmed.
+
+    term    the input term, as written
+    uuids   the candidates still standing after this term was applied
+    origins {uuid: origin} for those candidates, from the lookup that found
+            them, so a chain node can later be traced to the token and the
+            method that produced it
+    """
+    __slots__ = ()
+
 
 @dataclass
 class MatchResult:
@@ -2655,6 +2939,9 @@ class MatchResult:
     skipped_terms: str = ''
     tied_ids: list = field(default_factory=list)
     skipped_had_candidates: bool = False
+    #: Terms that confirmed candidates, anchor first. Empty for the paths
+    #: that never got far enough to confirm anything.
+    steps: list = field(default_factory=list)
 
     @property
     def confidence(self):
@@ -2683,11 +2970,19 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     right_to_left = list(reversed(stripped))
 
     _ascii = ascii_cache or {}
-    parent_ids = lookup_name(right_to_left[0], name_cache, _ascii)
+    parent_origins = lookup_name_with_origin(right_to_left[0], name_cache, _ascii)
+    parent_ids = set(parent_origins)
     if not parent_ids:
         return MatchResult(match_type='no_auth_match')
 
     _corr = correction_uuids_by_term or {}
+
+    def step_for(term, uuids, origins):
+        """Record which candidates a term confirmed, and how it reached them."""
+        kept = frozenset(uuids)
+        return MatchStep(term, kept, {u: origins[u] for u in kept if u in origins})
+
+    anchor_step = step_for(right_to_left[0], parent_ids, parent_origins)
 
     if len(right_to_left) == 1:
         term_key = right_to_left[0].lower()
@@ -2696,20 +2991,24 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                                  jurisdiction_hint=hint, helper_term=helper_term,
                                  correction_uuids=_corr.get(term_key))
         if len(ranked) == 1:
-            return MatchResult([ranked[0][0]], depth=1, match_type='single_term')
+            return MatchResult([ranked[0][0]], depth=1, match_type='single_term',
+                               steps=[anchor_step])
         all_ids = [uuid for uuid, _ in ranked]
         winner = _disambiguate_by_frequency(right_to_left[0], all_ids,
                                             _LOCAL.dict_freq or {})
         if winner:
-            return MatchResult([winner], depth=1, match_type='freq_resolved')
+            return MatchResult([winner], depth=1, match_type='freq_resolved',
+                               steps=[anchor_step])
         return MatchResult([], depth=1, match_type='single_amb',
-                           tied_ids=cap_candidates(all_ids, "single_amb"))
+                           tied_ids=cap_candidates(all_ids, "single_amb"),
+                           steps=[anchor_step])
 
     confirmed = parent_ids
     depth = 1
     skipped = []
     skipped_with_candidates = []
     parent_level_for_ranking = None
+    steps = [anchor_step]
 
     for i in range(1, len(right_to_left)):
         if (right_to_left[i].lower() == right_to_left[i - 1].lower()
@@ -2717,7 +3016,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
             skipped.append(right_to_left[i])
             continue
 
-        child_ids = lookup_name(right_to_left[i], name_cache, _ascii)
+        child_origins = lookup_name_with_origin(right_to_left[i], name_cache, _ascii)
+        child_ids = set(child_origins)
         if not child_ids:
             skipped.append(right_to_left[i])
             continue
@@ -2735,6 +3035,7 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
             parent_level_for_ranking = _get_parent_level(confirmed, auth_cache)
             confirmed = verified
             depth += 1
+            steps.append(step_for(right_to_left[i], verified, child_origins))
         else:
             skipped.append(right_to_left[i])
             skipped_with_candidates.append((right_to_left[i], child_ids))
@@ -2763,6 +3064,7 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
 
         if state_ids:
             proximity_candidates = []
+            proximity_by_term = defaultdict(set)
             for skipped_term, candidate_ids in skipped_with_candidates:
                 _prefetch_missing_parents(candidate_ids, auth_cache, client)
                 state_verified = {
@@ -2797,6 +3099,7 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
 
                     if min_dist <= PROXIMITY_THRESHOLD_KM:
                         proximity_candidates.append(cid)
+                        proximity_by_term[skipped_term].add(cid)
                         conf_name = field_str(
                             auth_cache.get(closest_confirmed, {}), 'Auth_Place_Name')
                         cid_county_name = field_str(cid_county_rec, 'Auth_Place_Name')
@@ -2821,6 +3124,13 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                 confirmed = set(most_specific)
                 depth += 1
                 proximity_matched = True
+                # The skipped term is what supplied these candidates, so it
+                # earns a step even though chain verification rejected it.
+                for term, cids in proximity_by_term.items():
+                    kept = cids & confirmed
+                    if kept:
+                        origins = lookup_name_with_origin(term, name_cache, _ascii)
+                        steps.append(step_for(term, kept, origins))
 
     if depth > 1:
         # Find the leftmost term that actually verified (not skipped)
@@ -2842,10 +3152,10 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
 
         if tied:
             return MatchResult([], depth, 'chain_amb', skip_count, skip_str,
-                               cap_candidates(tied, "chain_amb"))
+                               cap_candidates(tied, "chain_amb"), steps=steps)
         mt = 'chain_verified_proximity' if proximity_matched else 'chain_verified'
         ids = [winner] if winner else []
-        return MatchResult(ids, depth, mt, skip_count, skip_str)
+        return MatchResult(ids, depth, mt, skip_count, skip_str, steps=steps)
 
     # parent_only: pass UUIDs through for resolve_parent_only in main()
     skip_count = len(skipped)
@@ -2855,7 +3165,8 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
                              correction_uuids=_corr.get(parent_term_key))
     ids = [uuid for uuid, _ in ranked]
     return MatchResult(ids, depth, 'parent_only', skip_count, skip_str,
-                       skipped_had_candidates=bool(skipped_with_candidates))
+                       skipped_had_candidates=bool(skipped_with_candidates),
+                       steps=steps)
 
 
 # ---------------------------------------------------------------------------
@@ -2938,7 +3249,8 @@ def _resolve_output_paths(input_path, output_dir):
     tie_output = os.path.join(day_dir, f'{stem}_{num}_ties.tsv')
     spelling_log = os.path.join(day_dir, f'{stem}_{num}_spelling.tsv')
     segment_log = os.path.join(day_dir, f'{stem}_{num}_segments.tsv')
-    return output, tie_output, spelling_log, segment_log
+    level_log = os.path.join(day_dir, f'{stem}_{num}_levels.tsv')
+    return output, tie_output, spelling_log, segment_log, level_log
 
 
 def build_result_row(match, original, guid, frequency, auth_cache):
@@ -2971,11 +3283,39 @@ def build_result_row(match, original, guid, frequency, auth_cache):
         'candidate_names': '|'.join(names),
         'skipped_count': match.skipped_count,
         'skipped_terms': match.skipped_terms,
+        'resolution_kind': resolution_kind(match.match_type),
+        'matched_uuid': '',
+        'matched_level': '',
+        'below_supported': '',
+        'supported_leaf_id': '',
+        'unsupported_in_candidates': '',
+        'source_encoding_suspect': 'true' if has_encoding_corruption(original) else '',
+        'source_shape': ';'.join(source_shape_tags(original)),
     }
+
+    # Level scope. Reported for every row, including the non-resolutions whose
+    # authority_* fields stay blank — otherwise a parent_amb row that landed on
+    # a level-2 record shows no level at all and the defect is invisible.
+    if all_candidates:
+        best_id = all_candidates[0]
+        matched_level = record_level(best_id, auth_cache)
+        supported_id, _ = deepest_supported_ancestor(best_id, auth_cache)
+        row['matched_uuid'] = best_id
+        row['matched_level'] = '' if matched_level is None else matched_level
+        row['supported_leaf_id'] = supported_id or ''
+        if matched_level is not None and not is_supported_level(matched_level):
+            row['below_supported'] = 'true'
+    # A candidate outside the range that did not win still shaped the outcome,
+    # by competing in the tie set. Countable, where its influence otherwise
+    # leaves no trace in the output.
+    for cid in all_candidates[1:]:
+        level = record_level(cid, auth_cache)
+        if level is not None and not is_supported_level(level):
+            row['unsupported_in_candidates'] = 'true'
+            break
     # Non-resolutions: expose candidate columns for context but leave
     # authority_* fields blank so they never read as a resolution.
-    non_resolution = {'parent_rejected', 'single_amb', 'chain_amb', 'parent_amb'}
-    if all_candidates and match.match_type not in non_resolution:
+    if all_candidates and row['resolution_kind'] == 'resolved':
         best_id = all_candidates[0]
         best_record = auth_cache.get(best_id, {})
         row['authority_name'] = field_str(best_record, 'Auth_Place_Name')
@@ -2986,15 +3326,68 @@ def build_result_row(match, original, guid, frequency, auth_cache):
     return row
 
 
+def build_level_provenance(match, guid, auth_cache, max_hops=15):
+    """Trace the winning chain and say what produced each level.
+
+    Walks the best candidate up its parent chain and asks, for each node,
+    which term of the right-to-left walk confirmed it. Nodes no term reached
+    were supplied by the hierarchy rather than the input — a county the user
+    never wrote, or the country above it — and are marked 'inferred' so a
+    blank raw_term can no longer be read as "this term was absent".
+    """
+    best = match.candidate_ids or match.tied_ids
+    if not best:
+        return []
+
+    # Later steps are more specific, so a node confirmed more than once is
+    # attributed to the deepest term that confirmed it.
+    step_by_uuid = {}
+    for step in match.steps:
+        for uuid in step.uuids:
+            step_by_uuid[uuid] = step
+
+    rows = []
+    current = best[0]
+    seen = set()
+    while current and current not in seen and len(rows) < max_hops:
+        record = auth_cache.get(current)
+        if not record:
+            break
+        seen.add(current)
+        step = step_by_uuid.get(current)
+        origin = step.origins.get(current, '') if step else ''
+        rows.append({
+            'guid': guid,
+            'depth_from_leaf': len(rows),
+            'level': field_str(record, 'Level'),
+            'uuid': current,
+            'name': field_str(record, 'Auth_Place_Name'),
+            'jurisdiction': field_str(record, 'Jurisdiction'),
+            'raw_term': step.term if step else '',
+            'match_method': (ORIGIN_TO_METHOD.get(origin, 'normalized')
+                             if step else 'inferred'),
+            'origin': origin,
+        })
+        current = field_str(record, 'Parent_UUID')
+    return rows
+
+
+def write_level_provenance(rows, path):
+    with open(path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=LEVEL_PROVENANCE_FIELDS, delimiter='\t')
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def write_results(results, path):
-    with open(path, 'w', newline='') as f:
+    with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=OUTPUT_FIELDS, delimiter='\t')
         writer.writeheader()
         writer.writerows(results)
 
 
 def write_ties(ties, path):
-    with open(path, 'w', newline='') as f:
+    with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=TIE_OUTPUT_FIELDS, delimiter='\t')
         writer.writeheader()
         writer.writerows(ties)
@@ -3006,7 +3399,7 @@ def write_segment_log(decisions, path):
     Rejected rows carry their provisional segments when the walk ran, which is
     what makes this a tuning instrument rather than a receipt.
     """
-    with open(path, 'w', newline='') as f:
+    with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=SEGMENT_LOG_FIELDS, delimiter='\t')
         writer.writeheader()
         writer.writerows(decisions)
@@ -3031,6 +3424,40 @@ def print_summary(results, call_count, elapsed_sec, output_path):
     total_skips = sum(r['skipped_count'] for r in results)
     print(f"\n  Entries with skipped terms: {skip_entries}")
     print(f"  Total skipped terms: {total_skips}")
+
+    # Upstream defects. These arrive in the delivered input and are reported,
+    # not repaired; a non-zero encoding count is a data-delivery problem.
+    corrupted = sum(1 for r in results if r['source_encoding_suspect'])
+    shapes = defaultdict(int)
+    for row in results:
+        for tag in (row['source_shape'].split(';') if row['source_shape'] else []):
+            shapes[tag] += 1
+    # Level scope. What share of the answers depends on records outside the
+    # supported range, which is what determines how much of this run's
+    # accuracy carries over once level 2 is retired.
+    with_candidate = [r for r in results if r['matched_uuid']]
+    if with_candidate:
+        below = sum(1 for r in with_candidate if r['below_supported'])
+        competing = sum(1 for r in with_candidate
+                        if r['unsupported_in_candidates'] and not r['below_supported'])
+        dangling = sum(1 for r in with_candidate
+                       if r['below_supported'] and not r['supported_leaf_id'])
+        n = len(with_candidate)
+        print(f"\n  Rows with a leaf candidate: {n}")
+        print(f"    matched below the supported range: {below} ({below / n:.2%})")
+        print(f"    unsupported candidate competing only: {competing} "
+              f"({competing / n:.2%})")
+        if dangling:
+            print(f"    below supported with no supported ancestor: {dangling}")
+
+    if corrupted:
+        print(f"  Source rows with encoding corruption: {corrupted} "
+              f"({corrupted / len(results):.2%})")
+    if shapes:
+        detail = ', '.join(f"{tag} {count}" for tag, count in sorted(shapes.items()))
+        redundant = sum(1 for r in results if r['source_shape'])
+        print(f"  Source rows with a redundancy shape: {redundant} "
+              f"({redundant / len(results):.2%}) — {detail}")
     print(f"  FM API calls: {call_count}")
     print(f"  Total time: {elapsed_sec:.1f}s")
     print(f"  Output: {output_path}")
@@ -3211,6 +3638,7 @@ def resolve_parent_match(match, terms, auth_cache, client):
                 match_type='parent_rejected',
                 skipped_count=match.skipped_count,
                 skipped_terms=match.skipped_terms,
+                steps=match.steps,
             )
         return MatchResult(
             candidate_ids=[winner],
@@ -3218,6 +3646,7 @@ def resolve_parent_match(match, terms, auth_cache, client):
             match_type=resolution,
             skipped_count=match.skipped_count,
             skipped_terms=match.skipped_terms,
+            steps=match.steps,
         )
 
     # resolution == 'amb'
@@ -3227,6 +3656,7 @@ def resolve_parent_match(match, terms, auth_cache, client):
         match_type='parent_amb',
         skipped_count=match.skipped_count,
         skipped_terms=match.skipped_terms,
+        steps=match.steps,
         tied_ids=cap_candidates(list(match.candidate_ids), "parent_amb"),
     )
 
@@ -3333,17 +3763,20 @@ def main(args):
     log.info("  %d terms matched via MNT %s", mnt_matched, elapsed())
 
     log.info("\nPhase 1b: Authority Place lookups by name %s", elapsed())
+    name_cache.current_origin = 'exact'
     fn_authority_by_name(all_terms, name_cache)
     combined = sum(1 for v in name_cache.values() if v)
     log.info("  Combined: %d terms matched %s", combined, elapsed())
 
     log.info("\nPhase 1b2: Jurisdiction abbreviation expansion %s", elapsed())
+    name_cache.current_origin = 'abbrev'
     abbrev_added = fn_abbrev(all_terms, name_cache)
     after_abbrev = sum(1 for v in name_cache.values() if v)
     log.info("  +%d UUIDs added from abbreviation expansion "
              "(%d terms matched) %s", abbrev_added, after_abbrev, elapsed())
 
     log.info("\nPhase 1b3: Name variant expansion %s", elapsed())
+    name_cache.current_origin = 'variant'
     variant_added = fn_variants(all_terms, name_cache)
     after_variants = sum(1 for v in name_cache.values() if v)
     log.info("  +%d UUIDs added from name variants "
@@ -3352,6 +3785,7 @@ def main(args):
     log.info("\nPhase 1c: Fallback transforms for unmatched terms %s", elapsed())
     unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
     log.info("  %d terms unmatched, applying transforms...", len(unmatched))
+    name_cache.current_origin = 'transform'
     fn_transforms(unmatched, name_cache)
     after = sum(1 for v in name_cache.values() if v)
     log.info("  After transforms: %d terms matched (+%d new) %s",
@@ -3378,6 +3812,7 @@ def main(args):
             if variants:
                 transform_variants[t] = variants
     if transform_variants:
+        name_cache.current_origin = 'transform_variant'
         tv_added = 0
         for orig_term, variants in transform_variants.items():
             key = orig_term.lower()
@@ -3402,6 +3837,7 @@ def main(args):
     log.info("\nPhase 1c3: Preposition-based extraction for remaining unmatched %s", elapsed())
     still_unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
     log.info("  %d terms still unmatched, scanning for embedded place names...", len(still_unmatched))
+    name_cache.current_origin = 'preposition'
     preposition_added = fn_preposition(still_unmatched, name_cache)
     after_preposition = sum(1 for v in name_cache.values() if v)
     log.info("  After preposition extraction: %d terms matched (+%d new) %s",
@@ -3424,6 +3860,7 @@ def main(args):
     if len(spell_terms) < len(all_terms):
         log.info("  %d illegible terms excluded from spelling correction",
                  len(all_terms) - len(spell_terms))
+    name_cache.current_origin = 'spelling'
     spelling_added, spelling_corrections = fn_spelling(
         spell_terms, name_cache, sym_spell, transform_map=transform_map)
     after_spelling = sum(1 for v in name_cache.values() if v)
@@ -3435,6 +3872,7 @@ def main(args):
     log.info("\nPhase 1d2: Cardinal prefix strip for remaining unmatched %s", elapsed())
     still_unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
     log.info("  %d terms still unmatched, trying cardinal strip...", len(still_unmatched))
+    name_cache.current_origin = 'cardinal_strip'
     cardinal_added = fn_cardinal(still_unmatched, name_cache, transform_map)
     after_cardinal = sum(1 for v in name_cache.values() if v)
     log.info("  After cardinal strip: %d terms matched (+%d new) %s",
@@ -3442,6 +3880,7 @@ def main(args):
 
     if fn_fs:
         log.info("\nPhase 1e: FamilySearch lookups for unresolved city terms %s", elapsed())
+        name_cache.current_origin = 'fs'
         fn_fs(parsed, name_cache)
         after_fs = sum(1 for v in name_cache.values() if v)
         log.info("  After FS: %d terms matched (+%d new) %s",
@@ -3500,6 +3939,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
 
     results = []
     ties = []
+    level_provenance = []
     recoverable_rejects = 0
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
         fs_uid = (fs_hits or {}).get(place)
@@ -3554,6 +3994,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                 })
 
         results.append(build_result_row(match, place, guid, frequency, auth_cache))
+        level_provenance.extend(build_level_provenance(match, guid, auth_cache))
 
         if (idx + 1) % 50 == 0:
             log.info("  Matched %d/%d entries...", idx + 1, len(parsed))
@@ -3564,9 +4005,13 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                  recoverable_rejects)
 
     fm_calls = 0
-    output_path, tie_path, spelling_log_path, segment_log_path = _resolve_output_paths(
-        args.input, args.output_dir)
+    (output_path, tie_path, spelling_log_path, segment_log_path,
+     level_log_path) = _resolve_output_paths(args.input, args.output_dir)
     write_results(results, output_path)
+    if level_provenance:
+        write_level_provenance(level_provenance, level_log_path)
+        log.info("  Level provenance: %d rows to %s",
+                 len(level_provenance), level_log_path)
     if ties:
         write_ties(ties, tie_path)
         log.info("  Wrote %d tied candidate rows to %s", len(ties), tie_path)
@@ -3623,10 +4068,26 @@ def build_cli():
                              "<stem>_NN_segments.tsv side file. Use "
                              "--no-segment-commaless to reproduce pre-"
                              "segmentation output for A/B comparison.")
+    parser.add_argument('--min-level', type=int, default=SUPPORTED_MIN_LEVEL,
+                        help=f"Lowest supported jurisdiction level "
+                             f"(default: {SUPPORTED_MIN_LEVEL}). Matches below "
+                             f"it are reported via below_supported and "
+                             f"supported_leaf_id, not excluded.")
+    parser.add_argument('--max-level', type=int, default=SUPPORTED_MAX_LEVEL,
+                        help=f"Highest supported jurisdiction level "
+                             f"(default: {SUPPORTED_MAX_LEVEL})")
+
     parser.add_argument('--verbose', '-v', action='store_true',
                         help="Enable debug-level logging")
 
     return parser
+
+
+def apply_level_scope(args):
+    """Let --min-level / --max-level override the supported range."""
+    global SUPPORTED_MIN_LEVEL, SUPPORTED_MAX_LEVEL
+    SUPPORTED_MIN_LEVEL = args.min_level
+    SUPPORTED_MAX_LEVEL = args.max_level
 
 
 def prompt_missing(args):
@@ -3652,6 +4113,8 @@ if __name__ == '__main__':
 
     if not args.local and not args.env:
         parser.error("--env is required when using --api mode")
+
+    apply_level_scope(args)
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
