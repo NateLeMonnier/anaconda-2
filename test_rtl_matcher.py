@@ -156,7 +156,8 @@ class TestPrefetchParentChains:
 
 
 def make_auth_record_full(uuid, parent_uuid=None, name="Place", level="4",
-                          population="", jurisdiction="", latitude="", longitude=""):
+                          population="", jurisdiction="", latitude="", longitude="",
+                          historical=""):
     return {
         'UUID': uuid,
         'Parent_UUID': parent_uuid or '',
@@ -165,6 +166,7 @@ def make_auth_record_full(uuid, parent_uuid=None, name="Place", level="4",
         'Population': population,
         'Jurisdiction': jurisdiction,
         'Type_Ahead_Value': '',
+        'Historical': historical,
         'Latitude': latitude,
         'Longitude': longitude,
     }
@@ -321,6 +323,74 @@ class TestRankCandidatesJurisdictionFilter:
         assert len(result) == 2
         assert result[0][0] == 'county'
 
+    def test_correction_city_never_filters_out_exact_county(self):
+        """"Sheboygan County": the exact County match must survive a
+        spelling-correction City ("Cheboygan") that the jurisdiction
+        pre-filter would otherwise let delete it. The correction stays in
+        the array, ranked below the exact match."""
+        auth_cache = {
+            'exact_county': make_auth_record_full('exact_county', level='5',
+                                                  population='0',
+                                                  jurisdiction='County'),
+            'corr_city': make_auth_record_full('corr_city', level='4',
+                                               population='4686',
+                                               jurisdiction='City'),
+            'corr_county': make_auth_record_full('corr_county', level='5',
+                                                 population='0',
+                                                 jurisdiction='County'),
+        }
+        result = rank_candidates(['exact_county', 'corr_city', 'corr_county'],
+                                 auth_cache, parent_level=None,
+                                 jurisdiction_hint=None,
+                                 correction_uuids={'corr_city', 'corr_county'})
+        # corr_county is pruned by the City in its own tier; exact_county is not.
+        assert [uuid for uuid, _ in result] == ['exact_county', 'corr_city']
+
+    def test_historical_exact_shares_the_weak_tier(self):
+        """A Historical exact match scores is_weak=1, same as a correction."""
+        auth_cache = {
+            'hist_exact': make_auth_record_full('hist_exact', level='4',
+                                                population='0',
+                                                jurisdiction='Township',
+                                                historical='True'),
+            'live_corr': make_auth_record_full('live_corr', level='4',
+                                               population='2381',
+                                               jurisdiction='Town'),
+        }
+        result = rank_candidates(['hist_exact', 'live_corr'], auth_cache,
+                                 parent_level=None, jurisdiction_hint='Township',
+                                 correction_uuids={'live_corr'})
+        assert {uuid: s[0] for uuid, s in result} == {'hist_exact': 1,
+                                                      'live_corr': 1}
+
+    def test_exact_city_still_prunes_exact_county(self):
+        """The prune is unchanged inside a single tier: with no corrections
+        involved, a City still deletes a County."""
+        auth_cache = {
+            'city': make_auth_record_full('city', level='4', population='50000',
+                                          jurisdiction='City'),
+            'county': make_auth_record_full('county', level='5', population='200000',
+                                            jurisdiction='County'),
+        }
+        result = rank_candidates(['city', 'county'], auth_cache, parent_level=None,
+                                 jurisdiction_hint=None,
+                                 correction_uuids={'unrelated'})
+        assert [uuid for uuid, _ in result] == ['city']
+
+    def test_corrections_still_rank_when_no_exact_match(self):
+        auth_cache = {
+            'corr_city': make_auth_record_full('corr_city', level='4',
+                                               population='4686',
+                                               jurisdiction='City'),
+            'corr_county': make_auth_record_full('corr_county', level='5',
+                                                 population='0',
+                                                 jurisdiction='County'),
+        }
+        result = rank_candidates(['corr_city', 'corr_county'], auth_cache,
+                                 parent_level=None, jurisdiction_hint='County',
+                                 correction_uuids={'corr_city', 'corr_county'})
+        assert len(result) == 2
+
     def test_no_preferred_candidates_keeps_all(self):
         auth_cache = {
             'twp_a': make_auth_record_full('twp_a', level='4', population='80000',
@@ -387,39 +457,42 @@ class TestDetectTie:
         assert winner is None
         assert tied == []
 
+    # Scores are the full four-axis tuple rank_candidates emits:
+    # (is_correction, helper_miss, level_gap, neg_population).
     def test_single_candidate_returns_winner(self):
-        winner, tied = detect_tie([('aaa', (0, 2, -300000))])
+        winner, tied = detect_tie([('aaa', (0, 0, 2, -300000))])
         assert winner == 'aaa'
         assert tied == []
 
     def test_different_scores_returns_winner(self):
-        ranked = [('better', (0, 2, -300000)), ('worse', (0, 4, -900000))]
+        ranked = [('better', (0, 0, 2, -300000)), ('worse', (0, 0, 4, -900000))]
         winner, tied = detect_tie(ranked)
         assert winner == 'better'
         assert tied == []
 
     def test_identical_scores_returns_tie(self):
-        ranked = [('a', (0, 2, -300000)), ('b', (0, 2, -300000))]
+        ranked = [('a', (0, 0, 2, -300000)), ('b', (0, 0, 2, -300000))]
         winner, tied = detect_tie(ranked)
         assert winner is None
         assert set(tied) == {'a', 'b'}
 
     def test_three_candidates_two_tied_at_top(self):
-        ranked = [('a', (0, 2, -100)), ('b', (0, 2, -100)), ('c', (0, 4, -500))]
+        ranked = [('a', (0, 0, 2, -100)), ('b', (0, 0, 2, -100)),
+                  ('c', (0, 0, 4, -500))]
         winner, tied = detect_tie(ranked)
         assert winner is None
         assert set(tied) == {'a', 'b'}
 
     def test_three_candidates_all_tied(self):
-        ranked = [('a', (0, 2, -100)), ('b', (0, 2, -100)), ('c', (0, 2, -100))]
+        ranked = [('a', (0, 0, 2, -100)), ('b', (0, 0, 2, -100)),
+                  ('c', (0, 0, 2, -100))]
         winner, tied = detect_tie(ranked)
         assert winner is None
         assert set(tied) == {'a', 'b', 'c'}
 
     def test_same_gap_different_pop_is_tie(self):
-        # Population differs but structural axes match -> tie (population must
-        # not break the tie into a single winner). detect_tie compares the
-        # first three axes, which 026bc81 widened by one.
+        # Population differs but the deciding axes match -> tie (population must
+        # not break the tie into a single winner).
         ranked = [('big', (0, 0, 2, -500000)), ('small', (0, 0, 2, -100))]
         winner, tied = detect_tie(ranked)
         assert winner is None
@@ -427,9 +500,28 @@ class TestDetectTie:
 
     def test_different_level_gap_still_resolves(self):
         # Structural separation (level_gap) still produces a single winner.
-        ranked = [('better', (0, 1, -100)), ('worse', (0, 3, -900000))]
+        ranked = [('better', (0, 0, 1, -100)), ('worse', (0, 0, 3, -900000))]
         winner, tied = detect_tie(ranked)
         assert winner == 'better'
+        assert tied == []
+
+    def test_historical_exact_ties_with_correction(self):
+        """"Johnson, S.C.": rank_candidates puts a Historical exact match in
+        the same weak tier as the correction, so detect_tie surfaces both
+        instead of resolving to the defunct township."""
+        ranked = [('exact_historical', (1, 0, 0, 0)),
+                  ('correction_live', (1, 0, 0, -2381))]
+        winner, tied = detect_tie(ranked)
+        assert winner is None
+        assert tied == ['exact_historical', 'correction_live']
+
+    def test_live_exact_still_beats_correction(self):
+        """"Pepin, Wis.": a live exact match is tier 0, the correction tier 1,
+        so the row still resolves."""
+        ranked = [('exact_live', (0, 0, 0, -781)),
+                  ('correction', (1, 0, 0, -1200))]
+        winner, tied = detect_tie(ranked)
+        assert winner == 'exact_live'
         assert tied == []
 
 
@@ -641,6 +733,48 @@ class TestSingleTermReclassification:
         result = match_entry(['Wapakoneta'], name_cache, auth_cache, client, 'Wapakoneta')
         assert result.match_type == 'single_term'
         assert result.candidate_ids == ['only']
+
+    def test_lone_exact_above_corrections_is_single_term(self):
+        """"Chiago": an MNT-curated exact mapping to Chicago, plus two
+        edit-distance-1 neighbours. The exact match separates structurally,
+        so the row resolves instead of going ambiguous."""
+        auth_cache = {
+            'chicago': make_auth_record_full('chicago', level='4',
+                                             population='2665039',
+                                             jurisdiction='City'),
+            'chicago_twp': make_auth_record_full('chicago_twp', level='4',
+                                                 population='44',
+                                                 jurisdiction='Township'),
+            'chisago_co': make_auth_record_full('chisago_co', level='5',
+                                                population='0',
+                                                jurisdiction='County'),
+        }
+        name_cache = {'chiago': {'chicago', 'chicago_twp', 'chisago_co'}}
+        client = MagicMock()
+        result = match_entry(['Chiago'], name_cache, auth_cache, client, 'Chiago',
+                             correction_uuids_by_term={
+                                 'chiago': {'chicago_twp', 'chisago_co'}})
+        assert result.match_type == 'single_term'
+        assert result.candidate_ids == ['chicago']
+
+    def test_lone_historical_exact_ties_with_correction(self):
+        """Same shape, but the exact match is Historical -> weak tier, so it
+        no longer separates and the row surfaces both readings."""
+        auth_cache = {
+            'hist_exact': make_auth_record_full('hist_exact', level='4',
+                                                population='0',
+                                                jurisdiction='Township',
+                                                historical='True'),
+            'live_corr': make_auth_record_full('live_corr', level='4',
+                                               population='2381',
+                                               jurisdiction='Town'),
+        }
+        name_cache = {'johnson': {'hist_exact', 'live_corr'}}
+        client = MagicMock()
+        result = match_entry(['Johnson'], name_cache, auth_cache, client, 'Johnson',
+                             correction_uuids_by_term={'johnson': {'live_corr'}})
+        assert result.match_type == 'single_amb'
+        assert set(result.tied_ids) == {'hist_exact', 'live_corr'}
 
     def test_multiple_townships_no_city_is_single_amb(self):
         """Two townships, no city -> filter keeps both -> single_amb."""
@@ -1463,6 +1597,34 @@ class TestSkippedHadCandidates:
                              'Springfield, United States of America')
         assert result.match_type == 'parent_only'
         assert result.skipped_had_candidates is True
+
+    def test_parent_only_honors_jurisdiction_hint(self):
+        """'Court House, Sheboygan County': the anchor carries a County hint,
+        so the City/County jurisdiction pre-filter must not fire and delete
+        the county the hint describes."""
+        auth_cache = {
+            'sheb-county': make_auth_record_full(
+                'sheb-county', parent_uuid='wi', level='5',
+                name='Sheboygan', population='0', jurisdiction='County'),
+            'cheb-city': make_auth_record_full(
+                'cheb-city', parent_uuid='mi', level='4',
+                name='Cheboygan', population='4686', jurisdiction='City'),
+            'courthouse-sc': make_auth_record_full(
+                'courthouse-sc', parent_uuid='sc', level='4',
+                name='Court House', population='0', jurisdiction='Township'),
+        }
+        name_cache = {
+            'sheboygan county': {'sheb-county', 'cheb-city'},
+            'court house': {'courthouse-sc'},
+        }
+        client = MagicMock()
+        client.find.return_value = []
+        result = match_entry(['Court House', 'Sheboygan County'],
+                             name_cache, auth_cache, client,
+                             'Court House, Sheboygan County',
+                             jurisdiction_hints={'sheboygan county': 'County'})
+        assert result.match_type == 'parent_only'
+        assert 'sheb-county' in result.candidate_ids
 
 
 class TestResolveParentMatch:

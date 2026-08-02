@@ -2781,15 +2781,29 @@ FILTERED_JURISDICTIONS = frozenset({
 })
 
 
+def _prune_jurisdictions(group, auth_cache):
+    """Drop county-ish candidates from a group when it also holds a city-ish
+    one. Returns the group unchanged when nothing preferred is present."""
+    if not group:
+        return []
+    preferred = any(field_str(auth_cache.get(c, {}), 'Jurisdiction') in PREFERRED_JURISDICTIONS
+                    for c in group)
+    if not preferred:
+        return list(group)
+    return [c for c in group
+            if field_str(auth_cache.get(c, {}), 'Jurisdiction') not in FILTERED_JURISDICTIONS]
+
+
 def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None,
                     helper_term=None, correction_uuids=None):
-    """Rank candidates by exact-vs-correction, helper-term match, level gap,
+    """Rank candidates by evidence strength, helper-term match, level gap,
     then population.
 
     Returns list of (uuid, score) tuples sorted best-first.
-    score is (is_correction, helper_miss, level_gap, neg_population) — lower
-    is better on all axes.  Exact-match UUIDs (is_correction=0) always rank
-    above spelling-correction UUIDs (is_correction=1).
+    score is (is_weak, helper_miss, level_gap, neg_population) — lower is
+    better on all axes.  is_weak is 1 for a spelling-correction UUID and for
+    an exact hit on a record the authority marks Historical, 0 otherwise, so
+    a live exact match always ranks above both.
     When parent_level is None (single_term case), level_gap is always 0.
     When helper_term is provided, candidates whose parent chain reaches the
     helper term's UUID get helper_miss=0; others get a penalty that scales
@@ -2799,11 +2813,20 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
         return []
 
     if jurisdiction_hint is None:
-        preferred = [c for c in candidates
-                     if field_str(auth_cache.get(c, {}), 'Jurisdiction') in PREFERRED_JURISDICTIONS]
-        if preferred:
-            candidates = [c for c in candidates
-                          if field_str(auth_cache.get(c, {}), 'Jurisdiction') not in FILTERED_JURISDICTIONS]
+        # The preferred-jurisdiction prune is a hard delete, and it runs before
+        # any scoring, so it can silently remove a candidate the is_correction
+        # axis would have ranked first. Applying it separately to the exact and
+        # the spelling-correction groups keeps the delete inside one tier: a
+        # fuzzy "Cheboygan" City can no longer erase an exact "Sheboygan"
+        # County. Corrections still survive to compete on score.
+        corrections = correction_uuids or set()
+        if corrections and not corrections.issuperset(candidates):
+            candidates = (
+                _prune_jurisdictions([c for c in candidates if c not in corrections], auth_cache)
+                + _prune_jurisdictions([c for c in candidates if c in corrections], auth_cache)
+            )
+        else:
+            candidates = _prune_jurisdictions(candidates, auth_cache)
 
     # helper term setup
     helper_targets = None
@@ -2833,19 +2856,25 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
     def score(uuid):
         rec = auth_cache.get(uuid, {})
         pop = get_population(rec)
-        is_correction = 1 if uuid in _correction_set else 0
+        # A spelling correction is weak evidence. So is an exact hit on a
+        # record the authority marks Historical: the place is defunct, so a
+        # live one-edit neighbour is just as likely to be what the source
+        # meant. Sharing a tier means detect_tie surfaces both rather than
+        # letting the exact-vs-correction distinction resolve the row alone.
+        is_weak = 1 if (uuid in _correction_set
+                        or field_str(rec, 'Historical')) else 0
         helper_miss = 0
         if helper_targets:
             if not _in_helper_chain(uuid):
                 helper_miss = helper_boost
         if parent_level is None:
-            return (is_correction, helper_miss, 0, -pop)
+            return (is_weak, helper_miss, 0, -pop)
         try:
             level = int(field_str(rec, 'Level'))
         except (ValueError, TypeError):
             level = 0
         gap = abs(parent_level - level)
-        return (is_correction, helper_miss, gap, -pop)
+        return (is_weak, helper_miss, gap, -pop)
 
     scored = [(uuid, score(uuid)) for uuid in candidates]
     scored.sort(key=lambda x: (x[1], x[0]))
@@ -2853,13 +2882,19 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
 
 
 def detect_tie(ranked_with_scores):
-    """Check if top candidates share the same STRUCTURAL score.
+    """Check if top candidates share the same DECIDING score.
 
-    A tie is equality on the structural axes (is_correction, helper_miss,
+    A tie is equality on the structural axes (is_weak, helper_miss,
     level_gap) only; population (the fourth score component) is ignored.
     Population may order the array but must never break a tie into a single
-    winner.  An exact match and a spelling correction are never tied even if
-    their other structural axes match.
+    winner.
+
+    A live exact match and a spelling correction are never tied, because
+    is_weak separates them. A *historical* exact match and a correction are,
+    because rank_candidates puts both in the weak tier — an exact hit on a
+    defunct record ("Johnson Township (historical)") and a one-edit hit on a
+    living town ("Johnston, Edgefield") are both plausible readings of
+    "Johnson, S.C.", so the row is surfaced rather than silently resolved.
 
     Returns (winner_uuid_or_None, tied_uuids). If tied: winner is None and
     tied_uuids holds every candidate sharing the top structural score, in
@@ -2990,9 +3025,14 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         ranked = rank_candidates(list(parent_ids), auth_cache, None,
                                  jurisdiction_hint=hint, helper_term=helper_term,
                                  correction_uuids=_corr.get(term_key))
-        if len(ranked) == 1:
-            return MatchResult([ranked[0][0]], depth=1, match_type='single_term',
-                               steps=[anchor_step])
+        # Structural separation resolves, same rule the chain walk uses. A
+        # lone live exact match standing above a pile of spelling corrections
+        # is an answer, not a tie -- "Chiago" is an MNT-curated mapping to
+        # Chicago that also picks up Chisago County at edit distance 1.
+        structural_winner, _ = detect_tie(ranked)
+        if structural_winner:
+            return MatchResult([structural_winner], depth=1,
+                               match_type='single_term', steps=[anchor_step])
         all_ids = [uuid for uuid, _ in ranked]
         winner = _disambiguate_by_frequency(right_to_left[0], all_ids,
                                             _LOCAL.dict_freq or {})
@@ -3162,8 +3202,13 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
     skip_str = '; '.join(skipped)
     parent_term_key = right_to_left[0].lower()
     ranked = rank_candidates(list(confirmed), auth_cache, None,
+                             jurisdiction_hint=(jurisdiction_hints or {}).get(parent_term_key),
                              correction_uuids=_corr.get(parent_term_key))
-    ids = [uuid for uuid, _ in ranked]
+    # As in the single-term branch: hand resolve_parent_only a single id when
+    # the ranking separates one structurally, otherwise the whole array.
+    structural_winner, _ = detect_tie(ranked)
+    ids = ([structural_winner] if structural_winner
+           else [uuid for uuid, _ in ranked])
     return MatchResult(ids, depth, 'parent_only', skip_count, skip_str,
                        skipped_had_candidates=bool(skipped_with_candidates),
                        steps=steps)
