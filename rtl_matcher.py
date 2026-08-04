@@ -208,6 +208,7 @@ class NameCache(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.origins = {}
+        self.spans = {}
         self.current_origin = self.DEFAULT_ORIGIN
 
     def __missing__(self, key):
@@ -229,6 +230,21 @@ class NameCache(dict):
 
     def origin_of(self, key, uuid):
         return self.origins.get((key, uuid), self.DEFAULT_ORIGIN)
+
+    def record_span(self, key, uuid, span):
+        """Remember the string that actually reached this uuid.
+
+        A phase that rewrites the term before looking it up — transform,
+        preposition extraction, spelling correction, cardinal strip — matched
+        something other than the key, and the gate in match_entry needs that
+        string rather than the anchor. First writer wins, matching record().
+        """
+        self.spans.setdefault((key, uuid), span)
+
+    def span_of(self, key, uuid):
+        """The string that matched, defaulting to the key for the phases that
+        look the term up verbatim."""
+        return self.spans.get((key, uuid), key)
 
 
 def build_ascii_index(name_cache):
@@ -277,6 +293,19 @@ def lookup_name_with_origin(term, name_cache, ascii_cache):
 def lookup_name(term, name_cache, ascii_cache):
     """Look up a term in name_cache and merge with ascii_cache matches."""
     return set(lookup_name_with_origin(term, name_cache, ascii_cache))
+
+
+def span_for(term, uuid, name_cache):
+    """span_of for a cache that may be a plain dict.
+
+    Tests and older callers pass defaultdict(set), which has no span table;
+    the key is the right answer there because those caches only ever hold
+    verbatim lookups. Mirrors how lookup_name_with_origin tolerates them.
+    """
+    key = term.lower()
+    if isinstance(name_cache, NameCache):
+        return name_cache.span_of(key, uuid)
+    return key
 
 
 # ---------------------------------------------------------------------------

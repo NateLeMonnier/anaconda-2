@@ -2394,6 +2394,7 @@ from rtl_matcher import (
     record_level,
     resolution_kind,
     source_shape_tags,
+    span_for,
 )
 
 
@@ -2610,6 +2611,37 @@ class TestNameCacheProvenance:
 
     def test_plain_dict_caches_still_work(self):
         assert lookup_name_with_origin('x', {'x': {'U-X'}}, {}) == {'U-X': 'exact'}
+
+    def test_records_the_span_a_uuid_was_looked_up_under(self):
+        cache = NameCache()
+        cache.current_origin = 'preposition'
+        cache['lutheran church in the village'].add('U-VILLAGE')
+        cache.record_span('lutheran church in the village', 'U-VILLAGE',
+                          'the village')
+        assert cache.span_of('lutheran church in the village',
+                             'U-VILLAGE') == 'the village'
+
+    def test_span_defaults_to_the_key(self):
+        # Phases that look the term up verbatim record nothing, and the key is
+        # the correct answer for them.
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['albany'].add('U-ALBANY')
+        assert cache.span_of('albany', 'U-ALBANY') == 'albany'
+
+    def test_span_first_writer_wins(self):
+        cache = NameCache()
+        cache.record_span('near despatch', 'U-D', 'Despatch')
+        cache.record_span('near despatch', 'U-D', 'near Despatch')
+        assert cache.span_of('near despatch', 'U-D') == 'Despatch'
+
+    def test_span_for_tolerates_a_plain_dict_cache(self):
+        assert span_for('Albany', 'U-ALBANY', {'albany': {'U-ALBANY'}}) == 'albany'
+
+    def test_span_for_lowercases_the_term_to_key_the_lookup(self):
+        cache = NameCache()
+        cache.record_span('near despatch', 'U-D', 'Despatch')
+        assert span_for('near Despatch', 'U-D', cache) == 'Despatch'
 
 
 class TestTermAttribution:
