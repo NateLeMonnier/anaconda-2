@@ -17,6 +17,7 @@ from rtl_matcher import (
     detect_jurisdiction_hint,
     detect_tie,
     haversine_km,
+    is_description,
     match_entry,
     parse_entries,
     prefetch_parent_chains,
@@ -1908,6 +1909,69 @@ class TestBareJurisdictionWords:
     def test_absorb_leading_segment_merges_right(self):
         assert _absorb_bare_jurisdiction([('Township', 0), ('Macon', 1)]) == \
             [('Township Macon', 1)]
+
+
+class TestIsDescription:
+    """The toponym-ness gate: does this span name a place or describe one?"""
+
+    def test_determiner_plus_appellative_is_a_description(self):
+        assert is_description('the village', 'Lutheran church in the village')
+        assert is_description('the city', 'north east section of the city')
+
+    def test_bare_appellative_is_a_description(self):
+        assert is_description('station', 'on car floor near station')
+        assert is_description('City', '626 Michigan Street, City')
+        assert is_description('city', '335 State St., city')
+
+    def test_two_appellatives_are_a_real_name(self):
+        # "Grove City" and "Lake Village" are places. Requiring exactly one
+        # word after the determiner is what keeps them resolvable.
+        assert not is_description('Grove City', 'Grove City')
+        assert not is_description('Lake Village', 'Lake Village')
+
+    def test_appellative_qualified_by_a_proper_name_is_a_real_name(self):
+        assert not is_description('Camden Place',
+                                  'near the great log jam north of Camden Place')
+        assert not is_description('Wakarusa township',
+                                  'residence of the brides parents in Wakarusa township')
+
+    def test_uncapitalized_span_in_a_mixed_case_original_is_a_description(self):
+        assert is_description('lenoir', 'Route 2, lenoir')
+
+    def test_capitalized_span_passes_the_case_test(self):
+        assert not is_description('South Vineland', 'cottage in South Vineland')
+        assert not is_description('DaCosta', 'home of his parents in DaCosta')
+
+    def test_case_test_stands_down_on_all_lowercase_originals(self):
+        # No capitalization signal exists, so only the list test may fire.
+        assert not is_description('despatch', 'near despatch')
+
+    def test_case_test_stands_down_on_all_caps_originals(self):
+        assert not is_description('BOYERTOWN', 'BOYER TOWN R. D. 2')
+
+    def test_non_alphabetic_lead_skips_the_case_test(self):
+        assert not is_description('1st Ward Detroit', 'Smith home, 1st Ward Detroit')
+
+    def test_empty_span_is_not_a_description(self):
+        assert not is_description('', 'anything')
+        assert not is_description('   ', 'anything')
+
+    def test_negative_cases_from_span_reconstruction_failures(self):
+        """Spans that a wrong reconstruction produced during design. Each is a
+        correct match and must survive. Guards against regressing to the anchor
+        or to the first left-to-right preposition."""
+        for span, original in [
+            ('Dispatch', 'near Despatch'),
+            ('Port Deposit', 'near Port De posit'),
+            ('Rhinelander', 'near Rhineland er'),
+            ('Cole Camp', 'Brauerville church, south of Cole Camp'),
+            ('Kansas', 'farm home, east central Kansas'),
+            ('Bozeman', 'Chapel of the Presbyterian Church in Bozeman'),
+            ('Bergton', 'Crab Run Church of the Brethren in Bergton'),
+            ('Polson', 'home of her daughter west of Polson'),
+            ('Jugenheim', 'Castle of Heiligenberg, near Jugenheim'),
+        ]:
+            assert not is_description(span, original), f'{span!r} in {original!r}'
 
 
 class TestCommalessOracle:

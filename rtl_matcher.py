@@ -1400,6 +1400,71 @@ def _derive_bare_jurisdiction_words():
 
 BARE_JURISDICTION_WORDS = _derive_bare_jurisdiction_words()
 
+# Words that name a kind of place rather than a particular one. A span built
+# from nothing but these is a description the source wrote, not a toponym,
+# even when the authority happens to hold a record by that name — "a lutheran
+# church in the village" is not a reference to The Village, Oklahoma.
+GENERIC_FEATURE_WORDS = frozenset({
+    'station', 'church', 'cemetery', 'farm', 'home', 'residence', 'hospital',
+    'river', 'creek', 'lake', 'island', 'beach', 'hill', 'valley', 'mountain',
+    'park', 'area', 'place', 'community', 'camp', 'mission', 'school',
+    'hotel', 'depot', 'mine', 'bridge', 'road', 'street', 'avenue',
+    'junction', 'crossing', 'landing', 'corner', 'center', 'centre', 'grove',
+})
+
+APPELLATIVES = BARE_JURISDICTION_WORDS | GENERIC_FEATURE_WORDS
+
+DETERMINERS = frozenset({'the', 'a', 'an'})
+
+
+def _case_is_informative(text):
+    """True when the source distinguishes upper from lower case.
+
+    All-caps and all-lowercase strings carry no capitalization signal, which
+    is ordinary in OCR'd newspaper text, so the case test stands down there
+    rather than rejecting every span in the row.
+    """
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return False
+    return not (all(c.isupper() for c in letters)
+                or all(c.islower() for c in letters))
+
+
+def is_description(span, original):
+    """True when span reads as a description rather than a place name.
+
+    Two independent tests, either of which rejects.
+
+    The list test rejects an optional determiner followed by exactly one
+    appellative — "the village", "city", "station". Requiring exactly one word
+    is what keeps real names assembled from generic words ("Grove City",
+    "Lake Village") resolvable.
+
+    The case test rejects a span with a lowercase initial when the original
+    string capitalizes anything at all. A span whose first character is not a
+    letter is exempt, since digits carry no case.
+
+    span is the string that actually reached the authority. For a term the
+    pipeline rewrote before lookup that is not the anchor — see
+    NameCache.span_of.
+    """
+    if not span or not span.strip():
+        return False
+
+    words = [w for w in (t.lower().strip('.,;:') for t in span.split()) if w]
+    if words and words[0] in DETERMINERS:
+        words = words[1:]
+    if len(words) == 1 and words[0] in APPELLATIVES:
+        return True
+
+    head = span.strip()[0]
+    if _case_is_informative(original) and head.isalpha() and not head.isupper():
+        return True
+
+    return False
+
+
 # Prose markers. A comma-less string containing one of these outside a
 # dictionary-matched span is a sentence fragment, not a hierarchy — those rows
 # belong to the Phase 1c3 preposition extraction, so segmentation stands down.
