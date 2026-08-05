@@ -2391,6 +2391,8 @@ from rtl_matcher import (
     is_supported_level,
     lookup_name,
     lookup_name_with_origin,
+    query_cardinal_strip,
+    query_preposition_extractions,
     record_level,
     resolution_kind,
     source_shape_tags,
@@ -2642,6 +2644,49 @@ class TestNameCacheProvenance:
         cache = NameCache()
         cache.record_span('near despatch', 'U-D', 'Despatch')
         assert span_for('near Despatch', 'U-D', cache) == 'Despatch'
+
+
+class TestSpanWiring:
+    """Every phase that rewrites a term before lookup must record what it
+    actually looked up, or the gate tests the wrong string."""
+
+    def test_spelling_correction_records_the_corrected_term(self):
+        sym = SymSpell(max_dictionary_edit_distance=1, prefix_length=7)
+        sym.create_dictionary_entry('birmingham', 1)
+        cache = NameCache()
+        cache.current_origin = 'spelling'
+        client = MagicMock()
+        client.find.return_value = [
+            {'fieldData': {'Auth_Place_Name': 'Birmingham', 'UUID': 'u-birm',
+                           'Jurisdiction': ''}}
+        ]
+        query_spelling_corrections(client, ['Birminghan'], cache, sym)
+        assert cache.span_of('birminghan', 'u-birm') == 'birmingham'
+
+    def test_preposition_extraction_records_the_extracted_span(self):
+        cache = NameCache()
+        cache.current_origin = 'preposition'
+        client = MagicMock()
+        client.find.return_value = [
+            {'fieldData': {'Auth_Place_Name': 'Bozeman', 'UUID': 'u-boz',
+                           'Jurisdiction': 'City'}}
+        ]
+        query_preposition_extractions(
+            client, ['Chapel of the Presbyterian Church in Bozeman'], cache)
+        assert cache.span_of(
+            'chapel of the presbyterian church in bozeman', 'u-boz') == 'Bozeman'
+
+    def test_cardinal_strip_records_the_stripped_form(self):
+        cache = NameCache()
+        cache.current_origin = 'cardinal_strip'
+        client = MagicMock()
+        client.find.return_value = [
+            {'fieldData': {'Auth_Place_Name': 'Kansas', 'UUID': 'u-ks',
+                           'Jurisdiction': 'State'}}
+        ]
+        query_cardinal_strip(client, ['eastern Kansas'], cache,
+                             {'eastern Kansas': 'east Kansas'})
+        assert cache.span_of('eastern kansas', 'u-ks') == 'Kansas'
 
 
 class TestTermAttribution:

@@ -308,6 +308,12 @@ def span_for(term, uuid, name_cache):
     return key
 
 
+def _record_span(name_cache, key, uuid, span):
+    """record_span for a cache that may be a plain dict. No-op on one."""
+    if isinstance(name_cache, NameCache):
+        name_cache.record_span(key, uuid, span)
+
+
 # ---------------------------------------------------------------------------
 # FileMaker client
 #
@@ -830,12 +836,15 @@ def query_fallback_transforms_local(unmatched_terms, name_cache, transform_term_
                 if rec['UUID'] and rec['Jurisdiction'].lower() == jurisdiction.lower():
                     if rec['UUID'] not in name_cache.get(key, set()):
                         name_cache[key].add(rec['UUID'])
+                        _record_span(name_cache, key, rec['UUID'], cleaned)
                         added += 1
         else:
             uuids = _query_name_local(cleaned)
             new_uuids = uuids - name_cache.get(key, set())
             if new_uuids:
                 name_cache[key].update(new_uuids)
+                for uid in new_uuids:
+                    _record_span(name_cache, key, uid, cleaned)
                 added += len(new_uuids)
 
     log.info("  Fallback transforms (local): %d terms, %d UUIDs", len(transforms), added)
@@ -866,12 +875,15 @@ def query_preposition_extractions_local(unmatched_terms, name_cache):
                         if rec['UUID'] and rec['Jurisdiction'].lower() == jurisdiction.lower():
                             if rec['UUID'] not in name_cache.get(key, set()):
                                 name_cache[key].add(rec['UUID'])
+                                _record_span(name_cache, key, rec['UUID'], name)
                                 added += 1
                 else:
                     uuids = _query_name_local(name)
                     new_uuids = uuids - name_cache.get(key, set())
                     if new_uuids:
                         name_cache[key].update(new_uuids)
+                        for uid in new_uuids:
+                            _record_span(name_cache, key, uid, name)
                         added += len(new_uuids)
             if name_cache.get(key):
                 break
@@ -896,6 +908,8 @@ def query_cardinal_strip_local(unmatched_terms, name_cache, transform_map):
         new_uuids = uuids - name_cache.get(key, set())
         if new_uuids:
             name_cache[key].update(new_uuids)
+            for uid in new_uuids:
+                _record_span(name_cache, key, uid, stripped)
             added += len(new_uuids)
     log.info("  Cardinal strip (local): %d terms tried, %d UUIDs added", tried, added)
     return added
@@ -943,6 +957,8 @@ def query_spelling_corrections_local(terms, name_cache, sym_spell,
             new_uuids = uuids - name_cache.get(key, set())
             if new_uuids:
                 name_cache[key].update(new_uuids)
+                for uid in new_uuids:
+                    _record_span(name_cache, key, uid, candidate)
                 added += len(new_uuids)
                 corrections.append({
                     'original_term': key,
@@ -1967,6 +1983,7 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
                     for orig, expected_jurisdiction in lookup[name.lower()]:
                         if record_jurisdiction.lower() == expected_jurisdiction.lower():
                             name_cache[orig.lower()].add(uuid)
+                            _record_span(name_cache, orig.lower(), uuid, name)
                             added += 1
 
             done = min(i + BATCH, len(jurisdiction_terms))
@@ -2004,6 +2021,7 @@ def query_fallback_transforms(client, unmatched_terms, name_cache):
                 if uuid and name and name.lower() in lookup:
                     for orig in lookup[name.lower()]:
                         name_cache[orig.lower()].add(uuid)
+                        _record_span(name_cache, orig.lower(), uuid, name)
                         non_jurisdiction_added += 1
 
             done = min(i + BATCH, len(non_jurisdiction_terms))
@@ -2070,6 +2088,7 @@ def query_preposition_extractions(client, unmatched_terms, name_cache):
                     if jur and record_jurisdiction.lower() != jur.lower():
                         continue
                     name_cache[orig.lower()].add(uuid)
+                    _record_span(name_cache, orig.lower(), uuid, name)
                     added += 1
 
         done = min(i + BATCH, len(all_names))
@@ -2111,6 +2130,7 @@ def query_cardinal_strip(client, unmatched_terms, name_cache, transform_map):
                     key = orig.lower()
                     if uuid not in name_cache.get(key, set()):
                         name_cache[key].add(uuid)
+                        _record_span(name_cache, key, uuid, name)
                         added += 1
 
     log.info("  Cardinal strip (FM): %d terms tried, %d UUIDs added", len(to_query), added)
@@ -2372,6 +2392,8 @@ def query_spelling_corrections(client, terms, name_cache, sym_spell,
             new_uuids = uuids - name_cache.get(key, set())
             if new_uuids:
                 name_cache[key].update(new_uuids)
+                for uid in new_uuids:
+                    _record_span(name_cache, key, uid, candidate)
                 added += len(new_uuids)
                 corrections.append({
                     'original_term': key,
