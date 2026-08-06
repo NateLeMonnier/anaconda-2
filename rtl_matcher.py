@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Right-to-left location matching with fallback transforms.
 
-Takes a TSV of raw place strings from genealogical records and attempts to
-resolve each one to an authority record in FileMaker's Authority_Place table.
+Takes a TSV of raw place strings from genealogical records and resolves each
+one to a record in the place authority.
 
 The core idea: place strings are written broadest-to-narrowest by convention
 ("Syracuse, New York, United States of America"), so reading right-to-left
@@ -10,32 +10,49 @@ lets us anchor on the broadest geography first, then narrow down by verifying
 that each successive term is a child of the previous match in the jurisdiction
 hierarchy.
 
-The pipeline runs in three phases:
+Two sources feed the run, both read into memory up front (see LocalData): the
+Authority_Place export, which is the hierarchy itself, and the Master
+Normalization Table, which maps input strings curators have already resolved
+to authority IDs. --dict unions Storied's Supabase place dictionary on top of
+the MNT and adds a per-term frequency prior and a stop-list of illegible
+terms. Field names throughout are the FileMaker ones the exports carry;
+_PA_FIELD_MAP is where the TSV columns are mapped onto them.
 
-  Phase 1 — Name Resolution
-    Convert raw place-string terms into candidate authority UUIDs by querying
-    two sources: the Master Normalization Table (MNT, which maps known input
-    strings to authority IDs) and the Authority_Place table (direct name match).
-    Terms that fail both lookups get a second pass with fallback transforms
-    (stripping directional prefixes, expanding abbreviations like "St." to
-    "Saint", separating jurisdiction suffixes like "County" for filtered search).
-    Terms still unresolved after transforms are run through symspellpy spelling
-    correction (edit distance 1, ASCII-folded, 5+ character terms only), and
-    finally through FamilySearch city resolution as a last resort.
+The pipeline runs in four phases:
 
-  Phase 2 — Authority Record Caching
-    Fetch the full authority records for every UUID discovered in Phase 1, then
-    walk up the Parent_UUID chain in bulk to pre-cache the entire jurisdiction
-    hierarchy. This avoids per-entry API calls during matching.
+  Phase 0 — Comma-less segmentation
+    Place strings arrive without separators often enough that treating
+    "Swift Minnesota" as one term loses the row. The segmenter splits such
+    strings into hierarchy terms before matching, but only where the
+    authority backs every piece; its decisions go to a side file. Rows whose
+    full string is already an unambiguous MNT mapping skip the pipeline
+    entirely through the full-string fast path.
 
-  Phase 3 — Right-to-Left Matching
-    For each input place string, start from the rightmost (broadest) term and
-    look up its candidate UUIDs. Move left one term at a time, keeping only
-    candidates whose Parent_UUID chain connects back to the current confirmed
-    set. When multiple candidates survive, rank by jurisdiction level gap
-    from the parent anchor (smaller gap = more direct child = better fit),
-    with population as a secondary tiebreaker. Unresolvable ties are
-    written to a separate side file for QA review.
+  Phase 1 — Name resolution
+    Convert raw terms into candidate authority UUIDs, starting with the MNT
+    and exact authority-name matches, then widening: jurisdiction
+    abbreviations, name variants, prefix/suffix transforms, extraction after
+    a spatial preposition, symspellpy correction at edit distance 1, and a
+    cardinal-prefix strip. Every phase records which lookup supplied each
+    UUID and what string it matched, because ranking needs to rate a fuzzy
+    candidate below an exact one and the export has to name the token that
+    drove the match.
+
+  Phase 2 — Authority record caching
+    Load the full record for every UUID Phase 1 found, then walk up the
+    Parent_UUID chain until the whole jurisdiction hierarchy above them is
+    cached, so Phase 3 never has to look outside memory.
+
+  Phase 3 — Right-to-left matching
+    For each place string, start from the rightmost (broadest) term and look
+    up its candidates. Move left one term at a time, keeping only candidates
+    whose Parent_UUID chain connects back to the current confirmed set. Terms
+    that cannot be verified are skipped rather than failing the row, since
+    input carries qualifiers ("near", informal regions) that name no
+    jurisdiction. Survivors are ranked on evidence strength, helper-term
+    match, and level gap; population orders the array but never breaks a tie.
+    Rows that stay ambiguous are surfaced as such, with their candidates, for
+    QA rather than resolved on a weak signal.
 """
 
 import argparse
@@ -123,7 +140,11 @@ ORIGIN_TO_METHOD = {
 
 
 def field_str(field_data, key):
-    """Safely extract a string field from a FileMaker record, returning '' if null."""
+    """Read a string field off an authority record, returning '' if absent.
+
+    Records are dicts keyed by the FileMaker field names the exports carry;
+    _PA_FIELD_MAP maps the TSV columns onto them.
+    """
     val = field_data.get(key)
     if val is None:
         return ''
@@ -610,7 +631,26 @@ def _query_name_local(name):
 
 
 # ---------------------------------------------------------------------------
-# Local query functions — drop-in replacements for FM query functions
+# Phases 1 and 2: lookups against the in-memory indexes
+#
+# Phase 1 builds name_cache, which maps a lowercased term to the set of
+# authority UUIDs it could refer to, through a sequence of increasingly
+# permissive lookups. Each writes under the ORIGINAL term key so results map
+# back to the input that produced them, and each sets name_cache.current_origin
+# first so the cache can record which lookup supplied a UUID:
+#
+#   1a   MNT             curated input-to-authority mappings
+#   1b   exact name      direct match on Auth_Place_Name
+#   1b2  abbreviations   jurisdiction and country aliases
+#   1b3  name variants   Saint/St, spacing, hyphenation
+#   1c   transforms      strip prefixes, separate jurisdiction suffixes
+#   1c3  preposition     the place named after "near", "north of"
+#   1d   spelling        symspellpy at edit distance 1
+#   1d2  cardinal strip  drop a bare "eastern", "upper"
+#
+# Phase 2 then loads the full record for every UUID found and walks up the
+# Parent_UUID chain until the hierarchy above them is cached, so Phase 3 runs
+# entirely out of memory.
 # ---------------------------------------------------------------------------
 
 def query_mnt_local(terms):
@@ -1001,7 +1041,7 @@ def resolve_helper_term_local(term_string, auth_cache):
 
 
 # ---------------------------------------------------------------------------
-# Fallback transforms
+# Fallback transforms (Phase 1c)
 #
 # When a raw term like "Washington County" or "near St. Louis" fails to match
 # directly, these transforms produce alternate lookup strings. The transforms
@@ -1360,6 +1400,12 @@ def _case_is_informative(text):
 
 def is_description(span, original):
     """True when span reads as a description rather than a place name.
+
+    Not yet wired into the pipeline. This is the toponym-ness predicate the
+    low-evidence gate is built around; see
+    docs/superpowers/plans/2026-08-02-low-evidence-gate.md. It is kept and
+    tested ahead of that work rather than landed with it, so the rule can be
+    argued about separately from where it fires.
 
     Two independent tests, either of which rejects.
 
@@ -1726,15 +1772,7 @@ class CommalessSegmenter:
 
 
 # ---------------------------------------------------------------------------
-# Phase 1: Build name_cache
-#
-# name_cache maps lowercased term strings to sets of authority UUIDs. It
-# answers the question "given this place name, what authority records could
-# it refer to?" Phase 1 populates this cache through three sub-phases:
-#   1a) MNT lookup — uses previously-curated input-to-authority mappings
-#   1b) Authority name lookup — direct match on Auth_Place_Name
-#   1c) Fallback transforms — for terms that failed 1a and 1b, try
-#       cleaned/expanded variants
+# Name variants (Phase 1b3)
 # ---------------------------------------------------------------------------
 
 def _generate_name_variants(term):
@@ -1780,7 +1818,11 @@ def _generate_name_variants(term):
 
 
 # ---------------------------------------------------------------------------
-# Phase 1d: Spelling correction via symspellpy
+# Spelling-correction index (Phase 1d)
+#
+# The correction pass itself is query_spelling_corrections_local; what lives
+# here is the SymSpell index it consults and the log of what it applied,
+# which QA reads to judge whether a correction was warranted.
 # ---------------------------------------------------------------------------
 
 
@@ -1829,17 +1871,6 @@ def write_spelling_log(corrections, path):
 
 
 # ---------------------------------------------------------------------------
-# Phase 2: Resolve authority records
-#
-# Phase 1 gives us UUIDs, but matching requires the full authority records
-# (Parent_UUID for chain walking, Level for ranking). Phase 2
-# fetches all of these in batch, then walks up the Parent_UUID hierarchy
-# level by level to pre-cache ancestor records. Without this pre-fetch,
-# Phase 3 would make individual API calls for each parent encountered
-# during chain walking, which dominated runtime in earlier versions.
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
 # Phase 3: Matching
 #
 # For each input place string, we reverse the comma-separated terms and work
@@ -1873,8 +1904,8 @@ def walk_up_chain(candidate_id, target_ids, auth_cache, max_hops=10):
 
 
 def get_population(auth_record):
-    """Extract population as an integer from a FM authority record.
-    Missing, empty, or non-numeric values return 0."""
+    """Population as an integer. Missing, empty, or non-numeric values
+    return 0, which sorts a record last rather than excluding it."""
     val = auth_record.get('Population')
     if val is None:
         return 0
@@ -2226,14 +2257,24 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
                 helper_term=None, correction_uuids_by_term=None):
     """Run the right-to-left matching algorithm on a single place string.
 
-    Match types returned:
-      - chain_verified: multiple terms connected through the hierarchy
-      - chain_amb: chain verified but top candidates tied on level gap + population
-      - single_term: only one term in the input, matched directly
-      - single_amb: single term but top candidates tied on population
-      - parent_only: rightmost term matched but no children verified against it
-      - no_auth_match: rightmost term had no candidates in name_cache
-      - no_terms: input was empty or whitespace-only
+    Returns a MatchResult whose match_type falls in one of four groups:
+
+      chained     chain_verified, or chain_verified_proximity where the
+                  connection came from the proximity fallback rather than the
+                  hierarchy. chain_amb when the survivors could not be
+                  separated.
+      single      single_term for a one-term input that resolved,
+                  freq_resolved when the dictionary frequency prior broke it,
+                  single_amb when nothing did.
+      parent_only the rightmost term anchored but nothing to its left
+                  verified. Handed to resolve_parent_match, which turns it
+                  into parent_resolved, parent_rejected, or parent_amb.
+      no match    no_auth_match when the anchor had no candidates at all,
+                  no_terms for empty input.
+
+    CONFIDENCE_BY_TYPE and NON_RESOLUTION_KIND are the authoritative tables
+    for what each type means downstream; they also cover the two types set
+    outside this function, mnt_full_string and illegible.
     """
     stripped = [t.strip() for t in terms if t.strip()]
     if not stripped:
@@ -2806,7 +2847,7 @@ def resolve_parent_match(match, terms, auth_cache):
 
 
 # ---------------------------------------------------------------------------
-# Main — orchestrates the three-phase pipeline
+# Main — orchestrates the pipeline
 # ---------------------------------------------------------------------------
 
 def main(args):
@@ -3135,8 +3176,9 @@ def build_cli():
                         help="Output directory (default: ./rtl-outputs)")
     parser.add_argument('--helper-term',
                         help="Geographic context term for disambiguating "
-                             "single-term matches (e.g. 'Utah, USA'). "
-                             "Omit to run without one.")
+                             "single-term matches (e.g. 'Utah, USA'). Pass an "
+                             "empty string to run without one; omitting it "
+                             "prompts.")
 
     parser.add_argument('--env',
                         help="Path to a .env file supplying SUPABASE_PASSWORD "
