@@ -1,5 +1,28 @@
 # low_evidence Gate Implementation Plan
 
+> **STATUS: complete, 2026-08-06.** All seven tasks landed; 269 tests pass and
+> the acceptance target was met exactly (7 rows change, and they are the 7 the
+> spec named). Read this alongside
+> `.superpowers/sdd/2026-08-02-low-evidence-gate/progress.md`, which records
+> what execution did differently. Three deviations matter:
+>
+> 1. **Line numbers and call sites below are stale.** Tasks 1-3 landed on
+>    2026-08-04/05; the 2026-08-06 cleanup (`59004e9..39ba23a`) then deleted
+>    FileMaker `--api` mode and split `match_entry`/`main`. The Task 4 gate
+>    site is now `_match_single_term`, and `resolve_parent_match` no longer
+>    takes a `client` parameter.
+> 2. **The case test in `is_description` is disabled by default.** Wiring the
+>    gate exposed two span-recording defects (`span_for` returned the
+>    lowercased key; the spelling path recorded SymSpell's lowercased
+>    suggestion instead of `Auth_Place_Name`). Both are fixed, but
+>    `transform_variant` still records no span at all, and with that gap the
+>    case test gates two correct rows and none of the seven targets. Spec
+>    section 2 sanctions turning it off in exactly this situation.
+> 3. **The gate fires only on paths that were about to commit.** Placing it
+>    ahead of the structural short-circuit, as the spec's section 3 wording
+>    suggests, also caught `single_amb` and `parent_rejected` rows — 94 rows
+>    instead of 7, all of them one abstention relabelled as another.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stop `rtl_matcher.py` from emitting a high-confidence match when the only thing supporting it is a common noun that happens to collide with an authority record.
@@ -49,7 +72,7 @@ The pure function both gates call. No callers yet, so it lands independently.
 - Consumes: `BARE_JURISDICTION_WORDS` (line 1401), already derived from `JURISDICTION_SUFFIXES` and `JURISDICTION_PREFIXES`
 - Produces: `is_description(span, original) -> bool`, `APPELLATIVES`, `GENERIC_FEATURE_WORDS`, `DETERMINERS`, `_case_is_informative(text) -> bool`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `test_rtl_matcher.py`. Import `is_description` in the `from rtl_matcher import (...)` block at the top of the file, keeping the list alphabetical.
 
@@ -117,12 +140,12 @@ class TestIsDescription:
             assert not is_description(span, original), f'{span!r} in {original!r}'
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python3 -m pytest test_rtl_matcher.py::TestIsDescription -v`
 Expected: collection error, `ImportError: cannot import name 'is_description'`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Insert in `rtl_matcher.py` immediately after the `BARE_JURISDICTION_WORDS = _derive_bare_jurisdiction_words()` line (1401).
 
@@ -192,12 +215,12 @@ def is_description(span, original):
     return False
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m pytest test_rtl_matcher.py -q`
 Expected: `245 passed` (234 baseline plus 11 new)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rtl_matcher.py test_rtl_matcher.py
@@ -219,7 +242,7 @@ The gate needs the string a uuid was looked up under. Mirrors the existing `orig
 - Consumes: `NameCache` (line 197)
 - Produces: `NameCache.record_span(key, uuid, span)`, `NameCache.span_of(key, uuid) -> str`, module-level `span_for(term, uuid, name_cache) -> str`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add these methods inside the existing `TestNameCacheProvenance` class. Add `span_for` to the imports.
 
@@ -256,12 +279,12 @@ Add these methods inside the existing `TestNameCacheProvenance` class. Add `span
         assert span_for('near Despatch', 'U-D', cache) == 'Despatch'
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python3 -m pytest test_rtl_matcher.py::TestNameCacheProvenance -v`
 Expected: collection error, `ImportError: cannot import name 'span_for'`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `rtl_matcher.py`, add `self.spans = {}` to `NameCache.__init__`:
 
@@ -308,12 +331,12 @@ def span_for(term, uuid, name_cache):
     return key
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m pytest test_rtl_matcher.py -q`
 Expected: `250 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rtl_matcher.py test_rtl_matcher.py
@@ -341,7 +364,7 @@ Four local phases and their four FileMaker twins. Each already has the looked-up
 - Consumes: `NameCache.record_span` from Task 2
 - Produces: no new names. After this task `span_of` returns the rewritten string for any uuid one of these eight phases supplied.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 class TestSpanWiring:
@@ -387,12 +410,12 @@ class TestSpanWiring:
         assert cache.span_of('east central kansas', 'u-ks') == 'Kansas'
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python3 -m pytest test_rtl_matcher.py::TestSpanWiring -v`
 Expected: FAIL, three assertions comparing the anchor against the rewritten string, e.g. `assert 'birminghan' == 'birmingham'`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `query_fallback_transforms_local`, both branches of the `for orig, (cleaned, jurisdiction)` loop:
 
@@ -513,12 +536,12 @@ def _record_span(name_cache, key, uuid, span):
         name_cache.record_span(key, uuid, span)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m pytest test_rtl_matcher.py -q`
 Expected: `253 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rtl_matcher.py test_rtl_matcher.py
@@ -539,7 +562,7 @@ git commit -m "feat: wire span recording through the rewriting lookup phases"
 - Consumes: `is_description` (Task 1), `span_for` (Task 2)
 - Produces: match type string `'low_evidence'`, confidence `'low'`, resolution kind `'suspect'`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 class TestLowEvidenceGateSingleTerm:
@@ -654,12 +677,12 @@ class TestLowEvidenceConfidenceTables:
 
 Add `resolution_kind`, `NameCache`, and `MAX_ARRAY` to the imports if not already present. `MAX_ARRAY` and `CONFIDENCE_BY_TYPE` are already imported; `NameCache` and `resolution_kind` are imported further down the existing import block.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python3 -m pytest test_rtl_matcher.py::TestLowEvidenceGateSingleTerm test_rtl_matcher.py::TestLowEvidenceConfidenceTables -v`
 Expected: FAIL, `assert 'single_term' == 'low_evidence'` and `KeyError: 'low_evidence'`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Add to `CONFIDENCE_BY_TYPE` (line 2916), after the `'parent_rejected': 'low',` entry:
 
@@ -719,12 +742,12 @@ Replace the `len(right_to_left) == 1` branch of `match_entry` (lines 3022-3044).
 
 Note `all_ids` moved above the `len(ranked) == 1` check so the gate can read the top-ranked candidate. The two later uses are unchanged.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m pytest test_rtl_matcher.py -q`
 Expected: `262 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rtl_matcher.py test_rtl_matcher.py
@@ -746,7 +769,7 @@ git commit -m "feat: gate descriptive single-term anchors to low_evidence"
 - Consumes: `is_description` (Task 1), `span_for` (Task 2), `'low_evidence'` (Task 4)
 - Produces: `resolve_parent_match(match, terms, auth_cache, client, name_cache=None)` — the new parameter is keyword-with-default so the five existing tests in `TestResolveParentMatch` keep passing unchanged
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to the existing `TestResolveParentMatch` class.
 
@@ -799,12 +822,12 @@ Add to the existing `TestResolveParentMatch` class.
         assert result.match_type == 'parent_resolved'
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python3 -m pytest test_rtl_matcher.py::TestResolveParentMatch -v`
 Expected: FAIL, `TypeError: resolve_parent_match() takes 4 positional arguments but 5 were given`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Change the signature and insert the gate ahead of the existing resolution branch:
 
@@ -855,12 +878,12 @@ Update the call site at line 4020:
                 recoverable_rejects += 1
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m pytest test_rtl_matcher.py -q`
 Expected: `266 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rtl_matcher.py test_rtl_matcher.py
@@ -883,7 +906,7 @@ A gated anchor whose uuid came from the MNT is a dictionary defect. Collected du
 - Consumes: `NameCache.origin_of` (line 230), `'low_evidence'` (Task 4)
 - Produces: `MNT_DEFECT_FIELDS`, `merge_mnt_defects(defects, path)`, `collect_mnt_defect(match, terms, name_cache, auth_cache, input_stem) -> dict | None`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 class TestMntDefectReport:
@@ -979,12 +1002,12 @@ class TestMntDefectReport:
 
 Add `import csv` to the test file's imports, and `collect_mnt_defect` and `merge_mnt_defects` to the `rtl_matcher` import block.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python3 -m pytest test_rtl_matcher.py::TestMntDefectReport -v`
 Expected: collection error, `ImportError: cannot import name 'collect_mnt_defect'`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Add after `write_spelling_log` (line 2297, unmoved):
 
@@ -1089,12 +1112,12 @@ In `main`, after the `write_segment_log` block (line 4067):
                  len(mnt_defects), args.mnt_defects)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m pytest test_rtl_matcher.py -q`
 Expected: `272 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rtl_matcher.py test_rtl_matcher.py
@@ -1115,7 +1138,7 @@ git commit -m "feat: merge gated MNT terms into a global defect report"
 - Consumes: everything from Tasks 1 through 6
 - Produces: nothing new
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 class TestSummaryCoversEveryMatchType:
@@ -1130,12 +1153,12 @@ class TestSummaryCoversEveryMatchType:
 
 Add `print_summary` to the imports.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python3 -m pytest test_rtl_matcher.py::TestSummaryCoversEveryMatchType -v`
 Expected: FAIL, `AssertionError: low_evidence`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Add `'low_evidence'` to the list in `print_summary`, after `'parent_rejected'`:
 
@@ -1147,12 +1170,12 @@ Add `'low_evidence'` to the list in `print_summary`, after `'parent_rejected'`:
                        'illegible', 'no_auth_match', 'no_terms']:
 ```
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 Run: `python3 -m pytest test_rtl_matcher.py -q`
 Expected: `273 passed`
 
-- [ ] **Step 5: Rerun the corpus and diff against the acceptance target**
+- [x] **Step 5: Rerun the corpus and diff against the acceptance target**
 
 A pre-gate baseline was captured on `a48b26b` and is the comparison point. The `rtl-outputs/08-01/` files predate that commit and must NOT be used — six county rows changed between them, and diffing against 08-01 would attribute those to this work.
 
@@ -1211,7 +1234,7 @@ cat mnt_defects.tsv
 
 Expected: a header plus two rows, both `term = city`, with different uuids.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add rtl_matcher.py test_rtl_matcher.py

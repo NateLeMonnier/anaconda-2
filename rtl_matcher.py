@@ -305,13 +305,20 @@ def span_for(term, uuid, name_cache):
     """span_of for a cache that may be a plain dict.
 
     Tests and older callers pass defaultdict(set), which has no span table;
-    the key is the right answer there because those caches only ever hold
+    the term is the right answer there because those caches only ever hold
     verbatim lookups. Mirrors how lookup_name_with_origin tolerates them.
+
+    Falls back to `term` rather than the lowercased lookup key. The key is
+    what the span table is indexed by, but it is not what matched: a verbatim
+    lookup matched the term as the source wrote it, capitalization included,
+    and is_description's case test reads that capitalization. Defaulting to
+    the key would report every verbatim hit as lowercase and gate the lot.
+    The recorded spans are already case-preserving, since each rewriting
+    phase stores the substring it extracted, not the key it filed it under.
     """
-    key = term.lower()
     if isinstance(name_cache, NameCache):
-        return name_cache.span_of(key, uuid)
-    return key
+        return name_cache.spans.get((term.lower(), uuid), term)
+    return term
 
 
 def _record_span(name_cache, key, uuid, span):
@@ -893,8 +900,15 @@ def query_spelling_corrections_local(terms, name_cache, sym_spell,
             new_uuids = uuids - name_cache.get(key, set())
             if new_uuids:
                 name_cache[key].update(new_uuids)
+                # Record the authority's spelling, not SymSpell's. `candidate`
+                # comes back from a lowercased index, and is_description's case
+                # test reads the span's first letter: handing it "dispatch"
+                # instead of "Dispatch" reports every corrected place name as
+                # uncapitalized and gates the lot.
+                names = {rec['UUID']: rec.get('Auth_Place_Name') or candidate
+                         for rec in records if rec['UUID']}
                 for uid in new_uuids:
-                    _record_span(name_cache, key, uid, candidate)
+                    _record_span(name_cache, key, uid, names.get(uid, candidate))
                 added += len(new_uuids)
                 corrections.append({
                     'original_term': key,
@@ -1398,29 +1412,39 @@ def _case_is_informative(text):
                 or all(c.islower() for c in letters))
 
 
-def is_description(span, original):
+def is_description(span, original, case_test=False):
     """True when span reads as a description rather than a place name.
 
-    Not yet wired into the pipeline. This is the toponym-ness predicate the
-    low-evidence gate is built around; see
-    docs/superpowers/plans/2026-08-02-low-evidence-gate.md. It is kept and
-    tested ahead of that work rather than landed with it, so the rule can be
-    argued about separately from where it fires.
+    The toponym-ness predicate behind the low-evidence gate; see
+    docs/superpowers/plans/2026-08-02-low-evidence-gate.md.
 
     Two independent tests, either of which rejects.
 
     The list test rejects an optional determiner followed by exactly one
     appellative — "the village", "city", "station". Requiring exactly one word
     is what keeps real names assembled from generic words ("Grove City",
-    "Lake Village") resolvable.
+    "Lake Village") resolvable. This is the test that carries the gate.
 
     The case test rejects a span with a lowercase initial when the original
     string capitalizes anything at all. A span whose first character is not a
     letter is exempt, since digits carry no case.
 
-    span is the string that actually reached the authority. For a term the
-    pipeline rewrote before lookup that is not the anchor — see
-    NameCache.span_of.
+    span is the string that actually reached the authority — see span_for.
+
+    The case test is off by default because it is only as good as span
+    coverage, and coverage is currently partial. Phases that rewrite a term
+    before lookup are supposed to call record_span; transform_variant does
+    not, so its spans fall back to the whole input term and any term starting
+    with a lowercase function word reads as uncapitalized ("near Mt. Hamill"
+    -> Mt Hamill, a correct match). cardinal_strip records a real span but
+    can leave a lowercase word at the front ("east central Kansas" ->
+    "central Kansas"). Both gate correct rows.
+
+    On the 5k baseline the list test catches all seven rows the gate is meant
+    to catch and the case test adds only those two false positives, which is
+    the trade the design anticipated: "if span recording is ever suspect, this
+    is the test that misfires first, and it is the one to disable." Turn it
+    back on once every rewriting phase records a span.
     """
     if not span or not span.strip():
         return False
@@ -1431,9 +1455,10 @@ def is_description(span, original):
     if len(words) == 1 and words[0] in APPELLATIVES:
         return True
 
-    head = span.strip()[0]
-    if _case_is_informative(original) and head.isalpha() and not head.isupper():
-        return True
+    if case_test:
+        head = span.strip()[0]
+        if _case_is_informative(original) and head.isalpha() and not head.isupper():
+            return True
 
     return False
 
@@ -2192,6 +2217,8 @@ CONFIDENCE_BY_TYPE = {
     'chain_amb': 'low',
     'parent_amb': 'low',
     'parent_rejected': 'low',
+    'low_evidence': 'low',
+    'illegible': 'none',
 }
 
 # Why a row is not a plain answer. Three kinds, and conflating them is what
@@ -2206,11 +2233,19 @@ CONFIDENCE_BY_TYPE = {
 #
 # Consumers that want "is this ambiguous" should test for 'tie' rather than
 # pattern-matching a set of match_type names.
+#
+# low_evidence stretches 'suspect': a candidate won and the walk dropped
+# nothing, but the span that reached it does not read as a place name. It is
+# filed here because the downstream contract that matters — do not treat this
+# row as an answer, keep the candidate visible — is the same one, and adding
+# a fourth kind would mean auditing every consumer for a case they all handle
+# identically. Revisit if a consumer ever needs to tell the two apart.
 NON_RESOLUTION_KIND = {
     'single_amb': 'tie',
     'chain_amb': 'tie',
     'parent_amb': 'tie',
     'parent_rejected': 'suspect',
+    'low_evidence': 'suspect',
 }
 
 
@@ -2253,13 +2288,16 @@ class MatchResult:
         return CONFIDENCE_BY_TYPE.get(self.match_type, 'none')
 
 
-def _match_single_term(term, parent_ids, auth_cache, jurisdiction_hints,
-                       helper_term, correction_uuids_by_term, anchor_step):
+def _match_single_term(term, parent_ids, auth_cache, name_cache, original,
+                       jurisdiction_hints, helper_term, correction_uuids_by_term,
+                       anchor_step):
     """Resolve a one-term input, which has no chain to walk.
 
     Everything the row can be decided on is in the candidate set itself, so
     the two priors that do not need a parent get their turn: structural
-    separation in the ranking, then the dictionary frequency count.
+    separation in the ranking, then the dictionary frequency count. Ahead of
+    both, the low-evidence gate asks whether the string that reached the
+    authority is a place name at all.
     """
     term_key = term.lower()
     ranked = rank_candidates(
@@ -2268,18 +2306,40 @@ def _match_single_term(term, parent_ids, auth_cache, jurisdiction_hints,
         helper_term=helper_term,
         correction_uuids=correction_uuids_by_term.get(term_key))
 
+    all_ids = [uuid for uuid, _ in ranked]
+
+    def gated(winner):
+        """True when the span that reached `winner` is not a place name.
+
+        Only asked on the paths that are about to commit. A row heading for
+        single_amb already declines to answer, and relabelling one abstention
+        as another buys no accuracy while churning the diff.
+        """
+        return is_description(span_for(term, winner, name_cache), original)
+
     # Structural separation resolves, same rule the chain walk uses. A lone
     # live exact match standing above a pile of spelling corrections is an
     # answer, not a tie -- "Chiago" is an MNT-curated mapping to Chicago that
     # also picks up Chisago County at edit distance 1.
     structural_winner, _ = detect_tie(ranked)
     if structural_winner:
+        # A one-term input has no chain corroboration, so the span is the only
+        # evidence left. "Lutheran church in the village" gets here because
+        # extract_after_preposition handed "the village" to a lookup that
+        # found The Village, Oklahoma; being unopposed is not evidence.
+        if gated(structural_winner):
+            return MatchResult([], depth=1, match_type='low_evidence',
+                               tied_ids=cap_candidates(all_ids, "low_evidence"),
+                               steps=[anchor_step])
         return MatchResult([structural_winner], depth=1,
                            match_type='single_term', steps=[anchor_step])
 
-    all_ids = [uuid for uuid, _ in ranked]
     winner = _disambiguate_by_frequency(term, all_ids, _LOCAL.dict_freq or {})
     if winner:
+        if gated(winner):
+            return MatchResult([], depth=1, match_type='low_evidence',
+                               tied_ids=cap_candidates(all_ids, "low_evidence"),
+                               steps=[anchor_step])
         return MatchResult([winner], depth=1, match_type='freq_resolved',
                            steps=[anchor_step])
     return MatchResult([], depth=1, match_type='single_amb',
@@ -2411,6 +2471,10 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
       parent_only the rightmost term anchored but nothing to its left
                   verified. Handed to resolve_parent_match, which turns it
                   into parent_resolved, parent_rejected, or parent_amb.
+      gated       low_evidence, from either uncorroborated path, when the
+                  span that reached the authority does not read as a place
+                  name. The candidate stays in the array; the row claims
+                  nothing.
       no match    no_auth_match when the anchor had no candidates at all,
                   no_terms for empty input.
 
@@ -2441,8 +2505,8 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
 
     if len(right_to_left) == 1:
         return _match_single_term(right_to_left[0], parent_ids, auth_cache,
-                                  jurisdiction_hints, helper_term, _corr,
-                                  anchor_step)
+                                  name_cache, original, jurisdiction_hints,
+                                  helper_term, _corr, anchor_step)
 
     confirmed = parent_ids
     depth = 1
@@ -2768,6 +2832,58 @@ def write_segment_log(decisions, path):
         writer.writerows(decisions)
 
 
+MNT_DEFECT_FIELDS = [
+    'term', 'uuid', 'auth_name', 'jurisdiction', 'rows_last_run', 'last_input',
+]
+
+
+def merge_mnt_defects(existing, found, input_name):
+    """Merge this run's gated MNT terms into the accumulated defect table.
+
+    Keyed on (term, uuid) rather than term alone because one bad term can
+    carry several mappings — the bare term "city" resolves to two authority
+    records in the 5k sample, and collapsing them would hide one.
+
+    rows_last_run is overwritten rather than accumulated. The samples overlap,
+    so a running total would climb every time the same data is reprocessed and
+    read as a worsening problem.
+    """
+    merged = {(r['term'], r['uuid']): dict(r) for r in existing}
+    for (term, uuid), info in found.items():
+        merged[(term, uuid)] = {
+            'term': term,
+            'uuid': uuid,
+            'auth_name': info['auth_name'],
+            'jurisdiction': info['jurisdiction'],
+            'rows_last_run': info['rows'],
+            'last_input': input_name,
+        }
+    return [merged[k] for k in sorted(merged)]
+
+
+def write_mnt_defects(found, path, input_name):
+    """Record dictionary mappings the low-evidence gate rejected.
+
+    A term gated while carrying origin 'mnt' is not a matcher failure — the
+    MNT is harvested from prior normalizations, so a mapping that was right
+    for one record became a global rule that is wrong everywhere else. Those
+    need fixing at the source rather than re-suppressing on every future
+    corpus, which is why this file is global and cumulative rather than a
+    per-run side file.
+    """
+    existing = []
+    if os.path.exists(path):
+        with open(path, newline='', encoding='utf-8-sig') as f:
+            existing = list(csv.DictReader(f, delimiter='\t'))
+
+    rows = merge_mnt_defects(existing, found, input_name)
+    with open(path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=MNT_DEFECT_FIELDS, delimiter='\t')
+        writer.writeheader()
+        writer.writerows(rows)
+    return rows
+
+
 def print_summary(results, elapsed_sec, output_path):
     types = defaultdict(int)
     for row in results:
@@ -2776,10 +2892,13 @@ def print_summary(results, elapsed_sec, output_path):
     print(f"\n{'='*50}")
     print(f"RESULTS — {len(results)} entries")
     print(f"{'='*50}")
+    # Ordered by descending confidence, then by how the row failed. A type
+    # missing from this list is silently dropped from the summary, so anything
+    # added to CONFIDENCE_BY_TYPE belongs here too.
     for match_type in ['mnt_full_string', 'chain_verified', 'chain_verified_proximity',
                        'chain_amb', 'single_term', 'single_amb', 'freq_resolved',
                        'parent_resolved', 'parent_rejected', 'parent_only', 'parent_amb',
-                       'illegible', 'no_auth_match', 'no_terms']:
+                       'low_evidence', 'illegible', 'no_auth_match', 'no_terms']:
         if match_type in types:
             print(f"  {match_type:20s} {types[match_type]:>5}")
 
@@ -2833,7 +2952,8 @@ def print_summary(results, elapsed_sec, output_path):
 # judgement, kept here rather than inline in the Phase 3 loop.
 # ---------------------------------------------------------------------------
 
-def resolve_parent_match(match, terms, auth_cache):
+def resolve_parent_match(match, terms, auth_cache, name_cache=None,
+                         original=None):
     """Decide the fate of a parent_only match: resolve, reject, or amb.
 
     The rightmost term anchored a parent, but no more-specific term to its left
@@ -2850,6 +2970,10 @@ def resolve_parent_match(match, terms, auth_cache):
 
     Skipped terms are carried through unchanged so the dropped specifics stay
     recorded in the output regardless of outcome.
+
+    name_cache and original are what the low-evidence gate needs; both default
+    to None so callers that only exercise the resolution logic can omit them,
+    and the gate stands down when they are absent.
     """
     winner, resolution = resolve_parent_only(
         match.candidate_ids, auth_cache, term=terms[-1])
@@ -2866,6 +2990,28 @@ def resolve_parent_match(match, terms, auth_cache):
                 skipped_count=match.skipped_count,
                 skipped_terms=match.skipped_terms,
                 steps=match.steps,
+            )
+        # Low-evidence gate, the parent_only twin of the one in
+        # _match_single_term. Nothing to the left of the anchor verified, so
+        # the row rests entirely on the anchor being a real place name. "626
+        # Michigan Street, City" anchors on the bare term "City", which the
+        # MNT maps to City Township, Barton, Missouri — a mapping that was
+        # right for one prior normalization and became a global rule.
+        #
+        # Checked only on this branch. parent_rejected above already declines
+        # to claim the parent, and parent_amb below has no winner to test.
+        if (name_cache is not None and original is not None
+                and is_description(span_for(terms[-1], winner, name_cache),
+                                   original)):
+            return MatchResult(
+                candidate_ids=[],
+                depth=match.depth,
+                match_type='low_evidence',
+                skipped_count=match.skipped_count,
+                skipped_terms=match.skipped_terms,
+                steps=match.steps,
+                tied_ids=cap_candidates(list(match.candidate_ids),
+                                        "low_evidence"),
             )
         return MatchResult(
             candidate_ids=[winner],
@@ -3166,6 +3312,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, jurisdiction_hints,
     results = []
     ties = []
     level_provenance = []
+    mnt_defects = {}
     recoverable_rejects = 0
     for idx, (place, guid, frequency, terms) in enumerate(parsed):
         fs_uid = (fs_hits or {}).get(place)
@@ -3198,9 +3345,25 @@ def _run_phase3(args, parsed, name_cache, auth_cache, jurisdiction_hints,
                 match = retry
 
         if match.match_type == 'parent_only' and match.candidate_ids:
-            match = resolve_parent_match(match, terms, auth_cache)
+            match = resolve_parent_match(match, terms, auth_cache,
+                                         name_cache=name_cache, original=place)
             if match.match_type == 'parent_rejected':
                 recoverable_rejects += 1
+
+        # A gated row whose candidate came from the MNT is a dictionary defect,
+        # not a matcher one. Attribute it to the anchor term, which is the key
+        # the mapping is filed under and the one a curator would search for.
+        if match.match_type == 'low_evidence' and match.tied_ids and terms:
+            anchor = terms[-1].strip()
+            top = match.tied_ids[0]
+            if name_cache.origin_of(anchor.lower(), top) == 'mnt':
+                rec = auth_cache.get(top, {})
+                entry = mnt_defects.setdefault((anchor.lower(), top), {
+                    'auth_name': rec.get('Auth_Place_Name', ''),
+                    'jurisdiction': rec.get('Jurisdiction', ''),
+                    'rows': 0,
+                })
+                entry['rows'] += 1
 
         if match.match_type in ('chain_amb', 'single_amb', 'parent_amb') and match.tied_ids:
             for tid in match.tied_ids:
@@ -3246,6 +3409,11 @@ def _run_phase3(args, parsed, name_cache, auth_cache, jurisdiction_hints,
     if segment_decisions:
         write_segment_log(segment_decisions, segment_log_path)
         log.info("  Segmentation log: %s", segment_log_path)
+    if mnt_defects:
+        rows = write_mnt_defects(mnt_defects, args.mnt_defects,
+                                 os.path.basename(args.input))
+        log.info("  MNT defects: %d from this run, %d tracked in %s",
+                 len(mnt_defects), len(rows), args.mnt_defects)
     print_summary(results, time.time() - start, output_path)
 
 
@@ -3261,6 +3429,11 @@ def build_cli():
                         help="Authority Place TSV export")
     parser.add_argument('--mnt',
                         help="Master Normalization Table TSV export")
+    parser.add_argument('--mnt-defects', default='mnt_defects.tsv',
+                        help="Cumulative log of MNT mappings the low-evidence "
+                             "gate rejected. Global rather than per-run, since "
+                             "these are dictionary rows to fix at the source "
+                             "(default: mnt_defects.tsv)")
 
     parser.add_argument('--output-dir', default='./rtl-outputs',
                         help="Output directory (default: ./rtl-outputs)")

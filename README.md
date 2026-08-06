@@ -24,6 +24,7 @@ Run without flags to be prompted for paths.
 | `--dict [DIR]` | Union the Supabase place dictionary into the MNT, adding a per-term frequency prior and an illegible-term stop-list. No value means a live pull, which needs `SUPABASE_PASSWORD` via `--env` or the environment. |
 | `--no-segment-commaless` | Turn off Phase 0. Reproduces pre-segmentation output for A/B comparison. |
 | `--min-level` / `--max-level` | Move the supported jurisdiction range (default 3–10). Matches outside it are reported via `below_supported` and `supported_leaf_id`, not excluded. |
+| `--mnt-defects PATH` | Where to accumulate MNT mappings the low-evidence gate rejected (default `mnt_defects.tsv`). Global rather than per-run, since these are dictionary rows to fix at the source. |
 
 The pipeline runs in four phases:
 
@@ -31,6 +32,8 @@ The pipeline runs in four phases:
 1. **Name resolution** — Convert raw terms into candidate authority UUIDs via the MNT and exact authority names, then widen: abbreviation expansion, name variants, prefix/suffix transforms, extraction after a spatial preposition, SymSpell correction at edit distance 1, and a cardinal-prefix strip. Every candidate records which lookup found it and what string it matched.
 2. **Authority record caching** — Load the full record for every UUID found and walk parent chains until the hierarchy above them is cached.
 3. **Right-to-left matching** — Starting from the broadest (rightmost) term, walk left, keeping only candidates whose parent chain connects back to the confirmed set. Unverifiable terms are skipped rather than failing the row; a proximity fallback (within 50km) recovers likely wrong-county entries. Survivors are ranked on evidence strength, helper-term match, and level gap. Population orders the array but never breaks a tie — rows that stay ambiguous are surfaced with their candidates for QA.
+
+The two outcomes with no chain corroboration — a one-term input, and an anchor nothing to its left confirmed — pass a last check before they commit. If the string that actually reached the authority is a bare appellative rather than a name (`the village`, `station`, `city`), the row is labelled `low_evidence` and claims nothing, keeping its candidates visible. This is what stops `Lutheran church in the village` resolving to The Village, Oklahoma. When the rejected candidate came from the MNT, the mapping is logged to `--mnt-defects` as a dictionary row to fix at the source.
 
 Outputs land in `<output-dir>/MM-DD/` with an auto-incrementing run number:
 

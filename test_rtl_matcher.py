@@ -34,6 +34,7 @@ from rtl_matcher import (
     match_entry,
     MatchResult,
     MAX_ARRAY,
+    merge_mnt_defects,
     NameCache,
     parse_entries,
     prefetch_parent_chains_local,
@@ -51,6 +52,7 @@ from rtl_matcher import (
     source_shape_tags,
     span_for,
     _strip_bare_jurisdiction,
+    write_mnt_defects,
     write_segment_log,
     write_spelling_log,
 )
@@ -1152,6 +1154,135 @@ class TestWriteSpellingLog:
         os.unlink(path)
 
 
+class TestMntDefectReport:
+    """Gated rows whose candidate came from the MNT are dictionary defects, and
+    the file that tracks them is global, so merge behavior is the contract."""
+
+    def _found(self, term='city', uuid='u-city', rows=2):
+        return {(term, uuid): {'auth_name': 'City', 'jurisdiction': 'City',
+                               'rows': rows}}
+
+    def test_writes_one_row_per_term_uuid_pair(self, tmp_path):
+        path = tmp_path / 'mnt_defects.tsv'
+        found = {('city', 'u-a'): {'auth_name': 'City, Barton, Missouri',
+                                   'jurisdiction': 'City', 'rows': 2},
+                 ('city', 'u-b'): {'auth_name': 'London', 'jurisdiction': 'City',
+                                   'rows': 2}}
+        rows = write_mnt_defects(found, str(path), 'sample.tsv')
+        # One bad term, two mappings. Keying on the term alone would hide one.
+        assert len(rows) == 2
+        assert {r['uuid'] for r in rows} == {'u-a', 'u-b'}
+        assert all(r['last_input'] == 'sample.tsv' for r in rows)
+
+    def test_merge_is_idempotent(self, tmp_path):
+        path = tmp_path / 'mnt_defects.tsv'
+        write_mnt_defects(self._found(), str(path), 'sample.tsv')
+        rows = write_mnt_defects(self._found(), str(path), 'sample.tsv')
+        assert len(rows) == 1
+
+    def test_rerunning_overwrites_the_count_rather_than_accumulating(self):
+        # The 01 and 02 samples overlap, so a running total would climb every
+        # time the same data is reprocessed and read as a worsening problem.
+        existing = [{'term': 'city', 'uuid': 'u-city', 'auth_name': 'City',
+                     'jurisdiction': 'City', 'rows_last_run': '2',
+                     'last_input': 'sample_01.tsv'}]
+        merged = merge_mnt_defects(existing, self._found(rows=3), 'sample_02.tsv')
+        assert len(merged) == 1
+        assert merged[0]['rows_last_run'] == 3
+        assert merged[0]['last_input'] == 'sample_02.tsv'
+
+    def test_existing_entries_for_other_terms_survive(self):
+        existing = [{'term': 'station', 'uuid': 'u-stn', 'auth_name': 'Station',
+                     'jurisdiction': 'City', 'rows_last_run': '1',
+                     'last_input': 'older.tsv'}]
+        merged = merge_mnt_defects(existing, self._found(), 'sample.tsv')
+        assert [r['term'] for r in merged] == ['city', 'station']
+        assert merged[1]['last_input'] == 'older.tsv'
+
+
+class TestLowEvidenceGate:
+    """The gate fires only where a row was about to commit without chain
+    corroboration, and only on spans that do not read as place names."""
+
+    def _cache(self, term, uuid, span=None, origin='preposition'):
+        cache = NameCache()
+        cache.current_origin = origin
+        cache[term.lower()].add(uuid)
+        if span is not None:
+            cache.record_span(term.lower(), uuid, span)
+        return cache
+
+    def test_appellative_span_gates_a_single_term_match(self, local_pa):
+        auth = {'u-vil': make_auth_record('u-vil', name='The Village')}
+        cache = self._cache('Lutheran church in the village', 'u-vil',
+                            span='the village')
+        result = match_entry(['Lutheran church in the village'], cache, auth,
+                             'Lutheran church in the village')
+        assert result.match_type == 'low_evidence'
+        assert result.candidate_ids == []
+        # The rejected candidate stays visible so QA can see what was declined.
+        assert result.tied_ids == ['u-vil']
+
+    def test_real_place_name_still_resolves(self, local_pa):
+        auth = {'u-boz': make_auth_record('u-boz', name='Bozeman')}
+        cache = self._cache('Chapel of the Presbyterian Church in Bozeman',
+                            'u-boz', span='Bozeman')
+        result = match_entry(['Chapel of the Presbyterian Church in Bozeman'],
+                             cache, auth,
+                             'Chapel of the Presbyterian Church in Bozeman')
+        assert result.match_type == 'single_term'
+        assert result.candidate_ids == ['u-boz']
+
+    def test_gate_applies_to_an_mnt_origin_anchor(self, local_pa):
+        # A heuristic vetoing a curated mapping is deliberate: emitting a
+        # known-wrong match on the authority of a bad dictionary row is worse.
+        auth = {'u-city': make_auth_record('u-city', name='City')}
+        cache = self._cache('City', 'u-city', origin='mnt')
+        result = match_entry(['City'], cache, auth, '626 Michigan Street, City')
+        assert result.match_type == 'low_evidence'
+
+    def test_parent_resolved_is_gated(self):
+        auth = {'u-city': make_auth_record('u-city', name='City')}
+        cache = self._cache('City', 'u-city', origin='mnt')
+        match = MatchResult(['u-city'], depth=1, match_type='parent_only')
+        result = resolve_parent_match(match, ['626 Michigan Street', 'City'],
+                                      auth, name_cache=cache,
+                                      original='626 Michigan Street, City')
+        assert result.match_type == 'low_evidence'
+        assert result.tied_ids == ['u-city']
+
+    def test_parent_rejected_is_not_gated(self):
+        # That row already declines to claim the parent, so relabelling it
+        # buys nothing and loses the reason it was rejected.
+        auth = {'u-city': make_auth_record('u-city', name='City')}
+        cache = self._cache('City', 'u-city', origin='mnt')
+        match = MatchResult(['u-city'], depth=1, match_type='parent_only',
+                            skipped_had_candidates=True)
+        result = resolve_parent_match(match, ['626 Michigan Street', 'City'],
+                                      auth, name_cache=cache,
+                                      original='626 Michigan Street, City')
+        assert result.match_type == 'parent_rejected'
+
+    def test_gate_stands_down_without_a_name_cache(self):
+        # resolve_parent_match has callers that only exercise resolution.
+        auth = {'u-city': make_auth_record('u-city', name='City')}
+        match = MatchResult(['u-city'], depth=1, match_type='parent_only')
+        result = resolve_parent_match(match, ['x', 'City'], auth)
+        assert result.match_type == 'parent_resolved'
+
+    def test_low_evidence_blanks_the_answer_but_keeps_candidates(self):
+        auth = {'u-vil': make_auth_record('u-vil', name='The Village')}
+        match = MatchResult([], depth=1, match_type='low_evidence',
+                            tied_ids=['u-vil'])
+        row = build_result_row(match, 'Lutheran church in the village', 'g1',
+                               1, auth)
+        assert row['authority_id'] == ''
+        assert row['authority_name'] == ''
+        assert row['candidate_ids'] == 'u-vil'
+        assert row['resolution_kind'] == 'suspect'
+        assert row['confidence'] == 'low'
+
+
 class TestMntTransformEnrichment:
     def test_transformable_mnt_matched_term_gets_enriched(self, local_pa):
         """'Town of Bristol' has an MNT entry (Bristol, England) but transform_term
@@ -1913,21 +2044,38 @@ class TestIsDescription:
                                   'residence of the brides parents in Wakarusa township')
 
     def test_uncapitalized_span_in_a_mixed_case_original_is_a_description(self):
-        assert is_description('lenoir', 'Route 2, lenoir')
+        assert is_description('lenoir', 'Route 2, lenoir', case_test=True)
+
+    def test_case_test_is_off_by_default(self):
+        # Span coverage is partial -- transform_variant records none -- so the
+        # case test gates correct rows in production. Opt-in only until every
+        # rewriting phase records a span.
+        assert not is_description('lenoir', 'Route 2, lenoir')
+
+    def test_case_test_off_saves_the_rows_partial_spans_would_gate(self):
+        # Both were gated by the case test on the 5k baseline and both are
+        # correct matches. 'near Mt. Hamill' is a transform_variant hit with no
+        # recorded span, so the span falls back to the whole term; 'central
+        # Kansas' is what cardinal_strip leaves behind.
+        assert not is_description('near Mt. Hamill', 'near Mt. Hamill')
+        assert not is_description('central Kansas', 'farm home, east central Kansas')
 
     def test_capitalized_span_passes_the_case_test(self):
-        assert not is_description('South Vineland', 'cottage in South Vineland')
-        assert not is_description('DaCosta', 'home of his parents in DaCosta')
+        assert not is_description('South Vineland', 'cottage in South Vineland',
+                                  case_test=True)
+        assert not is_description('DaCosta', 'home of his parents in DaCosta',
+                                  case_test=True)
 
     def test_case_test_stands_down_on_all_lowercase_originals(self):
         # No capitalization signal exists, so only the list test may fire.
-        assert not is_description('despatch', 'near despatch')
+        assert not is_description('despatch', 'near despatch', case_test=True)
 
     def test_case_test_stands_down_on_all_caps_originals(self):
-        assert not is_description('BOYERTOWN', 'BOYER TOWN R. D. 2')
+        assert not is_description('BOYERTOWN', 'BOYER TOWN R. D. 2', case_test=True)
 
     def test_non_alphabetic_lead_skips_the_case_test(self):
-        assert not is_description('1st Ward Detroit', 'Smith home, 1st Ward Detroit')
+        assert not is_description('1st Ward Detroit', 'Smith home, 1st Ward Detroit',
+                                  case_test=True)
 
     def test_empty_span_is_not_a_description(self):
         assert not is_description('', 'anything')
@@ -2598,12 +2746,23 @@ class TestNameCacheProvenance:
         assert cache.span_of('near despatch', 'U-D') == 'Despatch'
 
     def test_span_for_tolerates_a_plain_dict_cache(self):
-        assert span_for('Albany', 'U-ALBANY', {'albany': {'U-ALBANY'}}) == 'albany'
+        assert span_for('Albany', 'U-ALBANY', {'albany': {'U-ALBANY'}}) == 'Albany'
 
     def test_span_for_lowercases_the_term_to_key_the_lookup(self):
         cache = NameCache()
         cache.record_span('near despatch', 'U-D', 'Despatch')
         assert span_for('near Despatch', 'U-D', cache) == 'Despatch'
+
+    def test_span_for_keeps_the_terms_case_when_nothing_was_recorded(self):
+        # span_of defaults to the key, which is lowercased; span_for defaults
+        # to the term, which is not. The difference is load-bearing: the case
+        # test in is_description reads this string, so reporting a verbatim
+        # match as lowercase would gate every capitalized place name.
+        cache = NameCache()
+        cache.current_origin = 'exact'
+        cache['albany'].add('U-ALBANY')
+        assert cache.span_of('albany', 'U-ALBANY') == 'albany'
+        assert span_for('Albany', 'U-ALBANY', cache) == 'Albany'
 
 
 class TestSpanWiring:
@@ -2617,7 +2776,11 @@ class TestSpanWiring:
         cache = NameCache()
         cache.current_origin = 'spelling'
         query_spelling_corrections_local(['Birminghan'], cache, sym)
-        assert cache.span_of('birminghan', 'u-birm') == 'birmingham'
+        # The authority's spelling, not SymSpell's. SymSpell indexes lowercased
+        # terms, so its suggestion is 'birmingham'; the span has to carry
+        # 'Birmingham' or is_description's case test reads every corrected name
+        # as uncapitalized.
+        assert cache.span_of('birminghan', 'u-birm') == 'Birmingham'
 
     def test_preposition_extraction_records_the_extracted_span(self, local_pa):
         local_pa(make_auth_record_full('u-boz', name='Bozeman',

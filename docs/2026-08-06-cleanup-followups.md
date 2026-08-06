@@ -72,11 +72,14 @@ drawing a sample that overlaps a labeled set first.
 
 ## Also worth knowing
 
-- **`is_description` is not wired in.** It and `_case_is_informative`
-  (`rtl_matcher.py:1401`) are defined and tested but never called. They are the
-  predicate for the low-evidence gate in
-  `docs/superpowers/plans/2026-08-02-low-evidence-gate.md`, which has not
-  landed. The docstring now says so.
+- ~~**`is_description` is not wired in.**~~ Resolved later the same day: Tasks
+  4-7 of `docs/superpowers/plans/2026-08-02-low-evidence-gate.md` landed, so
+  `is_description` now backs the `low_evidence` match type from both
+  uncorroborated paths. Its case test is off by default — see the ledger at
+  `.superpowers/sdd/2026-08-02-low-evidence-gate/progress.md` for why, and for
+  the two span-recording defects that wiring it exposed. The live gap it left
+  behind: **`transform_variant` rewrites a term before lookup and records no
+  span**, which is what keeps the case test disabled.
 - **`--helper-term` prompts when omitted.** Passing `''` is what skips it. The
   old help text claimed the opposite; corrected in `e38ffff`.
 - **`PYTHONHASHSEED` matters for reproducibility.** Several paths iterate sets
