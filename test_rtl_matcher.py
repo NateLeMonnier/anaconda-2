@@ -8,24 +8,50 @@ from symspellpy import SymSpell, Verbosity
 
 import rtl_matcher
 from rtl_matcher import (
-    MAX_ARRAY,
-    LocalData,
-    MatchResult,
+    _absorb_bare_jurisdiction,
+    BARE_JURISDICTION_WORDS,
+    build_ascii_index,
+    build_cli,
+    build_level_provenance,
     build_result_row,
-    cap_candidates,
     build_spelling_index,
+    canonicalize_place,
+    cap_candidates,
+    CommalessSegmenter,
+    COUNTRY_ABBREVIATIONS,
+    deepest_supported_ancestor,
     detect_jurisdiction_hint,
     detect_tie,
+    _disambiguate_by_frequency,
+    has_encoding_corruption,
     haversine_km,
+    _is_bare_jurisdiction,
     is_description,
+    is_supported_level,
+    LocalData,
+    lookup_name,
+    lookup_name_with_origin,
     match_entry,
+    MatchResult,
+    MAX_ARRAY,
+    NameCache,
     parse_entries,
     prefetch_parent_chains_local,
+    query_cardinal_strip_local,
+    query_preposition_extractions_local,
     query_spelling_corrections_local,
     rank_candidates,
+    record_level,
+    resolution_kind,
     resolve_helper_term_local,
+    _resolve_output_paths,
     resolve_parent_match,
     resolve_parent_only,
+    SEGMENT_LOG_FIELDS,
+    source_shape_tags,
+    span_for,
+    _strip_bare_jurisdiction,
+    write_segment_log,
     write_spelling_log,
 )
 
@@ -216,7 +242,6 @@ class TestResolveParentOnly:
         }
         result = resolve_parent_only([big_city, small_city], auth_cache)
         assert result == (None, 'amb')
-
 
 
 class TestRankCandidates:
@@ -1424,8 +1449,6 @@ class TestProximityFallback:
 # Dict-union reintegration tests
 # ---------------------------------------------------------------------------
 
-from rtl_matcher import canonicalize_place
-
 
 def _write_tsv(path, header, rows):
     with open(path, 'w', encoding='utf-8') as f:
@@ -1505,9 +1528,6 @@ class TestDictUnion:
         ld._load_mnt(mnt)
         ld._load_dict_tsv(str(d))
         assert ld.illegible == {'uk known', 'a?'}
-
-
-from rtl_matcher import _disambiguate_by_frequency
 
 
 class TestFrequencyDisambiguation:
@@ -1806,19 +1826,6 @@ class TestCapCandidates:
     def test_empty(self):
         assert cap_candidates([]) == []
 
-
-from rtl_matcher import (
-    BARE_JURISDICTION_WORDS,
-    COUNTRY_ABBREVIATIONS,
-    SEGMENT_LOG_FIELDS,
-    CommalessSegmenter,
-    _absorb_bare_jurisdiction,
-    _is_bare_jurisdiction,
-    _resolve_output_paths,
-    _strip_bare_jurisdiction,
-    build_cli,
-    write_segment_log,
-)
 
 U3 = '33333333-3333-3333-3333-333333333333'
 U4 = '44444444-4444-4444-4444-444444444444'
@@ -2351,23 +2358,6 @@ class TestResolveOutputPaths:
 # Export-defect fixes: source-defect reporting, resolution kinds, level scope,
 # candidate provenance, and term-to-level attribution.
 # ---------------------------------------------------------------------------
-
-from rtl_matcher import (
-    NameCache,
-    build_level_provenance,
-    build_ascii_index,
-    deepest_supported_ancestor,
-    has_encoding_corruption,
-    is_supported_level,
-    lookup_name,
-    lookup_name_with_origin,
-    query_cardinal_strip_local,
-    query_preposition_extractions_local,
-    record_level,
-    resolution_kind,
-    source_shape_tags,
-    span_for,
-)
 
 
 class TestSourceDefectFlags:

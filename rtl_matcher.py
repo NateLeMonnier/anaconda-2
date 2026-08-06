@@ -3078,8 +3078,9 @@ def main(args):
     name_cache.current_origin = 'preposition'
     preposition_added = query_preposition_extractions_local(still_unmatched, name_cache)
     after_preposition = sum(1 for v in name_cache.values() if v)
-    log.info("  After preposition extraction: %d terms matched (+%d new) %s",
-             after_preposition, after_preposition - after, elapsed())
+    log.info("  After preposition extraction: %d terms matched (+%d new, %d UUIDs) %s",
+             after_preposition, after_preposition - after, preposition_added,
+             elapsed())
 
     log.info("\nPhase 1d: Spelling correction via symspellpy %s", elapsed())
     transform_map = _build_transform_map(all_terms)
@@ -3107,8 +3108,9 @@ def main(args):
     name_cache.current_origin = 'cardinal_strip'
     cardinal_added = query_cardinal_strip_local(still_unmatched, name_cache, transform_map)
     after_cardinal = sum(1 for v in name_cache.values() if v)
-    log.info("  After cardinal strip: %d terms matched (+%d new) %s",
-             after_cardinal, after_cardinal - after_spelling, elapsed())
+    log.info("  After cardinal strip: %d terms matched (+%d new, %d UUIDs) %s",
+             after_cardinal, after_cardinal - after_spelling, cardinal_added,
+             elapsed())
 
     all_auth_ids = set()
     for ids in name_cache.values():
