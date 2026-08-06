@@ -2,14 +2,14 @@
 import os
 import tempfile
 from collections import defaultdict
-from unittest.mock import MagicMock
 
+import pytest
 from symspellpy import SymSpell, Verbosity
 
+import rtl_matcher
 from rtl_matcher import (
-    BATCH,
-    CONFIDENCE_BY_TYPE,
     MAX_ARRAY,
+    LocalData,
     MatchResult,
     build_result_row,
     cap_candidates,
@@ -20,10 +20,10 @@ from rtl_matcher import (
     is_description,
     match_entry,
     parse_entries,
-    prefetch_parent_chains,
-    query_spelling_corrections,
+    prefetch_parent_chains_local,
+    query_spelling_corrections_local,
     rank_candidates,
-    resolve_helper_term,
+    resolve_helper_term_local,
     resolve_parent_match,
     resolve_parent_only,
     write_spelling_log,
@@ -38,122 +38,126 @@ def make_auth_record(uuid, parent_uuid=None, name="Place"):
     }
 
 
-def make_fm_response(records):
-    return [{'fieldData': r} for r in records]
+@pytest.fixture
+def local_pa():
+    """Install a throwaway LocalData as the module-global _LOCAL.
+
+    The lookup functions read the PA and MNT indexes off _LOCAL rather than
+    taking them as arguments, so a test that drives one has to supply the
+    indexes this way. Yields a loader: call it with authority records (the
+    dicts make_auth_record / make_auth_record_full produce) to populate
+    pa_by_uuid and pa_by_name.
+    """
+    original = rtl_matcher._LOCAL
+    data = LocalData()
+    data.mnt_by_raw = defaultdict(set)
+    data.mnt_by_value = defaultdict(set)
+    data.pa_by_name = defaultdict(list)
+    data.pa_by_uuid = {}
+    data.dict_freq = {}
+    rtl_matcher._LOCAL = data
+
+    def load(*records):
+        for rec in records:
+            data.pa_by_uuid[rec['UUID']] = rec
+            name = rec.get('Auth_Place_Name')
+            if name:
+                data.pa_by_name[name.lower()].append(rec)
+        return data
+
+    yield load
+    rtl_matcher._LOCAL = original
 
 
 class TestPrefetchParentChains:
-    def test_no_parents_to_fetch(self):
-        auth_cache = {
-            'aaa': make_auth_record('aaa'),
-        }
-        client = MagicMock()
-        prefetch_parent_chains(client, auth_cache)
-        client.find.assert_not_called()
+    def test_no_parents_to_fetch(self, local_pa):
+        local_pa()
+        auth_cache = {'aaa': make_auth_record('aaa')}
+        prefetch_parent_chains_local(auth_cache)
+        assert list(auth_cache) == ['aaa']
 
-    def test_fetches_missing_parent(self):
+    def test_fetches_missing_parent(self, local_pa):
+        local_pa(make_auth_record('parent', name='ParentPlace'))
         auth_cache = {
             'child': make_auth_record('child', parent_uuid='parent'),
         }
-        parent_rec = make_auth_record('parent', name='ParentPlace')
-        client = MagicMock()
-        client.find.return_value = make_fm_response([parent_rec])
 
-        prefetch_parent_chains(client, auth_cache)
+        prefetch_parent_chains_local(auth_cache)
 
         assert 'parent' in auth_cache
         assert auth_cache['parent']['Auth_Place_Name'] == 'ParentPlace'
 
-    def test_walks_multiple_levels(self):
+    def test_walks_multiple_levels(self, local_pa):
+        local_pa(
+            make_auth_record('county', parent_uuid='state', name='County'),
+            make_auth_record('state', parent_uuid='country', name='State'),
+            make_auth_record('country', name='Country'),
+        )
         auth_cache = {
             'city': make_auth_record('city', parent_uuid='county'),
         }
-        county_rec = make_auth_record('county', parent_uuid='state')
-        state_rec = make_auth_record('state', parent_uuid='country')
-        country_rec = make_auth_record('country')
 
-        client = MagicMock()
-        client.find.side_effect = [
-            make_fm_response([county_rec]),
-            make_fm_response([state_rec]),
-            make_fm_response([country_rec]),
-        ]
-
-        prefetch_parent_chains(client, auth_cache)
+        prefetch_parent_chains_local(auth_cache)
 
         assert 'county' in auth_cache
         assert 'state' in auth_cache
         assert 'country' in auth_cache
 
-    def test_skips_already_cached_parents(self):
+    def test_skips_already_cached_parents(self, local_pa):
+        # The PA holds a differently-named copy; an already-cached parent must
+        # not be re-read over the top of what the caller put there.
+        local_pa(make_auth_record('parent', name='FromPA'))
         auth_cache = {
             'child': make_auth_record('child', parent_uuid='parent'),
-            'parent': make_auth_record('parent'),
+            'parent': make_auth_record('parent', name='AlreadyCached'),
         }
-        client = MagicMock()
-        prefetch_parent_chains(client, auth_cache)
-        client.find.assert_not_called()
 
-    def test_handles_empty_find_results(self):
+        prefetch_parent_chains_local(auth_cache)
+
+        assert auth_cache['parent']['Auth_Place_Name'] == 'AlreadyCached'
+
+    def test_handles_parent_absent_from_authority(self, local_pa):
+        local_pa()
         auth_cache = {
             'child': make_auth_record('child', parent_uuid='missing'),
         }
-        client = MagicMock()
-        client.find.return_value = []
 
-        prefetch_parent_chains(client, auth_cache)
+        prefetch_parent_chains_local(auth_cache)
 
         assert 'missing' not in auth_cache
 
-    def test_terminates_when_no_new_parents(self):
-        auth_cache = {
-            'a': make_auth_record('a', parent_uuid='b'),
-        }
-        b_rec = make_auth_record('b')
-        client = MagicMock()
-        client.find.return_value = make_fm_response([b_rec])
+    def test_terminates_when_no_new_parents(self, local_pa):
+        local_pa(make_auth_record('b'))
+        auth_cache = {'a': make_auth_record('a', parent_uuid='b')}
 
-        prefetch_parent_chains(client, auth_cache)
+        prefetch_parent_chains_local(auth_cache)
 
-        assert client.find.call_count == 1
+        assert set(auth_cache) == {'a', 'b'}
 
-    def test_deduplicates_parent_uuids_across_records(self):
+    def test_deduplicates_parent_uuids_across_records(self, local_pa):
+        local_pa(make_auth_record('shared_parent'))
         auth_cache = {
             'child1': make_auth_record('child1', parent_uuid='shared_parent'),
             'child2': make_auth_record('child2', parent_uuid='shared_parent'),
         }
-        parent_rec = make_auth_record('shared_parent')
-        client = MagicMock()
-        client.find.return_value = make_fm_response([parent_rec])
 
-        prefetch_parent_chains(client, auth_cache)
+        prefetch_parent_chains_local(auth_cache)
 
-        assert client.find.call_count == 1
-        query_arg = client.find.call_args[0][1]
-        uuid_queries = [q['UUID'] for q in query_arg]
-        assert len(uuid_queries) == 1
+        assert set(auth_cache) == {'child1', 'child2', 'shared_parent'}
 
-    def test_batches_large_sets(self):
-        n = BATCH * 2 + 50  # forces 3 batches regardless of BATCH value
-        auth_cache = {}
-        parent_recs = []
-        for i in range(n):
-            child_id = f'child_{i}'
-            parent_id = f'parent_{i}'
-            auth_cache[child_id] = make_auth_record(child_id, parent_uuid=parent_id)
-            parent_recs.append(make_auth_record(parent_id))
+    def test_resolves_large_sets(self, local_pa):
+        n = 2050
+        parents = [make_auth_record(f'parent_{i}') for i in range(n)]
+        local_pa(*parents)
+        auth_cache = {
+            f'child_{i}': make_auth_record(f'child_{i}', parent_uuid=f'parent_{i}')
+            for i in range(n)
+        }
 
-        batched_responses = []
-        for i in range(0, n, BATCH):
-            batch_recs = parent_recs[i:i + BATCH]
-            batched_responses.append(make_fm_response(batch_recs))
+        prefetch_parent_chains_local(auth_cache)
 
-        client = MagicMock()
-        client.find.side_effect = batched_responses
-
-        prefetch_parent_chains(client, auth_cache)
-
-        assert client.find.call_count == 3
+        assert len(auth_cache) == 2 * n
+        assert all(f'parent_{i}' in auth_cache for i in range(n))
 
 
 def make_auth_record_full(uuid, parent_uuid=None, name="Place", level="4",
@@ -177,7 +181,7 @@ class TestResolveParentOnly:
     def test_single_candidate_returns_it(self):
         uid = 'state-001'
         auth_cache = {uid: make_auth_record_full(uid, level='6', name='New York')}
-        result = resolve_parent_only([uid], auth_cache, MagicMock())
+        result = resolve_parent_only([uid], auth_cache)
         assert result == (uid, 'parent_resolved')
 
     def test_multi_candidate_population_no_longer_resolves(self):
@@ -188,7 +192,7 @@ class TestResolveParentOnly:
             big: make_auth_record_full(big, level='4', population='675000'),
             small: make_auth_record_full(small, level='4', population='2000'),
         }
-        result = resolve_parent_only([big, small], auth_cache, MagicMock())
+        result = resolve_parent_only([big, small], auth_cache)
         assert result == (None, 'amb')
 
     def test_multi_candidate_cross_level_is_amb(self):
@@ -199,7 +203,7 @@ class TestResolveParentOnly:
             country: make_auth_record_full(country, level='8', population='60000000'),
             village: make_auth_record_full(village, level='4', population='0'),
         }
-        result = resolve_parent_only([country, village], auth_cache, MagicMock())
+        result = resolve_parent_only([country, village], auth_cache)
         assert result == (None, 'amb')
 
     def test_multi_candidate_pop_over_50k_still_amb(self):
@@ -210,7 +214,7 @@ class TestResolveParentOnly:
             big_city: make_auth_record_full(big_city, level='4', population='75000'),
             small_city: make_auth_record_full(small_city, level='4', population='0'),
         }
-        result = resolve_parent_only([big_city, small_city], auth_cache, MagicMock())
+        result = resolve_parent_only([big_city, small_city], auth_cache)
         assert result == (None, 'amb')
 
 
@@ -575,10 +579,8 @@ def build_tied_hierarchy_caches():
 class TestMatchEntryTieDetection:
     def test_chain_verified_picks_better_level_gap(self):
         name_cache, auth_cache = build_hierarchy_caches()
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['Mount Dora', 'Florida', 'United States of America']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'Mount Dora, Florida, United States of America')
         assert result.match_type == 'chain_verified'
         assert result.candidate_ids == ['fl-state']
@@ -586,10 +588,8 @@ class TestMatchEntryTieDetection:
 
     def test_chain_verified_tie_produces_chain_amb(self):
         name_cache, auth_cache = build_tied_hierarchy_caches()
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['Florida', 'United States of America']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'Florida, United States of America')
         assert result.match_type == 'chain_amb'
         assert result.candidate_ids == []
@@ -601,9 +601,8 @@ class TestMatchEntryTieDetection:
             'small': make_auth_record_full('small', level='6', population='100'),
         }
         name_cache = {'florida': {'big', 'small'}}
-        client = MagicMock()
         terms = ['Florida']
-        result = match_entry(terms, name_cache, auth_cache, client, 'Florida')
+        result = match_entry(terms, name_cache, auth_cache, 'Florida')
         # Two candidates with no jurisdiction -> both survive filter -> single_amb
         assert result.match_type == 'single_amb'
         assert set(result.tied_ids) == {'big', 'small'}
@@ -614,9 +613,8 @@ class TestMatchEntryTieDetection:
             'b': make_auth_record_full('b', level='6', population='0'),
         }
         name_cache = {'florida': {'a', 'b'}}
-        client = MagicMock()
         terms = ['Florida']
-        result = match_entry(terms, name_cache, auth_cache, client, 'Florida')
+        result = match_entry(terms, name_cache, auth_cache, 'Florida')
         assert result.match_type == 'single_amb'
         assert result.candidate_ids == []
         assert set(result.tied_ids) == {'a', 'b'}
@@ -632,10 +630,8 @@ class TestMatchEntryTieDetection:
         name_cache = {
             'united states of america': {'usa-1'},
         }
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['Springfield', 'United States of America']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'Springfield, United States of America')
         assert result.match_type == 'parent_only'
         assert 'usa-1' in result.candidate_ids
@@ -704,8 +700,7 @@ class TestSingleTermReclassification:
                                          jurisdiction='Township'),
         }
         name_cache = {'lawrence': {'city', 'twp'}}
-        client = MagicMock()
-        result = match_entry(['Lawrence'], name_cache, auth_cache, client, 'Lawrence')
+        result = match_entry(['Lawrence'], name_cache, auth_cache, 'Lawrence')
         assert result.match_type == 'single_term'
         assert result.candidate_ids == ['city']
 
@@ -718,8 +713,7 @@ class TestSingleTermReclassification:
                                             jurisdiction='City'),
         }
         name_cache = {'lawrence': {'city_a', 'city_b'}}
-        client = MagicMock()
-        result = match_entry(['Lawrence'], name_cache, auth_cache, client, 'Lawrence')
+        result = match_entry(['Lawrence'], name_cache, auth_cache, 'Lawrence')
         assert result.match_type == 'single_amb'
         assert set(result.tied_ids) == {'city_a', 'city_b'}
 
@@ -730,8 +724,7 @@ class TestSingleTermReclassification:
                                           jurisdiction='City'),
         }
         name_cache = {'wapakoneta': {'only'}}
-        client = MagicMock()
-        result = match_entry(['Wapakoneta'], name_cache, auth_cache, client, 'Wapakoneta')
+        result = match_entry(['Wapakoneta'], name_cache, auth_cache, 'Wapakoneta')
         assert result.match_type == 'single_term'
         assert result.candidate_ids == ['only']
 
@@ -751,8 +744,7 @@ class TestSingleTermReclassification:
                                                 jurisdiction='County'),
         }
         name_cache = {'chiago': {'chicago', 'chicago_twp', 'chisago_co'}}
-        client = MagicMock()
-        result = match_entry(['Chiago'], name_cache, auth_cache, client, 'Chiago',
+        result = match_entry(['Chiago'], name_cache, auth_cache, 'Chiago',
                              correction_uuids_by_term={
                                  'chiago': {'chicago_twp', 'chisago_co'}})
         assert result.match_type == 'single_term'
@@ -771,8 +763,7 @@ class TestSingleTermReclassification:
                                                jurisdiction='Town'),
         }
         name_cache = {'johnson': {'hist_exact', 'live_corr'}}
-        client = MagicMock()
-        result = match_entry(['Johnson'], name_cache, auth_cache, client, 'Johnson',
+        result = match_entry(['Johnson'], name_cache, auth_cache, 'Johnson',
                              correction_uuids_by_term={'johnson': {'live_corr'}})
         assert result.match_type == 'single_amb'
         assert set(result.tied_ids) == {'hist_exact', 'live_corr'}
@@ -786,8 +777,7 @@ class TestSingleTermReclassification:
                                            jurisdiction='Township'),
         }
         name_cache = {'pine': {'twp_a', 'twp_b'}}
-        client = MagicMock()
-        result = match_entry(['Pine'], name_cache, auth_cache, client, 'Pine')
+        result = match_entry(['Pine'], name_cache, auth_cache, 'Pine')
         assert result.match_type == 'single_amb'
         assert set(result.tied_ids) == {'twp_a', 'twp_b'}
 
@@ -803,8 +793,7 @@ class TestMatchEntryJurisdictionHint:
         }
         name_cache = {'lawrence township': {'city', 'twp'}}
         jurisdiction_hints = {'lawrence township': 'Township'}
-        client = MagicMock()
-        result = match_entry(['Lawrence Township'], name_cache, auth_cache, client,
+        result = match_entry(['Lawrence Township'], name_cache, auth_cache,
                              'Lawrence Township', jurisdiction_hints=jurisdiction_hints)
         # Both kept because hint suppresses filter; >1 candidate -> single_amb
         assert result.match_type == 'single_amb'
@@ -821,8 +810,7 @@ class TestMatchEntryJurisdictionHint:
         }
         name_cache = {'lawrence': {'city', 'twp'}}
         jurisdiction_hints = {}
-        client = MagicMock()
-        result = match_entry(['Lawrence'], name_cache, auth_cache, client,
+        result = match_entry(['Lawrence'], name_cache, auth_cache,
                              'Lawrence', jurisdiction_hints=jurisdiction_hints)
         assert result.match_type == 'single_term'
         assert result.candidate_ids == ['city']
@@ -846,45 +834,56 @@ class TestMatchEntryJurisdictionHint:
             'clark county': {'clark_county', 'clark_city'},
         }
         jurisdiction_hints = {'clark county': 'County'}
-        client = MagicMock()
-        client.find.return_value = []
-        result = match_entry(['Clark County', 'Ohio'], name_cache, auth_cache, client,
+        result = match_entry(['Clark County', 'Ohio'], name_cache, auth_cache,
                              'Clark County, Ohio', jurisdiction_hints=jurisdiction_hints)
         assert result.match_type == 'chain_verified'
         assert result.candidate_ids == ['clark_county']
 
 
 class TestResolveHelperTerm:
-    def test_resolves_single_match(self):
-        utah_rec = make_auth_record_full('utah-uuid', level='6', name='Utah',
-                                         parent_uuid='usa-uuid', jurisdiction='State')
-        usa_rec = make_auth_record_full('usa-uuid', level='8', name='United States',
-                                        jurisdiction='Country')
-        client = MagicMock()
-        # First call: Authority_Place query for "Utah"
-        # Second call: parent chain fetch for usa-uuid
-        client.find.side_effect = [
-            make_fm_response([utah_rec]),
-            make_fm_response([usa_rec]),
-        ]
+    def test_resolves_single_match(self, local_pa):
+        local_pa(
+            make_auth_record_full('utah-uuid', level='6', name='Utah',
+                                  parent_uuid='usa-uuid', jurisdiction='State'),
+            make_auth_record_full('usa-uuid', level='8', name='United States',
+                                  jurisdiction='Country'),
+        )
         auth_cache = {}
-        result = resolve_helper_term(client, 'Utah', auth_cache)
+        result = resolve_helper_term_local('Utah', auth_cache)
         assert result is not None
         assert result['uuid'] == 'utah-uuid'
         assert result['level'] == 6
         assert 'usa-uuid' in result['ancestor_uuids']
 
-    def test_returns_none_for_empty_string(self):
-        client = MagicMock()
-        result = resolve_helper_term(client, '', {})
-        assert result is None
-        client.find.assert_not_called()
+    def test_multi_term_walks_the_chain(self, local_pa):
+        """'Utah, USA' anchors on USA and keeps only the Utah that chains to
+        it, not the same-named record under another country."""
+        local_pa(
+            make_auth_record_full('usa-uuid', level='8', name='USA',
+                                  jurisdiction='Country'),
+            make_auth_record_full('utah-us', level='6', name='Utah',
+                                  parent_uuid='usa-uuid', jurisdiction='State'),
+            make_auth_record_full('utah-elsewhere', level='6', name='Utah',
+                                  parent_uuid='other-country',
+                                  jurisdiction='State', population='999999'),
+            make_auth_record_full('other-country', level='8', name='Elsewhere'),
+        )
+        auth_cache = {}
+        result = resolve_helper_term_local('Utah, USA', auth_cache)
+        assert result is not None
+        assert result['uuid'] == 'utah-us'
 
-    def test_returns_none_for_none(self):
-        client = MagicMock()
-        result = resolve_helper_term(client, None, {})
-        assert result is None
-        client.find.assert_not_called()
+    def test_returns_none_for_empty_string(self, local_pa):
+        local_pa()
+        assert resolve_helper_term_local('', {}) is None
+
+    def test_returns_none_for_none(self, local_pa):
+        local_pa()
+        assert resolve_helper_term_local(None, {}) is None
+
+    def test_returns_none_when_authority_has_no_such_place(self, local_pa):
+        local_pa(make_auth_record_full('somewhere', name='Somewhere'))
+        assert resolve_helper_term_local('Atlantis', {}) is None
 
 
 class TestHelperTermBoost:
@@ -1037,16 +1036,13 @@ class TestQuerySpellingCorrections:
             sym.create_dictionary_entry(t.lower(), 1)
         return sym
 
-    def test_corrects_misspelling_and_adds_to_name_cache(self):
+    def test_corrects_misspelling_and_adds_to_name_cache(self, local_pa):
+        local_pa(make_auth_record('uuid-birm', name='Birmingham'))
         sym = self._make_sym(["birmingham"])
         name_cache = defaultdict(set)
-        client = MagicMock()
-        client.find.return_value = [
-            {'fieldData': {'Auth_Place_Name': 'Birmingham', 'UUID': 'uuid-birm'}}
-        ]
 
-        added, corrections = query_spelling_corrections(
-            client, ["Birminghan"], name_cache, sym
+        added, corrections = query_spelling_corrections_local(
+            ["Birminghan"], name_cache, sym
         )
 
         assert added >= 1
@@ -1057,58 +1053,58 @@ class TestQuerySpellingCorrections:
         assert corrections[0]['original_term'] == 'birminghan'
         assert corrections[0]['corrected_term'] == 'birmingham'
 
-    def test_skips_short_terms(self):
+    def test_skips_short_terms(self, local_pa):
+        local_pa(make_auth_record('uuid-lima', name='Lima'))
         sym = self._make_sym(["lima", "lira"])
         name_cache = defaultdict(set)
-        client = MagicMock()
 
-        added, corrections = query_spelling_corrections(
-            client, ["Lira"], name_cache, sym
+        added, corrections = query_spelling_corrections_local(
+            ["Lira"], name_cache, sym
         )
 
         assert added == 0
         assert len(corrections) == 0
-        client.find.assert_not_called()
+        assert 'lira' not in name_cache
 
-    def test_skips_terms_already_in_name_cache(self):
+    def test_skips_terms_already_in_name_cache(self, local_pa):
+        local_pa(make_auth_record('uuid-birm', name='Birmingham'))
         sym = self._make_sym(["birmingham"])
         name_cache = defaultdict(set)
         name_cache['birmingham'].add('existing-uuid')
-        client = MagicMock()
 
-        added, corrections = query_spelling_corrections(
-            client, ["Birmingham"], name_cache, sym
+        added, corrections = query_spelling_corrections_local(
+            ["Birmingham"], name_cache, sym
         )
 
+        # The term spells correctly, so SymSpell offers nothing but itself and
+        # the existing mapping stands untouched.
         assert added == 0
-        client.find.assert_not_called()
+        assert name_cache['birmingham'] == {'existing-uuid'}
 
-    def test_discards_correction_that_does_not_resolve(self):
+    def test_discards_correction_that_does_not_resolve(self, local_pa):
+        # SymSpell knows 'birmingham' but the authority has no record for it,
+        # so the correction must not reach name_cache or the log.
+        local_pa()
         sym = self._make_sym(["birmingham"])
         name_cache = defaultdict(set)
-        client = MagicMock()
-        client.find.return_value = []
 
-        added, corrections = query_spelling_corrections(
-            client, ["Birminghan"], name_cache, sym
+        added, corrections = query_spelling_corrections_local(
+            ["Birminghan"], name_cache, sym
         )
 
         assert added == 0
         assert 'birminghan' not in name_cache
         assert len(corrections) == 0
 
-    def test_accepts_multiple_suggestions(self):
+    def test_accepts_multiple_suggestions(self, local_pa):
+        local_pa(
+            make_auth_record('uuid-1', name='Springfield'),
+            make_auth_record('uuid-2', name='Springfild'),
+        )
         sym = self._make_sym(["springfield", "springfild"])
         name_cache = defaultdict(set)
-        client = MagicMock()
-        client.find.return_value = [
-            {'fieldData': {'Auth_Place_Name': 'Springfield', 'UUID': 'uuid-1'}},
-            {'fieldData': {'Auth_Place_Name': 'Springfild', 'UUID': 'uuid-2'}},
-        ]
 
-        added, corrections = query_spelling_corrections(
-            client, ["Springfeld"], name_cache, sym
-        )
+        query_spelling_corrections_local(["Springfeld"], name_cache, sym)
 
         assert 'uuid-1' in name_cache['springfeld'] or 'uuid-2' in name_cache['springfeld']
 
@@ -1132,39 +1128,34 @@ class TestWriteSpellingLog:
 
 
 class TestMntTransformEnrichment:
-    def test_transformable_mnt_matched_term_gets_enriched(self):
+    def test_transformable_mnt_matched_term_gets_enriched(self, local_pa):
         """'Town of Bristol' has an MNT entry (Bristol, England) but transform_term
-        strips 'Town of' and queries Auth_Place_Name='Bristol' + Jurisdiction='Town',
+        strips 'Town of' and looks up Auth_Place_Name='Bristol' + Jurisdiction='Town',
         which should find Bristol, Rhode Island. After enrichment, name_cache should
         contain BOTH UUIDs."""
-        from collections import defaultdict
-        from rtl_matcher import transform_term, query_fallback_transforms
+        from rtl_matcher import transform_term, query_fallback_transforms_local
 
         mnt_uuid = 'bristol-england-uuid'
         transform_uuid = 'bristol-ri-uuid'
+        local_pa(make_auth_record_full(transform_uuid, name='Bristol',
+                                       jurisdiction='Town', level='4'))
         name_cache = defaultdict(set)
         name_cache['town of bristol'].add(mnt_uuid)
-
-        client = MagicMock()
-        client.find.return_value = make_fm_response([
-            make_auth_record_full(transform_uuid, name='Bristol',
-                                  jurisdiction='Town', level='4'),
-        ])
 
         all_terms = ['Town of Bristol']
         transformable_matched = [
             t for t in all_terms
             if name_cache.get(t.lower()) and transform_term(t)[0] is not None
         ]
-        query_fallback_transforms(client, transformable_matched, name_cache)
+        query_fallback_transforms_local(transformable_matched, name_cache,
+                                        transform_term_fn=transform_term)
 
         assert mnt_uuid in name_cache['town of bristol']
         assert transform_uuid in name_cache['town of bristol']
 
     def test_non_transformable_mnt_matched_term_skipped(self):
         """'Rhode Island' has an MNT entry and transform_term returns (None, None).
-        It should not be passed to query_fallback_transforms."""
-        from collections import defaultdict
+        It should not be passed to query_fallback_transforms_local."""
         from rtl_matcher import transform_term
 
         name_cache = defaultdict(set)
@@ -1178,27 +1169,23 @@ class TestMntTransformEnrichment:
 
         assert transformable_matched == []
 
-    def test_enrichment_is_additive(self):
+    def test_enrichment_is_additive(self, local_pa):
         """Transform results must not replace existing MNT entries."""
-        from collections import defaultdict
-        from rtl_matcher import transform_term, query_fallback_transforms
+        from rtl_matcher import transform_term, query_fallback_transforms_local
 
         mnt_uuid = 'existing-mnt-uuid'
+        local_pa(make_auth_record_full('springfield-city-uuid', name='Springfield',
+                                       jurisdiction='City', level='4'))
         name_cache = defaultdict(set)
         name_cache['city of springfield'].add(mnt_uuid)
-
-        client = MagicMock()
-        client.find.return_value = make_fm_response([
-            make_auth_record_full('springfield-city-uuid', name='Springfield',
-                                  jurisdiction='City', level='4'),
-        ])
 
         all_terms = ['City of Springfield']
         transformable_matched = [
             t for t in all_terms
             if name_cache.get(t.lower()) and transform_term(t)[0] is not None
         ]
-        query_fallback_transforms(client, transformable_matched, name_cache)
+        query_fallback_transforms_local(transformable_matched, name_cache,
+                                        transform_term_fn=transform_term)
 
         assert mnt_uuid in name_cache['city of springfield']
         assert 'springfield-city-uuid' in name_cache['city of springfield']
@@ -1210,7 +1197,6 @@ class TestMntTransformEnrichment:
         And exclude terms that:
         - Have no name_cache entries (already handled by unmatched path)
         - Are not transformable (no prefix/suffix to strip)"""
-        from collections import defaultdict
         from rtl_matcher import transform_term
 
         name_cache = defaultdict(set)
@@ -1291,10 +1277,8 @@ class TestProximityFallback:
 
     def test_cromwell_matches_via_proximity(self):
         name_cache, auth_cache = self._build_cromwell_caches()
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['Cromwell', 'Adams County', 'Iowa']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'Cromwell, Adams County, Iowa',
                              jurisdiction_hints={'adams county': 'County'})
         assert result.match_type == 'chain_verified_proximity'
@@ -1327,10 +1311,8 @@ class TestProximityFallback:
             'adams county': {'adams-co'},
             'farville': {'faraway-city'},
         }
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['Farville', 'Adams County', 'Iowa']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'Farville, Adams County, Iowa',
                              jurisdiction_hints={'adams county': 'County'})
         # Should NOT be proximity match — too far away
@@ -1352,10 +1334,8 @@ class TestProximityFallback:
             'united states': {'usa'},
             'cityx': {'city-x'},
         }
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['CityX', 'United States']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'CityX, United States')
         assert result.match_type != 'chain_verified_proximity'
 
@@ -1389,10 +1369,8 @@ class TestProximityFallback:
             'cromwell': {'cromwell'},
             'oldtown': {'neighborhood'},
         }
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['OldTown', 'Cromwell', 'Adams County', 'Iowa']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'OldTown, Cromwell, Adams County, Iowa',
                              jurisdiction_hints={'adams county': 'County'})
         # Cromwell should match via proximity; OldTown may chain-verify against Cromwell
@@ -1434,10 +1412,8 @@ class TestProximityFallback:
             'adams county': {'adams-co'},
             'springfield': {'springfield-1', 'springfield-2'},
         }
-        client = MagicMock()
-        client.find.return_value = []
         terms = ['Springfield', 'Adams County', 'Iowa']
-        result = match_entry(terms, name_cache, auth_cache, client,
+        result = match_entry(terms, name_cache, auth_cache,
                              'Springfield, Adams County, Iowa',
                              jurisdiction_hints={'adams county': 'County'})
         # Both within 50km, same pop — should be ambiguous
@@ -1448,7 +1424,7 @@ class TestProximityFallback:
 # Dict-union reintegration tests
 # ---------------------------------------------------------------------------
 
-from rtl_matcher import LocalData, canonicalize_place
+from rtl_matcher import canonicalize_place
 
 
 def _write_tsv(path, header, rows):
@@ -1568,10 +1544,8 @@ class TestSkippedHadCandidates:
                 population='330000000'),
         }
         name_cache = {'united states of america': {'usa-1'}}
-        client = MagicMock()
-        client.find.return_value = []
         result = match_entry(['Bad String', 'United States of America'],
-                             name_cache, auth_cache, client,
+                             name_cache, auth_cache,
                              'Bad String, United States of America')
         assert result.match_type == 'parent_only'
         assert result.skipped_had_candidates is False
@@ -1591,10 +1565,8 @@ class TestSkippedHadCandidates:
             'united states of america': {'usa-1'},
             'springfield': {'spr-ca'},
         }
-        client = MagicMock()
-        client.find.return_value = []
         result = match_entry(['Springfield', 'United States of America'],
-                             name_cache, auth_cache, client,
+                             name_cache, auth_cache,
                              'Springfield, United States of America')
         assert result.match_type == 'parent_only'
         assert result.skipped_had_candidates is True
@@ -1618,10 +1590,8 @@ class TestSkippedHadCandidates:
             'sheboygan county': {'sheb-county', 'cheb-city'},
             'court house': {'courthouse-sc'},
         }
-        client = MagicMock()
-        client.find.return_value = []
         result = match_entry(['Court House', 'Sheboygan County'],
-                             name_cache, auth_cache, client,
+                             name_cache, auth_cache,
                              'Court House, Sheboygan County',
                              jurisdiction_hints={'sheboygan county': 'County'})
         assert result.match_type == 'parent_only'
@@ -1648,7 +1618,7 @@ class TestResolveParentMatch:
             'tx', level='6', name='Texas', population='29000000')}
         match = self._parent_only(['tx'], had_candidates=False)
         result = resolve_parent_match(match, ['Bad String', 'Texas'],
-                                      auth_cache, MagicMock())
+                                      auth_cache)
         assert result.match_type == 'parent_resolved'
         assert result.candidate_ids == ['tx']
         assert result.skipped_terms == 'Bad String'
@@ -1660,7 +1630,7 @@ class TestResolveParentMatch:
             'tx', level='6', name='Texas', population='29000000')}
         match = self._parent_only(['tx'], had_candidates=True)
         result = resolve_parent_match(match, ['Bad String', 'Texas'],
-                                      auth_cache, MagicMock())
+                                      auth_cache)
         assert result.match_type == 'parent_rejected'
         assert result.candidate_ids == ['tx']
         assert result.confidence == 'low'
@@ -1675,7 +1645,7 @@ class TestResolveParentMatch:
         }
         match = self._parent_only(['fl-a', 'fl-b'], had_candidates=False)
         result = resolve_parent_match(match, ['Bad String', 'Florida'],
-                                      auth_cache, MagicMock())
+                                      auth_cache)
         assert result.match_type == 'parent_amb'
         assert result.candidate_ids == []
         assert result.confidence == 'low'
@@ -1687,7 +1657,7 @@ class TestResolveParentMatch:
         auth_cache = {i: make_auth_record_full(i, level='4', population='0')
                       for i in ids}
         match = self._parent_only(ids, had_candidates=False)
-        result = resolve_parent_match(match, ['South'], auth_cache, MagicMock())
+        result = resolve_parent_match(match, ['South'], auth_cache)
         assert result.match_type == 'parent_amb'
         assert result.confidence == 'low'
         assert len(result.tied_ids) == MAX_ARRAY
@@ -1775,11 +1745,11 @@ class TestSouthRegression:
         }
         name_cache = {'south': {country, village}}
         match = match_entry(['Garbage', 'garbage', 'South'], name_cache,
-                            auth_cache, MagicMock(), 'Garbage, garbage, South')
+                            auth_cache, 'Garbage, garbage, South')
         # rightmost "south" anchors parent_only with two candidates
         assert match.match_type == 'parent_only'
         resolved = resolve_parent_match(match, ['Garbage', 'garbage', 'South'],
-                                        auth_cache, MagicMock())
+                                        auth_cache)
         assert resolved.match_type == 'parent_amb'
         assert resolved.confidence == 'low'
         assert set(resolved.tied_ids) == {country, village}
@@ -1793,7 +1763,7 @@ class TestMatchEntryArrayCap:
         auth_cache = {i: make_auth_record_full(i, level='4', population=str(1000 * (n - k)))
                       for k, i in enumerate(ids)}
         name_cache = {'springfield': set(ids)}
-        result = match_entry(['Springfield'], name_cache, auth_cache, MagicMock(),
+        result = match_entry(['Springfield'], name_cache, auth_cache,
                              'Springfield')
         assert result.match_type == 'single_amb'
         assert result.confidence == 'low'
@@ -2351,9 +2321,9 @@ class TestSegmentCommalessFlag:
     def test_explicit_flag_enables(self):
         assert self._args(['--segment-commaless']).segment_commaless is True
 
-    def test_parses_alongside_api(self):
-        args = self._args(['--api', '--segment-commaless'])
-        assert args.local is False and args.segment_commaless is True
+    def test_parses_alongside_other_flags(self):
+        args = self._args(['--dict', '--segment-commaless'])
+        assert args.dict == 'live' and args.segment_commaless is True
 
 
 class TestResolveOutputPaths:
@@ -2391,8 +2361,8 @@ from rtl_matcher import (
     is_supported_level,
     lookup_name,
     lookup_name_with_origin,
-    query_cardinal_strip,
-    query_preposition_extractions,
+    query_cardinal_strip_local,
+    query_preposition_extractions_local,
     record_level,
     resolution_kind,
     source_shape_tags,
@@ -2650,42 +2620,32 @@ class TestSpanWiring:
     """Every phase that rewrites a term before lookup must record what it
     actually looked up, or the gate tests the wrong string."""
 
-    def test_spelling_correction_records_the_corrected_term(self):
+    def test_spelling_correction_records_the_corrected_term(self, local_pa):
+        local_pa(make_auth_record('u-birm', name='Birmingham'))
         sym = SymSpell(max_dictionary_edit_distance=1, prefix_length=7)
         sym.create_dictionary_entry('birmingham', 1)
         cache = NameCache()
         cache.current_origin = 'spelling'
-        client = MagicMock()
-        client.find.return_value = [
-            {'fieldData': {'Auth_Place_Name': 'Birmingham', 'UUID': 'u-birm',
-                           'Jurisdiction': ''}}
-        ]
-        query_spelling_corrections(client, ['Birminghan'], cache, sym)
+        query_spelling_corrections_local(['Birminghan'], cache, sym)
         assert cache.span_of('birminghan', 'u-birm') == 'birmingham'
 
-    def test_preposition_extraction_records_the_extracted_span(self):
+    def test_preposition_extraction_records_the_extracted_span(self, local_pa):
+        local_pa(make_auth_record_full('u-boz', name='Bozeman',
+                                       jurisdiction='City'))
         cache = NameCache()
         cache.current_origin = 'preposition'
-        client = MagicMock()
-        client.find.return_value = [
-            {'fieldData': {'Auth_Place_Name': 'Bozeman', 'UUID': 'u-boz',
-                           'Jurisdiction': 'City'}}
-        ]
-        query_preposition_extractions(
-            client, ['Chapel of the Presbyterian Church in Bozeman'], cache)
+        query_preposition_extractions_local(
+            ['Chapel of the Presbyterian Church in Bozeman'], cache)
         assert cache.span_of(
             'chapel of the presbyterian church in bozeman', 'u-boz') == 'Bozeman'
 
-    def test_cardinal_strip_records_the_stripped_form(self):
+    def test_cardinal_strip_records_the_stripped_form(self, local_pa):
+        local_pa(make_auth_record_full('u-ks', name='Kansas',
+                                       jurisdiction='State'))
         cache = NameCache()
         cache.current_origin = 'cardinal_strip'
-        client = MagicMock()
-        client.find.return_value = [
-            {'fieldData': {'Auth_Place_Name': 'Kansas', 'UUID': 'u-ks',
-                           'Jurisdiction': 'State'}}
-        ]
-        query_cardinal_strip(client, ['eastern Kansas'], cache,
-                             {'eastern Kansas': 'east Kansas'})
+        query_cardinal_strip_local(['eastern Kansas'], cache,
+                                   {'eastern Kansas': 'east Kansas'})
         assert cache.span_of('eastern kansas', 'u-ks') == 'Kansas'
 
 
@@ -2708,7 +2668,7 @@ class TestTermAttribution:
 
     def test_walk_records_the_term_behind_each_step(self):
         cache, auth = self._virginia()
-        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+        match = match_entry(['Roannke', 'Va'], cache, auth,
                             'Roannke, Va', ascii_cache=build_ascii_index(cache))
         assert match.match_type == 'chain_verified'
         assert [s.term for s in match.steps] == ['Va', 'Roannke']
@@ -2717,7 +2677,7 @@ class TestTermAttribution:
         # The report's central complaint: a fuzzy match recorded nothing, so
         # an auditor could not tell what produced the answer.
         cache, auth = self._virginia()
-        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+        match = match_entry(['Roannke', 'Va'], cache, auth,
                             'Roannke, Va', ascii_cache=build_ascii_index(cache))
         by_level = {r['level']: r for r in build_level_provenance(match, 'g1', auth)}
         assert by_level['4']['raw_term'] == 'Roannke'
@@ -2727,7 +2687,7 @@ class TestTermAttribution:
 
     def test_abbreviation_reads_as_normalized(self):
         cache, auth = self._virginia()
-        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+        match = match_entry(['Roannke', 'Va'], cache, auth,
                             'Roannke, Va', ascii_cache=build_ascii_index(cache))
         by_level = {r['level']: r for r in build_level_provenance(match, 'g1', auth)}
         assert by_level['6']['raw_term'] == 'Va'
@@ -2738,7 +2698,7 @@ class TestTermAttribution:
         # A null raw term must mean "supplied by the hierarchy", never
         # "the term was not in the input".
         cache, auth = self._virginia()
-        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+        match = match_entry(['Roannke', 'Va'], cache, auth,
                             'Roannke, Va', ascii_cache=build_ascii_index(cache))
         by_level = {r['level']: r for r in build_level_provenance(match, 'g1', auth)}
         assert by_level['8']['raw_term'] == ''
@@ -2746,7 +2706,7 @@ class TestTermAttribution:
 
     def test_chain_is_emitted_leaf_first(self):
         cache, auth = self._virginia()
-        match = match_entry(['Roannke', 'Va'], cache, auth, MagicMock(),
+        match = match_entry(['Roannke', 'Va'], cache, auth,
                             'Roannke, Va', ascii_cache=build_ascii_index(cache))
         rows = build_level_provenance(match, 'g1', auth)
         assert [r['name'] for r in rows] == ['Roanoke', 'Virginia', 'USA']
@@ -2758,7 +2718,7 @@ class TestTermAttribution:
         cache.current_origin = 'exact'
         cache['ohio'].add('U-OH')
         auth = {'U-OH': make_auth_record_full('U-OH', None, 'Ohio', level='6')}
-        match = match_entry(['Ohio'], cache, auth, MagicMock(), 'Ohio')
+        match = match_entry(['Ohio'], cache, auth, 'Ohio')
         assert [s.term for s in match.steps] == ['Ohio']
         rows = build_level_provenance(match, 'g1', auth)
         assert rows[0]['raw_term'] == 'Ohio'
@@ -2779,7 +2739,7 @@ class TestTermAttribution:
                                         jurisdiction='Neighborhood'),
             'man': make_auth_record_full('man', None, 'Queens', level='4'),
         }
-        match = match_entry(['Hollis'], cache, auth, MagicMock(), 'Flint Pond Road, Hollis')
+        match = match_entry(['Hollis'], cache, auth, 'Flint Pond Road, Hollis')
         rows = build_level_provenance(match, 'g1', auth)
         assert rows[0]['level'] == '2'
         assert rows[0]['raw_term'] == 'Hollis'
