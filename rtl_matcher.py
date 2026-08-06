@@ -944,7 +944,7 @@ def resolve_helper_term_local(term_string, auth_cache):
                     continue
                 verified = {
                     cid for cid in child_ids
-                    if walk_up_chain(cid, confirmed, auth_cache, None)
+                    if walk_up_chain(cid, confirmed, auth_cache)
                 }
                 if verified:
                     confirmed = verified
