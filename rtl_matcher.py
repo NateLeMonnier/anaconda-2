@@ -2253,6 +2253,148 @@ class MatchResult:
         return CONFIDENCE_BY_TYPE.get(self.match_type, 'none')
 
 
+def _match_single_term(term, parent_ids, auth_cache, jurisdiction_hints,
+                       helper_term, correction_uuids_by_term, anchor_step):
+    """Resolve a one-term input, which has no chain to walk.
+
+    Everything the row can be decided on is in the candidate set itself, so
+    the two priors that do not need a parent get their turn: structural
+    separation in the ranking, then the dictionary frequency count.
+    """
+    term_key = term.lower()
+    ranked = rank_candidates(
+        list(parent_ids), auth_cache, None,
+        jurisdiction_hint=(jurisdiction_hints or {}).get(term_key),
+        helper_term=helper_term,
+        correction_uuids=correction_uuids_by_term.get(term_key))
+
+    # Structural separation resolves, same rule the chain walk uses. A lone
+    # live exact match standing above a pile of spelling corrections is an
+    # answer, not a tie -- "Chiago" is an MNT-curated mapping to Chicago that
+    # also picks up Chisago County at edit distance 1.
+    structural_winner, _ = detect_tie(ranked)
+    if structural_winner:
+        return MatchResult([structural_winner], depth=1,
+                           match_type='single_term', steps=[anchor_step])
+
+    all_ids = [uuid for uuid, _ in ranked]
+    winner = _disambiguate_by_frequency(term, all_ids, _LOCAL.dict_freq or {})
+    if winner:
+        return MatchResult([winner], depth=1, match_type='freq_resolved',
+                           steps=[anchor_step])
+    return MatchResult([], depth=1, match_type='single_amb',
+                       tied_ids=cap_candidates(all_ids, "single_amb"),
+                       steps=[anchor_step])
+
+
+#: What the proximity fallback recovered, or None when it did not fire.
+_ProximityMatch = namedtuple('_ProximityMatch', 'confirmed parent_level annotations')
+
+
+def _apply_proximity_fallback(confirmed, depth, skipped, skipped_with_candidates,
+                              auth_cache, name_cache, ascii_cache, steps, step_for):
+    """Recover a skipped term whose candidates sit in a neighbouring county.
+
+    When a term's candidates failed chain verification against the confirmed
+    county, check whether any of them verify against the state (the parent of
+    the confirmed county) and sit within PROXIMITY_THRESHOLD_KM of it. That
+    pattern is a wrong-county data-entry error — a city recorded under the
+    adjacent county — rather than a genuine mismatch.
+
+    Fires at depth >= 2 (state and county both confirmed) unconditionally, or
+    at depth == 1 (county only) when the county is unambiguous. The
+    single-UUID guard keeps county names that repeat across states out of it;
+    "Wayne Co." exists in sixteen of them, and any one of those has some city
+    within 50km of some other Wayne.
+
+    Mutates `skipped` (drops the terms it recovered) and `steps` (adds the
+    step each recovered term earned) in place. Returns a _ProximityMatch, or
+    None when nothing was recovered, in which case neither list was touched.
+    """
+    if not skipped_with_candidates or not (depth >= 2 or len(confirmed) == 1):
+        return None
+
+    confirmed_county_ids = set(confirmed)
+    state_ids = {
+        parent for parent in (
+            field_str(auth_cache.get(uid, {}), 'Parent_UUID') for uid in confirmed)
+        if parent
+    }
+    if not state_ids:
+        return None
+
+    proximity_candidates = []
+    proximity_by_term = defaultdict(set)
+    annotations = []
+    for skipped_term, candidate_ids in skipped_with_candidates:
+        state_verified = {
+            cid for cid in candidate_ids
+            if walk_up_chain(cid, state_ids, auth_cache)
+        }
+        if not state_verified:
+            continue
+
+        for cid in sorted(state_verified):
+            cid_parent = field_str(auth_cache.get(cid, {}), 'Parent_UUID')
+            if not cid_parent:
+                continue
+            cid_county_rec = auth_cache.get(cid_parent, {})
+            if not cid_county_rec:
+                continue
+
+            min_dist = float('inf')
+            closest_confirmed = None
+            for conf_uid in confirmed_county_ids:
+                conf_rec = auth_cache.get(conf_uid, {})
+                dist = haversine_km(
+                    cid_county_rec.get('Latitude', ''),
+                    cid_county_rec.get('Longitude', ''),
+                    conf_rec.get('Latitude', ''),
+                    conf_rec.get('Longitude', ''),
+                )
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_confirmed = conf_uid
+
+            if min_dist <= PROXIMITY_THRESHOLD_KM:
+                proximity_candidates.append(cid)
+                proximity_by_term[skipped_term].add(cid)
+                conf_name = field_str(
+                    auth_cache.get(closest_confirmed, {}), 'Auth_Place_Name')
+                cid_county_name = field_str(cid_county_rec, 'Auth_Place_Name')
+                annotations.append(
+                    f"{conf_name} County (proximity: {min_dist:.0f}km, "
+                    f"actual: {cid_county_name} County)")
+
+                if skipped_term in skipped:
+                    skipped.remove(skipped_term)
+
+    if not proximity_candidates:
+        return None
+
+    # Keep only the most specific level the recovered candidates reach; a
+    # missing or non-numeric Level sorts last rather than winning by accident.
+    levels = []
+    for cid in proximity_candidates:
+        try:
+            levels.append((cid, int(field_str(auth_cache.get(cid, {}), 'Level'))))
+        except (ValueError, TypeError):
+            levels.append((cid, 99))
+    min_level = min(lv for _, lv in levels)
+    parent_level = _get_parent_level(confirmed, auth_cache)
+    new_confirmed = {cid for cid, lv in levels if lv == min_level}
+
+    # The skipped term is what supplied these candidates, so it earns a step
+    # even though chain verification rejected it.
+    for term, cids in proximity_by_term.items():
+        kept = cids & new_confirmed
+        if kept:
+            origins = lookup_name_with_origin(term, name_cache, ascii_cache)
+            steps.append(step_for(term, kept, origins))
+
+    return _ProximityMatch(new_confirmed, parent_level, annotations)
+
+
 def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None, ascii_cache=None,
                 helper_term=None, correction_uuids_by_term=None):
     """Run the right-to-left matching algorithm on a single place string.
@@ -2298,28 +2440,9 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
     anchor_step = step_for(right_to_left[0], parent_ids, parent_origins)
 
     if len(right_to_left) == 1:
-        term_key = right_to_left[0].lower()
-        hint = (jurisdiction_hints or {}).get(term_key)
-        ranked = rank_candidates(list(parent_ids), auth_cache, None,
-                                 jurisdiction_hint=hint, helper_term=helper_term,
-                                 correction_uuids=_corr.get(term_key))
-        # Structural separation resolves, same rule the chain walk uses. A
-        # lone live exact match standing above a pile of spelling corrections
-        # is an answer, not a tie -- "Chiago" is an MNT-curated mapping to
-        # Chicago that also picks up Chisago County at edit distance 1.
-        structural_winner, _ = detect_tie(ranked)
-        if structural_winner:
-            return MatchResult([structural_winner], depth=1,
-                               match_type='single_term', steps=[anchor_step])
-        all_ids = [uuid for uuid, _ in ranked]
-        winner = _disambiguate_by_frequency(right_to_left[0], all_ids,
-                                            _LOCAL.dict_freq or {})
-        if winner:
-            return MatchResult([winner], depth=1, match_type='freq_resolved',
-                               steps=[anchor_step])
-        return MatchResult([], depth=1, match_type='single_amb',
-                           tied_ids=cap_candidates(all_ids, "single_amb"),
-                           steps=[anchor_step])
+        return _match_single_term(right_to_left[0], parent_ids, auth_cache,
+                                  jurisdiction_hints, helper_term, _corr,
+                                  anchor_step)
 
     confirmed = parent_ids
     depth = 1
@@ -2357,96 +2480,15 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
             skipped.append(right_to_left[i])
             skipped_with_candidates.append((right_to_left[i], child_ids))
 
-    # --- Proximity fallback ---
-    # When skipped terms had candidates that failed chain verification against
-    # the confirmed county, check if any verify against the state (parent of
-    # confirmed county) and are within PROXIMITY_THRESHOLD_KM of the confirmed
-    # county. This catches likely wrong-county data-entry errors (e.g. a city
-    # recorded under the wrong adjacent county).
-    #
-    # Fires at depth >= 2 (state+county confirmed) unconditionally, or at
-    # depth == 1 (county only) when the county is unambiguous (single UUID).
-    # The single-UUID guard prevents false positives from county names that
-    # repeat across states (e.g. "Wayne Co." in 16+ states).
-    proximity_matched = False
-    proximity_annotations = []
-    if skipped_with_candidates and (depth >= 2 or len(confirmed) == 1):
-        confirmed_county_ids = set(confirmed)
-        state_ids = set()
-        for uid in confirmed:
-            rec = auth_cache.get(uid, {})
-            parent_uuid = field_str(rec, 'Parent_UUID')
-            if parent_uuid:
-                state_ids.add(parent_uuid)
-
-        if state_ids:
-            proximity_candidates = []
-            proximity_by_term = defaultdict(set)
-            for skipped_term, candidate_ids in skipped_with_candidates:
-                state_verified = {
-                    cid for cid in candidate_ids
-                    if walk_up_chain(cid, state_ids, auth_cache)
-                }
-                if not state_verified:
-                    continue
-
-                for cid in sorted(state_verified):
-                    cid_rec = auth_cache.get(cid, {})
-                    cid_parent = field_str(cid_rec, 'Parent_UUID')
-                    if not cid_parent:
-                        continue
-                    cid_county_rec = auth_cache.get(cid_parent, {})
-                    if not cid_county_rec:
-                        continue
-
-                    min_dist = float('inf')
-                    closest_confirmed = None
-                    for conf_uid in confirmed_county_ids:
-                        conf_rec = auth_cache.get(conf_uid, {})
-                        dist = haversine_km(
-                            cid_county_rec.get('Latitude', ''),
-                            cid_county_rec.get('Longitude', ''),
-                            conf_rec.get('Latitude', ''),
-                            conf_rec.get('Longitude', ''),
-                        )
-                        if dist < min_dist:
-                            min_dist = dist
-                            closest_confirmed = conf_uid
-
-                    if min_dist <= PROXIMITY_THRESHOLD_KM:
-                        proximity_candidates.append(cid)
-                        proximity_by_term[skipped_term].add(cid)
-                        conf_name = field_str(
-                            auth_cache.get(closest_confirmed, {}), 'Auth_Place_Name')
-                        cid_county_name = field_str(cid_county_rec, 'Auth_Place_Name')
-                        proximity_annotations.append(
-                            f"{conf_name} County (proximity: {min_dist:.0f}km, "
-                            f"actual: {cid_county_name} County)")
-
-                        if skipped_term in skipped:
-                            skipped.remove(skipped_term)
-
-            if proximity_candidates:
-                levels = []
-                for cid in proximity_candidates:
-                    rec = auth_cache.get(cid, {})
-                    try:
-                        levels.append((cid, int(field_str(rec, 'Level'))))
-                    except (ValueError, TypeError):
-                        levels.append((cid, 99))
-                min_level = min(lv for _, lv in levels)
-                most_specific = [cid for cid, lv in levels if lv == min_level]
-                parent_level_for_ranking = _get_parent_level(confirmed, auth_cache)
-                confirmed = set(most_specific)
-                depth += 1
-                proximity_matched = True
-                # The skipped term is what supplied these candidates, so it
-                # earns a step even though chain verification rejected it.
-                for term, cids in proximity_by_term.items():
-                    kept = cids & confirmed
-                    if kept:
-                        origins = lookup_name_with_origin(term, name_cache, _ascii)
-                        steps.append(step_for(term, kept, origins))
+    proximity = _apply_proximity_fallback(
+        confirmed, depth, skipped, skipped_with_candidates,
+        auth_cache, name_cache, _ascii, steps, step_for)
+    proximity_matched = proximity is not None
+    proximity_annotations = proximity.annotations if proximity_matched else []
+    if proximity_matched:
+        confirmed = proximity.confirmed
+        parent_level_for_ranking = proximity.parent_level
+        depth += 1
 
     if depth > 1:
         # Find the leftmost term that actually verified (not skipped)
@@ -2850,9 +2892,110 @@ def resolve_parent_match(match, terms, auth_cache):
 # Main — orchestrates the pipeline
 # ---------------------------------------------------------------------------
 
+def _abbreviation_table(args):
+    """Aliases the abbreviation-expansion phase should recognize.
+
+    Country aliases go in only when segmentation is on, because that is what
+    puts them in the term stream: splitting "Illinois US" produces a "US"
+    segment, and without a name_cache entry for it a resolvable row comes
+    back no_auth_match.
+    """
+    abbreviations = dict(JURISDICTION_ABBREVIATIONS)
+    if args.segment_commaless:
+        abbreviations.update(COUNTRY_ABBREVIATIONS)
+    return abbreviations
+
+
+def _build_segmenter(args):
+    """The Phase 0 segmenter, or None when --no-segment-commaless is set."""
+    if not args.segment_commaless:
+        return None
+    return CommalessSegmenter(
+        pa_by_name=_LOCAL.pa_by_name, pa_by_uuid=_LOCAL.pa_by_uuid,
+        mnt_by_raw=_LOCAL.mnt_by_raw, mnt_by_value=_LOCAL.mnt_by_value,
+        country_aliases=COUNTRY_ABBREVIATIONS)
+
+
+def _report_segmentation(segmenter):
+    """Log what Phase 0 split and, for the rest, why it stood down."""
+    if segmenter is None or not segmenter.examined:
+        return
+    log.info("Phase 0: %d of %d comma-less multi-word rows segmented",
+             segmenter.accepted, segmenter.examined)
+    if segmenter.reasons:
+        log.info("  left as single term: %s",
+                 ', '.join(f'{reason}={count}' for reason, count
+                           in sorted(segmenter.reasons.items(),
+                                     key=lambda kv: -kv[1])))
+
+
+def _full_string_fast_path(parsed):
+    """Pre-resolve rows whose whole place string is an unambiguous MNT entry.
+
+    A curated full-string mapping is a better answer than anything the walk
+    can reconstruct from the pieces, so these rows skip matching entirely.
+    Returns {place string: uuid}, empty when no dictionary is loaded.
+    """
+    if not _LOCAL.fs_by_raw:
+        return {}
+    hits = {}
+    for place, _guid, _freq, _terms in parsed:
+        uid = _LOCAL.fs_by_raw.get(canonicalize_place(place))
+        if uid:
+            hits[place] = uid
+    log.info("  Full-string MNT fast path: %d of %d entries pre-resolved",
+             len(hits), len(parsed))
+    return hits
+
+
+def _apply_transform_variants(all_terms, name_cache, elapsed):
+    """Re-run variant generation on transformed forms.
+
+    "near St. Charles" transforms to "Saint Charles", and the variant table
+    then also reaches "St Charles" through PREFIX_SWAPS. Running variants
+    before the transform would never see that form.
+    """
+    transform_variants = {}
+    for term in all_terms:
+        cleaned, _ = transform_term(term)
+        if cleaned:
+            variants = _generate_name_variants(cleaned)
+            if variants:
+                transform_variants[term] = variants
+
+    if not transform_variants:
+        log.info("  No transform variants to try")
+        return 0
+
+    name_cache.current_origin = 'transform_variant'
+    added = 0
+    for orig_term, variants in transform_variants.items():
+        key = orig_term.lower()
+        for variant in variants:
+            new_uuids = _query_name_local(variant) - name_cache.get(key, set())
+            if new_uuids:
+                name_cache[key].update(new_uuids)
+                added += len(new_uuids)
+    matched = sum(1 for v in name_cache.values() if v)
+    log.info("  +%d UUIDs from transform variants (%d terms matched) %s",
+             added, matched, elapsed())
+    return added
+
+
+def _build_transform_map(all_terms):
+    """{original term: cleaned form} for terms a transform actually rewrites.
+
+    Spelling correction and the cardinal strip both work off the cleaned
+    form, so they need the mapping back to the key results are stored under.
+    """
+    return {term: cleaned for term, cleaned in
+            ((t, transform_term(t)[0]) for t in all_terms)
+            if cleaned and cleaned.lower() != term.lower()}
+
+
 def main(args):
-    """Run the full pipeline: Phase 1 name resolution, Phase 2 authority
-    record caching, Phase 3 right-to-left matching, then write outputs."""
+    """Run the full pipeline: Phase 0 segmentation, Phase 1 name resolution,
+    Phase 2 authority record caching, Phase 3 matching, then write outputs."""
     start = time.time()
     def elapsed():
         return f"[{time.time() - start:.1f}s]"
@@ -2860,50 +3003,25 @@ def main(args):
     _LOCAL.load(args.mnt, args.pa, dict_source=args.dict, env_path=args.env)
     log.info("Local data ready. %s", elapsed())
 
-    # Country aliases go into the abbreviation table as well as the
-    # segmenter, so a segment like "US" is index-backed end to end. Without
-    # this, splitting "Illinois US" would leave "US" with no name_cache
-    # entry and turn a resolvable row into no_auth_match.
-    abbreviations = dict(JURISDICTION_ABBREVIATIONS)
-    if args.segment_commaless:
-        abbreviations.update(COUNTRY_ABBREVIATIONS)
-
-    expand_abbreviations = partial(query_abbreviation_expansions_local,
-                        jurisdiction_abbreviations=abbreviations)
-    expand_name_variants = partial(query_name_variants_local,
-                          generate_name_variants_fn=_generate_name_variants)
+    expand_abbreviations = partial(
+        query_abbreviation_expansions_local,
+        jurisdiction_abbreviations=_abbreviation_table(args))
+    expand_name_variants = partial(
+        query_name_variants_local,
+        generate_name_variants_fn=_generate_name_variants)
     apply_transforms = partial(query_fallback_transforms_local,
-                            transform_term_fn=transform_term)
+                               transform_term_fn=transform_term)
 
-    segmenter = None
-    if args.segment_commaless:
-        segmenter = CommalessSegmenter(
-            pa_by_name=_LOCAL.pa_by_name, pa_by_uuid=_LOCAL.pa_by_uuid,
-            mnt_by_raw=_LOCAL.mnt_by_raw, mnt_by_value=_LOCAL.mnt_by_value,
-            country_aliases=COUNTRY_ABBREVIATIONS)
+    segmenter = _build_segmenter(args)
 
     entries = load_entries(args.input)
     log.info("Loaded %d entries", len(entries))
 
     parsed, all_terms, jurisdiction_hints = parse_entries(entries, segment_fn=segmenter)
     log.info("Unique terms to look up: %d", len(all_terms))
-    if segmenter is not None and segmenter.examined:
-        log.info("Phase 0: %d of %d comma-less multi-word rows segmented",
-                 segmenter.accepted, segmenter.examined)
-        if segmenter.reasons:
-            log.info("  left as single term: %s",
-                     ', '.join(f'{reason}={count}' for reason, count
-                               in sorted(segmenter.reasons.items(),
-                                         key=lambda kv: -kv[1])))
+    _report_segmentation(segmenter)
 
-    fs_hits = {}
-    if _LOCAL.fs_by_raw:
-        for place, _guid, _freq, _terms in parsed:
-            uid = _LOCAL.fs_by_raw.get(canonicalize_place(place))
-            if uid:
-                fs_hits[place] = uid
-        log.info("  Full-string MNT fast path: %d of %d entries pre-resolved",
-                 len(fs_hits), len(parsed))
+    fs_hits = _full_string_fast_path(parsed)
 
     helper_term_str = args.helper_term or ''
 
@@ -2951,32 +3069,8 @@ def main(args):
         enrich_added = apply_transforms(transformable_matched, name_cache)
         log.info("  After enrichment: +%d UUIDs added %s", enrich_added, elapsed())
 
-    # Re-run name variants on transformed forms so that e.g. "near St. Charles"
-    # (transformed to "Saint Charles") also tries "St Charles" via PREFIX_SWAPS.
     log.info("\nPhase 1c2: Name variants on transform output %s", elapsed())
-    transform_variants = {}
-    for t in all_terms:
-        cleaned, _ = transform_term(t)
-        if cleaned:
-            variants = _generate_name_variants(cleaned)
-            if variants:
-                transform_variants[t] = variants
-    if transform_variants:
-        name_cache.current_origin = 'transform_variant'
-        tv_added = 0
-        for orig_term, variants in transform_variants.items():
-            key = orig_term.lower()
-            for variant in variants:
-                uuids = _query_name_local(variant)
-                new_uuids = uuids - name_cache.get(key, set())
-                if new_uuids:
-                    name_cache[key].update(new_uuids)
-                    tv_added += len(new_uuids)
-        after_tv = sum(1 for v in name_cache.values() if v)
-        log.info("  +%d UUIDs from transform variants (%d terms matched) %s",
-                 tv_added, after_tv, elapsed())
-    else:
-        log.info("  No transform variants to try")
+    _apply_transform_variants(all_terms, name_cache, elapsed)
 
     log.info("\nPhase 1c3: Preposition-based extraction for remaining unmatched %s", elapsed())
     still_unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
@@ -2988,17 +3082,11 @@ def main(args):
              after_preposition, after_preposition - after, elapsed())
 
     log.info("\nPhase 1d: Spelling correction via symspellpy %s", elapsed())
-    transform_map = {}
-    for t in all_terms:
-        cleaned, _ = transform_term(t)
-        if cleaned and cleaned.lower() != t.lower():
-            transform_map[t] = cleaned
+    transform_map = _build_transform_map(all_terms)
     log.info("  %d terms (%d with transformed forms), building spelling index...",
              len(all_terms), len(transform_map))
-    if args.dict:
-        sym_spell = build_spelling_index_from_memory()
-    else:
-        sym_spell = build_spelling_index(args.pa)
+    sym_spell = (build_spelling_index_from_memory() if args.dict
+                 else build_spelling_index(args.pa))
     log.info("  Index built: %d entries", len(sym_spell.words))
     spell_terms = [t for t in all_terms if t.lower() not in _LOCAL.illegible]
     if len(spell_terms) < len(all_terms):
