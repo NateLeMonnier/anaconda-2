@@ -58,7 +58,8 @@ Tests that drive a lookup function use the `local_pa` fixture, which installs a 
 
 ## Design Docs
 
-- `docs/2026-07-28-next-steps.md` — Current status, measured bottlenecks, and recommended order of work
+- `docs/2026-07-28-next-steps.md` — Current status, measured bottlenecks, and recommended order of work (§2 is stale; see the follow-ups doc)
+- `docs/2026-08-06-cleanup-followups.md` — What the cleanup pass found and deliberately left
 - `docs/2026-06-02-rtl-level-preference-design.md` — Level preference design for RTL matching (superseded: population no longer resolves parent-only matches)
 - `docs/2026-06-02-rtl-level-preference-plan.md` — Implementation plan for level preference
 - `docs/2026-06-13-normalizer-eval-design.md` — Evaluator design and metrics specification
