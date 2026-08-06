@@ -39,22 +39,14 @@ The pipeline runs in three phases:
 """
 
 import argparse
-import base64
 import csv
-import json
 import logging
 import os
 import re
-import socket
-import ssl
 import sys
 import time
 import unicodedata
-import urllib.request
-import urllib.error
 from collections import defaultdict, namedtuple
-from concurrent.futures import ThreadPoolExecutor
-import threading
 from dataclasses import dataclass, field
 from functools import partial
 from symspellpy import SymSpell, Verbosity
@@ -62,13 +54,6 @@ from symspellpy import SymSpell, Verbosity
 log = logging.getLogger(__name__)
 
 MIN_SPELLING_LEN = 5
-
-# FileMaker Data API accepts multiple query objects per request with no
-# documented cap, so we batch aggressively to minimize round trips.
-BATCH = 1000
-
-FS_BASE = "https://api-integ.familysearch.org/platform/places/search"
-FS_TYPE_CITY = "186"
 
 # Max distance (km) between a skipped term's actual county and the confirmed
 # county for the proximity fallback to accept a chain-verification failure
@@ -315,95 +300,6 @@ def _record_span(name_cache, key, uuid, span):
 
 
 # ---------------------------------------------------------------------------
-# FileMaker client
-#
-# Wraps the FileMaker Data API (v2) with session management and automatic
-# re-authentication on token expiry. The find() method accepts a list of
-# query objects, where each object is an OR condition and fields within an
-# object are AND conditions — matching FileMaker's native find semantics.
-# ---------------------------------------------------------------------------
-
-
-class FileMakerClient:
-    """Thin FileMaker Data API client: token auth, _find queries with
-    re-auth on expiry, and a call counter for run summaries."""
-
-    def __init__(self, env_path):
-        self._load_env(env_path)
-        self.host = os.environ['FILEMAKER_HOST']
-        self.database = os.environ['FILEMAKER_DATABASE']
-        self._ssl_ctx = ssl.create_default_context()
-        self.token = None
-        self.call_count = 0
-
-    def _load_env(self, env_path):
-        """Parse a .env file and inject its values into os.environ."""
-        with open(env_path) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, _, val = line.partition('=')
-                    os.environ[key.strip()] = val.strip().strip('"').strip("'")
-
-    def auth(self):
-        """Open a new FileMaker Data API session and store the bearer token."""
-        url = f"{self.host}/fmi/data/v1/databases/{self.database}/sessions"
-        req = urllib.request.Request(url, data=b'{}', method='POST')
-        req.add_header('Content-Type', 'application/json')
-        creds = base64.b64encode(
-            f"{os.environ['FILEMAKER_USERNAME']}:{os.environ['FILEMAKER_PASSWORD']}".encode()
-        ).decode()
-        req.add_header('Authorization', f'Basic {creds}')
-        resp = urllib.request.urlopen(req, context=self._ssl_ctx, timeout=30)
-        data = json.loads(resp.read())
-        self.token = data['response']['token']
-
-    def find(self, layout, query, limit=2000, _retry=False):
-        """Execute a _find request against the given layout.
-
-        Returns a list of record dicts on success, or an empty list if
-        no records match (FM error 401) or on HTTP errors. Retries once
-        on connection-level failures (timeout, reset, SSL EOF) with a
-        fresh auth token in case the session expired.
-        """
-        if not self.token:
-            self.auth()
-        url = f"{self.host}/fmi/data/v2/databases/{self.database}/layouts/{layout}/_find"
-        payload = json.dumps({"query": query, "limit": str(limit)})
-        req = urllib.request.Request(url, data=payload.encode(), method='POST')
-        req.add_header('Content-Type', 'application/json')
-        req.add_header('Authorization', f'Bearer {self.token}')
-        self.call_count += 1
-        try:
-            resp = urllib.request.urlopen(req, context=self._ssl_ctx, timeout=30)
-            data = json.loads(resp.read())
-            if data['messages'][0]['code'] == '0':
-                return data['response']['data']
-            return []
-        except (socket.timeout, ConnectionError, OSError) as e:
-            if not _retry:
-                log.warning("  Connection error (%s), re-authing and retrying...", e)
-                self.auth()
-                return self.find(layout, query, limit, _retry=True)
-            log.warning("  Connection error on retry (%s), skipping batch", e)
-            return []
-        except urllib.error.HTTPError as e:
-            body = e.read()
-            try:
-                data = json.loads(body)
-                code = data['messages'][0]['code']
-                if code == '401':
-                    return []
-            except (json.JSONDecodeError, KeyError, IndexError):
-                pass
-            if e.code in (401, 403) and not _retry:
-                self.auth()
-                return self.find(layout, query, limit, _retry=True)
-            log.warning("  FM error %d: %s", e.code, body[:200])
-            return []
-
-
-# ---------------------------------------------------------------------------
 # Local TSV data — in-memory indexes over MNT and PA exports
 # ---------------------------------------------------------------------------
 
@@ -422,8 +318,8 @@ _PA_FIELD_MAP = {
 
 
 def _is_valid_local_uuid(s):
-    """Cheap shape check used on the TSV load hot path (see is_valid_uuid
-    for the strict regex used elsewhere)."""
+    """Cheap shape check for a UUID, used on the TSV load hot path where a
+    full regex match over millions of rows is not worth the time."""
     return len(s) == 36 and s[8] == '-' and s[13] == '-'
 
 
@@ -1102,20 +998,6 @@ def resolve_helper_term_local(term_string, auth_cache):
         'level': chosen_level,
         'ancestor_uuids': ancestor_uuids,
     }
-
-
-# ---------------------------------------------------------------------------
-# UUID validation
-# ---------------------------------------------------------------------------
-
-UUID_RE = re.compile(
-    r'^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
-    r'[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$')
-
-
-def is_valid_uuid(value):
-    """Strict regex validation of the canonical 8-4-4-4-12 UUID form."""
-    return bool(UUID_RE.match(value))
 
 
 # ---------------------------------------------------------------------------
@@ -1855,343 +1737,6 @@ class CommalessSegmenter:
 #       cleaned/expanded variants
 # ---------------------------------------------------------------------------
 
-def query_mnt(client, terms):
-    """Query the Master Normalization Table for exact matches on Input_Original.
-
-    The MNT contains some non-UUID values in Match_Authority_ID (legacy data
-    artifacts), so we validate each ID before adding it to the cache.
-    """
-    name_cache = NameCache()
-    name_cache.current_origin = 'mnt'
-    junk_count = 0
-
-    def extract(field_data):
-        nonlocal junk_count
-        original = field_str(field_data, 'Input_Original')
-        authority_id = field_str(field_data, 'Match_Authority_ID')
-        if original and authority_id:
-            if is_valid_uuid(authority_id):
-                name_cache[original.lower()].add(authority_id)
-            else:
-                junk_count += 1
-
-    term_list = list(terms)
-    total = len(term_list)
-    for i in range(0, total, BATCH):
-        batch = term_list[i:i + BATCH]
-        query = [{"Input_Original": f"=={t}"} for t in batch]
-        records = client.find("Master%20Normalization%20Table", query, limit=10000)
-        for rec in records:
-            extract(rec['fieldData'])
-        done = min(i + BATCH, total)
-        log.info("  MNT: %d/%d terms, %d matched, %d junk filtered",
-                 done, total, len(name_cache), junk_count)
-
-    unmatched = [t for t in term_list if not name_cache.get(t.lower())]
-    if unmatched:
-        rescan_matched = 0
-        for i in range(0, len(unmatched), BATCH):
-            batch = unmatched[i:i + BATCH]
-            query = [{"Input_Original": f"=={t} "} for t in batch]
-            records = client.find("Master%20Normalization%20Table", query, limit=10000)
-            for rec in records:
-                extract(rec['fieldData'])
-            rescan_matched = sum(1 for t in unmatched if name_cache.get(t.lower()))
-        if rescan_matched:
-            log.info("  MNT whitespace rescan: %d additional terms matched", rescan_matched)
-
-    return name_cache
-
-
-def query_authority_by_name(client, terms, name_cache):
-    """Query Authority_Place for exact matches on Auth_Place_Name.
-
-    This catches authority records that exist in the place hierarchy but were
-    never entered into the MNT, which is common for less frequently referenced
-    places.
-    """
-    added = 0
-
-    def extract(field_data):
-        nonlocal added
-        name = field_str(field_data, 'Auth_Place_Name')
-        uuid = field_str(field_data, 'UUID')
-        if uuid and name:
-            key = name.lower()
-            if uuid not in name_cache.get(key, set()):
-                name_cache[key].add(uuid)
-                added += 1
-
-    term_list = list(terms)
-    total = len(term_list)
-    for i in range(0, total, BATCH):
-        batch = term_list[i:i + BATCH]
-        query = [{"Auth_Place_Name": f"=={t}"} for t in batch]
-        records = client.find("Authority_Place", query, limit=10000)
-        for rec in records:
-            extract(rec['fieldData'])
-        done = min(i + BATCH, total)
-        log.info("  Authority by name: %d/%d terms, %d new UUIDs", done, total, added)
-    return added
-
-
-def query_fallback_transforms(client, unmatched_terms, name_cache):
-    """For terms that failed both MNT and direct authority lookup, apply
-    transforms (strip prefixes, expand abbreviations, separate jurisdiction
-    suffixes) and re-query. Results are stored under the ORIGINAL term key
-    in name_cache so they map back to the input that produced them.
-
-    Terms with a jurisdiction suffix (e.g., "Washington County") get a
-    compound query filtering on both Auth_Place_Name and Jurisdiction.
-    All other transforms query both the MNT and Authority_Place without
-    jurisdiction filtering.
-    """
-    transforms = {}
-    for term in unmatched_terms:
-        cleaned, jurisdiction = transform_term(term)
-        if cleaned:
-            transforms[term] = (cleaned, jurisdiction)
-
-    if not transforms:
-        log.info("  No transformable terms")
-        return 0
-
-    items = list(transforms.items())
-    jurisdiction_terms = [(orig, cleaned, jur) for orig, (cleaned, jur) in items if jur]
-    non_jurisdiction_terms = [(orig, cleaned) for orig, (cleaned, jur) in items if not jur]
-    added = 0
-
-    # Jurisdiction-filtered lookups: "Washington County" becomes a query for
-    # Auth_Place_Name="Washington" AND Jurisdiction="County"
-    if jurisdiction_terms:
-        for i in range(0, len(jurisdiction_terms), BATCH):
-            batch = jurisdiction_terms[i:i + BATCH]
-            query = [{"Auth_Place_Name": f"=={cleaned}", "Jurisdiction": f"=={jur}"}
-                     for _, cleaned, jur in batch]
-            # Map cleaned names back to original terms for cache storage
-            lookup = defaultdict(list)
-            for orig, cleaned, jurisdiction in batch:
-                lookup[cleaned.lower()].append((orig, jurisdiction))
-
-            records = client.find("Authority_Place", query, limit=10000)
-            for rec in records:
-                field_data = rec['fieldData']
-                name = field_str(field_data, 'Auth_Place_Name')
-                uuid = field_str(field_data, 'UUID')
-                record_jurisdiction = field_str(field_data, 'Jurisdiction')
-                if uuid and name and name.lower() in lookup:
-                    for orig, expected_jurisdiction in lookup[name.lower()]:
-                        if record_jurisdiction.lower() == expected_jurisdiction.lower():
-                            name_cache[orig.lower()].add(uuid)
-                            _record_span(name_cache, orig.lower(), uuid, name)
-                            added += 1
-
-            done = min(i + BATCH, len(jurisdiction_terms))
-            log.info("  Fallback (jurisdiction): %d/%d terms, %d UUIDs",
-                     done, len(jurisdiction_terms), added)
-
-    # Non-jurisdiction transforms: "near St. Louis" -> "Saint Louis", queried
-    # against both MNT and Authority_Place without jurisdiction filtering
-    non_jurisdiction_added = 0
-    if non_jurisdiction_terms:
-        for i in range(0, len(non_jurisdiction_terms), BATCH):
-            batch = non_jurisdiction_terms[i:i + BATCH]
-            cleaned_list = [cleaned for _, cleaned in batch]
-            lookup = defaultdict(list)
-            for orig, cleaned in batch:
-                lookup[cleaned.lower()].append(orig)
-
-            mnt_query = [{"Input_Original": f"=={cleaned}"} for cleaned in cleaned_list]
-            mnt_records = client.find("Master%20Normalization%20Table", mnt_query, limit=10000)
-            for rec in mnt_records:
-                field_data = rec['fieldData']
-                input_original = field_str(field_data, 'Input_Original')
-                authority_id = field_str(field_data, 'Match_Authority_ID')
-                if input_original and authority_id and is_valid_uuid(authority_id) and input_original.lower() in lookup:
-                    for orig in lookup[input_original.lower()]:
-                        name_cache[orig.lower()].add(authority_id)
-                        non_jurisdiction_added += 1
-
-            authority_query = [{"Auth_Place_Name": f"=={cleaned}"} for cleaned in cleaned_list]
-            authority_records = client.find("Authority_Place", authority_query, limit=10000)
-            for rec in authority_records:
-                field_data = rec['fieldData']
-                name = field_str(field_data, 'Auth_Place_Name')
-                uuid = field_str(field_data, 'UUID')
-                if uuid and name and name.lower() in lookup:
-                    for orig in lookup[name.lower()]:
-                        name_cache[orig.lower()].add(uuid)
-                        _record_span(name_cache, orig.lower(), uuid, name)
-                        non_jurisdiction_added += 1
-
-            done = min(i + BATCH, len(non_jurisdiction_terms))
-            log.info("  Fallback (other): %d/%d terms, %d UUIDs",
-                     done, len(non_jurisdiction_terms), non_jurisdiction_added)
-
-    return added + non_jurisdiction_added
-
-
-def query_preposition_extractions(client, unmatched_terms, name_cache):
-    """FM version: for terms still unmatched after prefix-anchored transforms,
-    scan for spatial prepositions anywhere and try matching the substring after
-    them.  Results stored under the ORIGINAL term key in name_cache."""
-    extractions = {}
-    for term in unmatched_terms:
-        candidates = extract_after_preposition(term)
-        if not candidates:
-            continue
-        names_for_term = []
-        for candidate in candidates:
-            cleaned, jurisdiction = transform_term(candidate)
-            names_for_term.append((candidate, jurisdiction))
-            if cleaned:
-                names_for_term.append((cleaned, jurisdiction))
-        if names_for_term:
-            extractions[term] = names_for_term
-
-    if not extractions:
-        log.info("  No preposition-extractable terms")
-        return 0
-
-    added = 0
-    all_names = []
-    for orig, names_for_term in extractions.items():
-        for name, _jur in names_for_term:
-            all_names.append((orig, name, _jur))
-
-    for i in range(0, len(all_names), BATCH):
-        batch = all_names[i:i + BATCH]
-        lookup = defaultdict(list)
-        for orig, name, jur in batch:
-            lookup[name.lower()].append((orig, jur))
-
-        mnt_query = [{"Input_Original": f"=={name}"} for _, name, _ in batch]
-        mnt_records = client.find("Master%20Normalization%20Table", mnt_query, limit=10000)
-        for rec in mnt_records:
-            field_data = rec['fieldData']
-            input_original = field_str(field_data, 'Input_Original')
-            authority_id = field_str(field_data, 'Match_Authority_ID')
-            if input_original and authority_id and is_valid_uuid(authority_id) and input_original.lower() in lookup:
-                for orig, _jur in lookup[input_original.lower()]:
-                    name_cache[orig.lower()].add(authority_id)
-                    added += 1
-
-        authority_query = [{"Auth_Place_Name": f"=={name}"} for _, name, _ in batch]
-        authority_records = client.find("Authority_Place", authority_query, limit=10000)
-        for rec in authority_records:
-            field_data = rec['fieldData']
-            name = field_str(field_data, 'Auth_Place_Name')
-            uuid = field_str(field_data, 'UUID')
-            record_jurisdiction = field_str(field_data, 'Jurisdiction')
-            if uuid and name and name.lower() in lookup:
-                for orig, jur in lookup[name.lower()]:
-                    if jur and record_jurisdiction.lower() != jur.lower():
-                        continue
-                    name_cache[orig.lower()].add(uuid)
-                    _record_span(name_cache, orig.lower(), uuid, name)
-                    added += 1
-
-        done = min(i + BATCH, len(all_names))
-        log.info("  Preposition extractions: %d/%d lookups, %d UUIDs", done, len(all_names), added)
-
-    return added
-
-
-def query_cardinal_strip(client, unmatched_terms, name_cache, transform_map):
-    """FM version: strip bare cardinal prefixes from cleaned forms of
-    still-unmatched terms and query FileMaker for the remainder."""
-    to_query = {}
-    for term in unmatched_terms:
-        cleaned = transform_map.get(term, term)
-        stripped = CARDINAL_PREFIX_RE.sub('', cleaned).strip()
-        if stripped and stripped.lower() != cleaned.lower():
-            to_query[term] = stripped
-
-    if not to_query:
-        log.info("  No cardinal-strippable terms")
-        return 0
-
-    added = 0
-    items = list(to_query.items())
-    for i in range(0, len(items), BATCH):
-        batch = items[i:i + BATCH]
-        lookup = defaultdict(list)
-        for orig, stripped in batch:
-            lookup[stripped.lower()].append(orig)
-
-        query = [{"Auth_Place_Name": f"=={stripped}"} for _, stripped in batch]
-        records = client.find("Authority_Place", query, limit=10000)
-        for rec in records:
-            field_data = rec['fieldData']
-            name = field_str(field_data, 'Auth_Place_Name')
-            uuid = field_str(field_data, 'UUID')
-            if uuid and name and name.lower() in lookup:
-                for orig in lookup[name.lower()]:
-                    key = orig.lower()
-                    if uuid not in name_cache.get(key, set()):
-                        name_cache[key].add(uuid)
-                        _record_span(name_cache, key, uuid, name)
-                        added += 1
-
-    log.info("  Cardinal strip (FM): %d terms tried, %d UUIDs added", len(to_query), added)
-    return added
-
-
-def query_abbreviation_expansions(client, all_terms, name_cache):
-    """Expand jurisdiction abbreviations and add their authority UUIDs to
-    name_cache under the ORIGINAL term key. This is additive: existing
-    candidates for the term are preserved, and expanded-form candidates are
-    merged in. The chain walk in Phase 3 then decides among all candidates.
-
-    Strips trailing periods before matching (so "Ky." matches "ky").
-    Handles multi-mapped abbreviations (e.g. "bc" -> both British Columbia
-    and Baja California) by querying all expansions.
-    """
-    expansions = {}
-    for term in all_terms:
-        normalized = term.lower().rstrip('.')
-        expanded = JURISDICTION_ABBREVIATIONS.get(normalized)
-        if expanded:
-            expansions[term] = [expanded]
-        else:
-            multi = JURISDICTION_ABBREVIATION_MULTI.get(normalized)
-            if multi:
-                expansions[term] = multi
-
-    if not expansions:
-        log.info("  No abbreviation expansions found")
-        return 0
-
-    unique_expanded = set()
-    for names in expansions.values():
-        unique_expanded.update(names)
-    expanded_to_uuids = defaultdict(set)
-    expanded_list = list(unique_expanded)
-    for i in range(0, len(expanded_list), BATCH):
-        batch = expanded_list[i:i + BATCH]
-        query = [{"Auth_Place_Name": f"=={name}"} for name in batch]
-        records = client.find("Authority_Place", query, limit=10000)
-        for rec in records:
-            fd = rec['fieldData']
-            name = field_str(fd, 'Auth_Place_Name')
-            uuid = field_str(fd, 'UUID')
-            if uuid and name:
-                expanded_to_uuids[name.lower()].add(uuid)
-
-    added = 0
-    for orig_term, expanded_names in expansions.items():
-        key = orig_term.lower()
-        for expanded_name in expanded_names:
-            uuids = expanded_to_uuids.get(expanded_name.lower(), set())
-            if uuids:
-                new_uuids = uuids - name_cache.get(key, set())
-                if new_uuids:
-                    name_cache[key].update(new_uuids)
-                    added += len(new_uuids)
-
-    return added
-
-
 def _generate_name_variants(term):
     """Return a list of alternate forms for a place name term.
 
@@ -2232,65 +1777,6 @@ def _generate_name_variants(term):
         variants.append(f"{prefix}{rest[0].upper()}{rest[1:]}" if rest else f"{prefix}")
 
     return variants
-
-
-def query_name_variants(client, all_terms, name_cache):
-    """Generate alternate forms of place names (prefix swaps and spacing
-    variants) and query both MNT and Authority_Place for each. Results are
-    merged into name_cache under the ORIGINAL term key. Additive — existing
-    candidates are preserved."""
-    variant_map = {}
-    for term in all_terms:
-        variants = _generate_name_variants(term)
-        if variants:
-            variant_map[term] = variants
-
-    if not variant_map:
-        log.info("  No name variants to try")
-        return 0
-
-    unique_variants = set()
-    for variants in variant_map.values():
-        unique_variants.update(variants)
-
-    variant_to_uuids = defaultdict(set)
-    variant_list = list(unique_variants)
-
-    for i in range(0, len(variant_list), BATCH):
-        batch = variant_list[i:i + BATCH]
-
-        mnt_query = [{"Input_Original": f"=={v}"} for v in batch]
-        mnt_records = client.find("Master%20Normalization%20Table", mnt_query, limit=10000)
-        for rec in mnt_records:
-            fd = rec['fieldData']
-            original = field_str(fd, 'Input_Original')
-            authority_id = field_str(fd, 'Match_Authority_ID')
-            if original and authority_id and is_valid_uuid(authority_id):
-                variant_to_uuids[original.lower()].add(authority_id)
-
-        auth_query = [{"Auth_Place_Name": f"=={v}"} for v in batch]
-        auth_records = client.find("Authority_Place", auth_query, limit=10000)
-        for rec in auth_records:
-            fd = rec['fieldData']
-            name = field_str(fd, 'Auth_Place_Name')
-            uuid = field_str(fd, 'UUID')
-            if uuid and name:
-                variant_to_uuids[name.lower()].add(uuid)
-
-        done = min(i + BATCH, len(variant_list))
-        log.info("  Name variants: %d/%d variants queried", done, len(variant_list))
-
-    added = 0
-    for orig_term, variants in variant_map.items():
-        key = orig_term.lower()
-        for variant in variants:
-            uuids = variant_to_uuids.get(variant.lower(), set())
-            new_uuids = uuids - name_cache.get(key, set())
-            if new_uuids:
-                name_cache[key].update(new_uuids)
-                added += len(new_uuids)
-
-    return added
 
 
 # ---------------------------------------------------------------------------
@@ -2334,274 +1820,12 @@ def build_spelling_index_from_memory():
 SPELLING_LOG_FIELDS = ['original_term', 'corrected_term', 'edit_distance', 'authority_uuid']
 
 
-def query_spelling_corrections(client, terms, name_cache, sym_spell,
-                               transform_map=None):
-    """FM-backed version of query_spelling_corrections_local: find
-    edit-distance-1 corrections and add their authority UUIDs.
-    Returns (added_count, correction_log_rows)."""
-    candidates_by_key = {}
-    for term in terms:
-        if len(term) < MIN_SPELLING_LEN:
-            continue
-        key = term.lower()
-        folded = ascii_fold(term)
-        suggestions = sym_spell.lookup(folded, Verbosity.ALL, max_edit_distance=1)
-        if suggestions:
-            corrected = [s.term for s in suggestions if s.term != folded]
-            if corrected:
-                candidates_by_key[key] = corrected
-
-    if transform_map:
-        for orig_term, cleaned in transform_map.items():
-            if len(cleaned) < MIN_SPELLING_LEN:
-                continue
-            key = orig_term.lower()
-            folded = ascii_fold(cleaned)
-            suggestions = sym_spell.lookup(folded, Verbosity.ALL, max_edit_distance=1)
-            if suggestions:
-                corrected = [s.term for s in suggestions if s.term != folded]
-                if corrected:
-                    existing = candidates_by_key.get(key, [])
-                    candidates_by_key[key] = existing + corrected
-
-    if not candidates_by_key:
-        log.info("  No spelling corrections found")
-        return 0, []
-
-    all_corrected = set()
-    for cands in candidates_by_key.values():
-        all_corrected.update(cands)
-
-    corrected_to_uuids = defaultdict(set)
-    corrected_list = list(all_corrected)
-    for i in range(0, len(corrected_list), BATCH):
-        batch = corrected_list[i:i + BATCH]
-        query = [{"Auth_Place_Name": f"=={t}"} for t in batch]
-        records = client.find("Authority_Place", query, limit=10000)
-        for rec in records:
-            name = field_str(rec['fieldData'], 'Auth_Place_Name')
-            uuid = field_str(rec['fieldData'], 'UUID')
-            if name and uuid:
-                corrected_to_uuids[name.lower()].add(uuid)
-
-    added = 0
-    corrections = []
-    for key, candidates in candidates_by_key.items():
-        for candidate in candidates:
-            uuids = corrected_to_uuids.get(candidate, set())
-            new_uuids = uuids - name_cache.get(key, set())
-            if new_uuids:
-                name_cache[key].update(new_uuids)
-                for uid in new_uuids:
-                    _record_span(name_cache, key, uid, candidate)
-                added += len(new_uuids)
-                corrections.append({
-                    'original_term': key,
-                    'corrected_term': candidate,
-                    'edit_distance': 1,
-                    'authority_uuid': ';'.join(sorted(new_uuids)),
-                })
-
-    return added, corrections
-
-
 def write_spelling_log(corrections, path):
     """Write the spelling-correction side file (TSV)."""
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=SPELLING_LOG_FIELDS, delimiter='\t')
         writer.writeheader()
         writer.writerows(corrections)
-
-
-# ---------------------------------------------------------------------------
-# Phase 1e: FamilySearch city resolution
-#
-# For entries where a city-level term went unresolved through 1a-1c but a
-# right-side jurisdiction term (state/country) IS resolved, query the
-# FamilySearch Places API to find the canonical city name, then retry
-# Authority_Place with that name. This bridges spelling variants and
-# historical names that FM knows under a different string.
-# ---------------------------------------------------------------------------
-
-
-def _fs_request(url, _max_retries=3):
-    """GET a FamilySearch API URL with 429 backoff. Returns parsed JSON or
-    None on any failure."""
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    for attempt in range(_max_retries):
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                if resp.status == 204:
-                    return None
-                return json.loads(resp.read())
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < _max_retries - 1:
-                time.sleep(2 ** attempt)
-                continue
-            return None
-        except Exception:
-            return None
-    return None
-
-
-def _resolve_fs_id(term, fs_id_cache):
-    """Resolve a jurisdiction term to its FamilySearch place ID, preferring
-    an exact quoted-name search over the fuzzy fallback."""
-    key = term.lower()
-    if key in fs_id_cache:
-        return fs_id_cache[key]
-
-    q_quoted = urllib.parse.quote(f'name:"{term}"', safe=':+~"')
-    data = _fs_request(f"{FS_BASE}?q={q_quoted}&count=5")
-
-    if not data:
-        q_unquoted = urllib.parse.quote(f"name:{term}", safe=':+~')
-        data = _fs_request(f"{FS_BASE}?q={q_unquoted}&count=5")
-
-    if not data:
-        fs_id_cache[key] = None
-        return None
-
-    for entry in data.get("entries", []):
-        places = entry.get("content", {}).get("gedcomx", {}).get("places", [])
-        if places:
-            fs_id_cache[key] = places[0].get("id")
-            return fs_id_cache[key]
-
-    fs_id_cache[key] = None
-    return None
-
-
-def _fs_city_lookup(city_term, parent_fs_id):
-    """Search FamilySearch for a city under a parent jurisdiction and return
-    its canonical display name, or None."""
-    encoded_city_quoted = urllib.parse.quote(f'"{city_term}"')
-    q_quoted = f"name:{encoded_city_quoted}+parentId:{parent_fs_id}~"
-    data = _fs_request(f"{FS_BASE}?q={q_quoted}&count=10")
-
-    if not data:
-        encoded_city = urllib.parse.quote(city_term)
-        q_unquoted = f"name:{encoded_city}+parentId:{parent_fs_id}~"
-        data = _fs_request(f"{FS_BASE}?q={q_unquoted}&count=10")
-
-    if not data:
-        return None
-
-    for entry in data.get("entries", []):
-        places = entry.get("content", {}).get("gedcomx", {}).get("places", [])
-        if not places:
-            continue
-        place_type = places[0].get("type", "")
-        if place_type.split("/")[-1] == FS_TYPE_CITY:
-            full_name = places[0].get("names", [{}])[0].get("value", "")
-            return full_name.split(",")[0].strip()
-    # TODO: consider type 378 (township) for rural records
-    return None
-
-
-def query_fs_places(client, parsed, name_cache, max_workers=8):
-    """Phase 1e: use FamilySearch to resolve city terms that failed 1a-1d.
-
-    Walks parsed entries to find (unresolved_city, jurisdiction) pairs,
-    deduplicates them, queries FS for the canonical city name, and retries
-    Authority_Place with the result.
-
-    FS lookups are parallelized across threads; FM queries run sequentially
-    afterward since there are far fewer of them.
-    """
-    pairs = {}
-    for place, guid, frequency, terms in parsed:
-        for i, term in enumerate(terms):
-            if name_cache.get(term.lower()):
-                continue
-            if re.match(r'^\d', term):
-                continue
-            right = [t for t in terms[i + 1:] if name_cache.get(t.lower())]
-            if not right:
-                continue
-            jurisdiction = right[0]
-            key = (term.lower(), jurisdiction.lower())
-            if key not in pairs:
-                pairs[key] = (term, jurisdiction)
-
-    if not pairs:
-        log.info("  No eligible (city, jurisdiction) pairs")
-        return 0
-
-    unique_pairs = list(pairs.values())
-    log.info("  %d unique (city, jurisdiction) pairs to resolve...", len(unique_pairs))
-
-    unique_jurisdictions = list({j.lower(): j for j in
-                                 [jp for _, jp in unique_pairs]}.values())
-    log.info("  Resolving %d unique jurisdiction FS IDs (%d threads)...",
-             len(unique_jurisdictions), max_workers)
-    fs_id_cache = {}
-    fs_id_lock = threading.Lock()
-
-    def _resolve_fs_id_threaded(term):
-        result = _resolve_fs_id(term, {})
-        with fs_id_lock:
-            fs_id_cache[term.lower()] = result
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        list(pool.map(_resolve_fs_id_threaded, unique_jurisdictions))
-
-    resolved_jurisdictions = sum(1 for v in fs_id_cache.values() if v)
-    log.info("  %d/%d jurisdictions resolved",
-             resolved_jurisdictions, len(unique_jurisdictions))
-
-    def _lookup_one_pair(city_term, jurisdiction_term):
-        parent_id = fs_id_cache.get(jurisdiction_term.lower())
-        if not parent_id:
-            return (city_term, None)
-        canonical = _fs_city_lookup(city_term, parent_id)
-        return (city_term, canonical)
-
-    log.info("  Looking up %d city terms via FS (%d threads)...",
-             len(unique_pairs), max_workers)
-    fs_results = []
-    done_count = 0
-    done_lock = threading.Lock()
-
-    def _lookup_and_track(pair):
-        nonlocal done_count
-        result = _lookup_one_pair(*pair)
-        with done_lock:
-            done_count += 1
-            if done_count % 100 == 0:
-                log.info("    [%d/%d] FS lookups complete",
-                         done_count, len(unique_pairs))
-        return result
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        fs_results = list(pool.map(_lookup_and_track, unique_pairs))
-
-    fs_hits = 0
-    fm_added = 0
-    fm_queries = 0
-    canonicals = []
-    for city_term, canonical in fs_results:
-        if canonical:
-            canonicals.append((city_term, canonical))
-
-    log.info("  %d FS hits, querying FM for authority records...", len(canonicals))
-    for city_term, canonical in canonicals:
-        fs_hits += 1
-        query = [{"Auth_Place_Name": f"=={canonical}"}]
-        fm_queries += 1
-        records = client.find("Authority_Place", query)
-        for rec in records:
-            fd = rec['fieldData']
-            uuid = field_str(fd, 'UUID')
-            if uuid:
-                name_cache[city_term.lower()].add(uuid)
-                fm_added += 1
-
-    fs_skipped = len(unique_pairs) - len(canonicals)
-    log.info("  %d FS hits -> %d new authority records added "
-             "(%d skipped, %d FM queries)",
-             fs_hits, fm_added, fs_skipped, fm_queries)
-    return fm_added
 
 
 # ---------------------------------------------------------------------------
@@ -2614,62 +1838,6 @@ def query_fs_places(client, parsed, name_cache, max_workers=8):
 # Phase 3 would make individual API calls for each parent encountered
 # during chain walking, which dominated runtime in earlier versions.
 # ---------------------------------------------------------------------------
-
-def query_authority_batch(client, uuids):
-    """Fetch full authority records for a set of UUIDs from Authority_Place."""
-    auth_cache = {}
-    uuid_list = list(uuids)
-    total = len(uuid_list)
-    for i in range(0, total, BATCH):
-        batch = uuid_list[i:i + BATCH]
-        query = [{"UUID": f"=={uuid}"} for uuid in batch]
-        records = client.find("Authority_Place", query)
-        for rec in records:
-            field_data = rec['fieldData']
-            uuid = field_str(field_data, 'UUID')
-            if uuid:
-                auth_cache[uuid] = field_data
-        done = min(i + BATCH, total)
-        log.info("  Authority: %d/%d UUIDs resolved, %d found",
-                 done, total, len(auth_cache))
-    return auth_cache
-
-
-def prefetch_parent_chains(client, auth_cache):
-    """Walk up the jurisdiction hierarchy in bulk, layer by layer.
-
-    Each round collects every Parent_UUID referenced by cached records that
-    is not yet in the cache, fetches those parents in batch, and repeats.
-    Jurisdiction hierarchies are typically 5-6 levels deep (city -> county ->
-    state -> country), so this converges in 2-3 rounds.
-    """
-    while True:
-        missing = set()
-        for rec in auth_cache.values():
-            parent_uuid = field_str(rec, 'Parent_UUID')
-            if parent_uuid and parent_uuid not in auth_cache:
-                missing.add(parent_uuid)
-        if not missing:
-            break
-        missing_list = list(missing)
-        total = len(missing_list)
-        fetched = 0
-        for i in range(0, total, BATCH):
-            batch = missing_list[i:i + BATCH]
-            query = [{"UUID": f"=={uuid}"} for uuid in batch]
-            records = client.find("Authority_Place", query)
-            for rec in records:
-                field_data = rec['fieldData']
-                uuid = field_str(field_data, 'UUID')
-                if uuid:
-                    auth_cache[uuid] = field_data
-                    fetched += 1
-            done = min(i + BATCH, total)
-            log.info("  Parent pre-fetch: %d/%d UUIDs, %d found",
-                     done, total, fetched)
-        if fetched == 0:
-            break
-
 
 # ---------------------------------------------------------------------------
 # Phase 3: Matching
@@ -2685,41 +1853,7 @@ def prefetch_parent_chains(client, auth_cache):
 # "near" or informal region names.
 # ---------------------------------------------------------------------------
 
-def _prefetch_missing_parents(candidate_ids, auth_cache, client, max_hops=10):
-    """Collect all parent UUIDs reachable from candidate_ids that are missing
-    from auth_cache, then fetch them in batch. This avoids one-at-a-time API
-    calls during walk_up_chain.
-    """
-    missing = set()
-    for cid in candidate_ids:
-        current = cid
-        for _ in range(max_hops):
-            rec = auth_cache.get(current)
-            if not rec:
-                missing.add(current)
-                break
-            parent_uuid = field_str(rec, 'Parent_UUID')
-            if not parent_uuid or parent_uuid in auth_cache:
-                break
-            current = parent_uuid
-    if not missing or client is None:
-        return
-    missing_list = list(missing)
-    for i in range(0, len(missing_list), BATCH):
-        batch = missing_list[i:i + BATCH]
-        query = [{"UUID": f"=={uuid}"} for uuid in batch]
-        records = client.find("Authority_Place", query)
-        for rec in records:
-            fd = rec['fieldData']
-            uuid = field_str(fd, 'UUID')
-            if uuid:
-                auth_cache[uuid] = fd
-    if missing:
-        _prefetch_missing_parents(
-            [m for m in missing if m in auth_cache], auth_cache, client, max_hops)
-
-
-def walk_up_chain(candidate_id, target_ids, auth_cache, client, max_hops=10):
+def walk_up_chain(candidate_id, target_ids, auth_cache, max_hops=10):
     """Check whether candidate_id is a descendant of any UUID in target_ids
     by following the Parent_UUID chain upward. Returns True if a connection
     is found within max_hops, False otherwise.
@@ -2803,7 +1937,7 @@ def _disambiguate_by_frequency(term, candidates, dict_freq):
     return None
 
 
-def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
+def resolve_parent_only(candidate_ids, auth_cache, term=None):
     """Resolve parent_only candidates to a single answer only on strong signals.
 
     A single candidate resolves directly; a dictionary-frequency prior resolves
@@ -2817,19 +1951,6 @@ def resolve_parent_only(candidate_ids, auth_cache, client, term=None):
         return (None, 'amb')
     if len(candidate_ids) == 1:
         return (candidate_ids[0], 'parent_resolved')
-
-    # Fetch any missing auth records from FM (skipped in local mode)
-    if client is not None:
-        missing = [uid for uid in candidate_ids if uid not in auth_cache]
-        for i in range(0, len(missing), BATCH):
-            batch = missing[i:i + BATCH]
-            query = [{"UUID": f"=={uid}"} for uid in batch]
-            records = client.find("Authority_Place", query, limit=len(batch))
-            for r in records:
-                fd = r['fieldData']
-                uid = field_str(fd, 'UUID')
-                if uid:
-                    auth_cache[uid] = fd
 
     winner = _disambiguate_by_frequency(term, candidate_ids,
                                         _LOCAL.dict_freq or {})
@@ -3101,7 +2222,7 @@ class MatchResult:
         return CONFIDENCE_BY_TYPE.get(self.match_type, 'none')
 
 
-def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hints=None, ascii_cache=None,
+def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None, ascii_cache=None,
                 helper_term=None, correction_uuids_by_term=None):
     """Run the right-to-left matching algorithm on a single place string.
 
@@ -3181,10 +2302,9 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
         if len(child_ids) > 50:
             log.debug("    term '%s': %d candidates, prefetching...",
                       right_to_left[i], len(child_ids))
-        _prefetch_missing_parents(child_ids, auth_cache, client)
         verified = {
             candidate_id for candidate_id in child_ids
-            if walk_up_chain(candidate_id, confirmed, auth_cache, client)
+            if walk_up_chain(candidate_id, confirmed, auth_cache)
         }
 
         if verified:
@@ -3222,10 +2342,9 @@ def match_entry(terms, name_cache, auth_cache, client, original, jurisdiction_hi
             proximity_candidates = []
             proximity_by_term = defaultdict(set)
             for skipped_term, candidate_ids in skipped_with_candidates:
-                _prefetch_missing_parents(candidate_ids, auth_cache, client)
                 state_verified = {
                     cid for cid in candidate_ids
-                    if walk_up_chain(cid, state_ids, auth_cache, client)
+                    if walk_up_chain(cid, state_ids, auth_cache)
                 }
                 if not state_verified:
                     continue
@@ -3566,7 +2685,7 @@ def write_segment_log(decisions, path):
         writer.writerows(decisions)
 
 
-def print_summary(results, call_count, elapsed_sec, output_path):
+def print_summary(results, elapsed_sec, output_path):
     types = defaultdict(int)
     for row in results:
         types[row['match_type']] += 1
@@ -3619,155 +2738,19 @@ def print_summary(results, call_count, elapsed_sec, output_path):
         redundant = sum(1 for r in results if r['source_shape'])
         print(f"  Source rows with a redundancy shape: {redundant} "
               f"({redundant / len(results):.2%}) — {detail}")
-    print(f"  FM API calls: {call_count}")
     print(f"  Total time: {elapsed_sec:.1f}s")
     print(f"  Output: {output_path}")
 
 
 # ---------------------------------------------------------------------------
-# Helper term resolution
+# Parent-only resolution
 #
-# An optional geographic context string (e.g., "Utah, USA") that biases
-# single-term matching by providing a set of known ancestor UUIDs. The caller
-# passes RTL_HELPER_TERM via env or interactive prompt; this function resolves
-# it to a single authority record and walks up its parent chain to collect
-# ancestor UUIDs that can be used in Phase 3 scoring.
+# The rightmost term anchored a parent but nothing to its left verified as a
+# child. Deciding whether that parent is an answer or a symptom is its own
+# judgement, kept here rather than inline in the Phase 3 loop.
 # ---------------------------------------------------------------------------
 
-def resolve_helper_term(client, term_string, auth_cache, interactive=False):
-    """Resolve a helper term string to a single authority record.
-
-    When interactive=False (default), ambiguous matches pick the candidate
-    with the highest population. Pass interactive=True to prompt the user.
-    """
-    if not term_string:
-        return None
-
-    terms = [t.strip() for t in re.split(r'[,;]', term_string) if t.strip()]
-    if not terms:
-        return None
-
-    # Query each term against Authority_Place
-    term_candidates = {}
-    for term in terms:
-        query = [{"Auth_Place_Name": f"=={term}"}]
-        records = client.find("Authority_Place", query)
-        uuids = set()
-        for rec in records:
-            fd = rec['fieldData']
-            uuid = field_str(fd, 'UUID')
-            if uuid:
-                auth_cache[uuid] = fd
-                uuids.add(uuid)
-        if uuids:
-            term_candidates[term.lower()] = uuids
-
-    if not term_candidates:
-        log.info("  Helper term: no authority records found.")
-        return None
-
-    if len(terms) > 1:
-        right_to_left = list(reversed(terms))
-        confirmed = term_candidates.get(right_to_left[0].lower(), set())
-        if not confirmed:
-            all_found = set()
-            for uuids in term_candidates.values():
-                all_found.update(uuids)
-            confirmed = all_found
-        else:
-            for i in range(1, len(right_to_left)):
-                child_ids = term_candidates.get(right_to_left[i].lower(), set())
-                if not child_ids:
-                    continue
-                _prefetch_missing_parents(child_ids, auth_cache, client)
-                verified = {
-                    cid for cid in child_ids
-                    if walk_up_chain(cid, confirmed, auth_cache, client)
-                }
-                if verified:
-                    confirmed = verified
-        candidates = list(confirmed)
-    else:
-        candidates = list(term_candidates.get(terms[0].lower(), set()))
-
-    if not candidates:
-        log.info("  Helper term: chain walk produced no candidates.")
-        return None
-
-    if len(candidates) == 1:
-        chosen_uuid = candidates[0]
-    elif interactive:
-        print(f"\n  Helper term '{term_string}' matched {len(candidates)} records:")
-        for idx, uuid in enumerate(candidates):
-            rec = auth_cache.get(uuid, {})
-            name = field_str(rec, 'Auth_Place_Name')
-            level = field_str(rec, 'Level')
-            jurisdiction = field_str(rec, 'Jurisdiction')
-            type_ahead = field_str(rec, 'Type_Ahead_Value')
-            print(f"    [{idx + 1}] {name}  level={level}  jurisdiction={jurisdiction}  ({type_ahead})")
-        print("    [q] Skip helper term")
-        choice = input("  Pick a number: ").strip().lower()
-        if choice == 'q' or not choice:
-            return None
-        try:
-            idx = int(choice) - 1
-            if idx < 0 or idx >= len(candidates):
-                print("  Invalid selection, skipping helper term.")
-                return None
-            chosen_uuid = candidates[idx]
-        except ValueError:
-            print("  Invalid selection, skipping helper term.")
-            return None
-    else:
-        def _pop(uid):
-            try:
-                return int(field_str(auth_cache.get(uid, {}), 'Population') or 0)
-            except (ValueError, TypeError):
-                return 0
-        chosen_uuid = max(candidates, key=lambda uid: (_pop(uid), uid))
-        rec = auth_cache.get(chosen_uuid, {})
-        log.info("  Helper term '%s' had %d candidates, auto-picked: %s (%s)",
-                 term_string, len(candidates),
-                 field_str(rec, 'Auth_Place_Name'),
-                 field_str(rec, 'Type_Ahead_Value'))
-
-    chosen_rec = auth_cache.get(chosen_uuid, {})
-    try:
-        chosen_level = int(field_str(chosen_rec, 'Level'))
-    except (ValueError, TypeError):
-        chosen_level = 0
-
-    # Walk up parent chain to collect ancestor UUIDs
-    ancestor_uuids = set()
-    current = chosen_uuid
-    for _ in range(20):
-        rec = auth_cache.get(current)
-        if not rec:
-            # Try to fetch it
-            query = [{"UUID": f"=={current}"}]
-            records = client.find("Authority_Place", query)
-            if records:
-                fd = records[0]['fieldData']
-                uuid = field_str(fd, 'UUID')
-                if uuid:
-                    auth_cache[uuid] = fd
-                    rec = fd
-            if not rec:
-                break
-        parent_uuid = field_str(rec, 'Parent_UUID')
-        if not parent_uuid:
-            break
-        ancestor_uuids.add(parent_uuid)
-        current = parent_uuid
-
-    return {
-        'uuid': chosen_uuid,
-        'level': chosen_level,
-        'ancestor_uuids': ancestor_uuids,
-    }
-
-
-def resolve_parent_match(match, terms, auth_cache, client):
+def resolve_parent_match(match, terms, auth_cache):
     """Decide the fate of a parent_only match: resolve, reject, or amb.
 
     The rightmost term anchored a parent, but no more-specific term to its left
@@ -3786,7 +2769,7 @@ def resolve_parent_match(match, terms, auth_cache, client):
     recorded in the output regardless of outcome.
     """
     winner, resolution = resolve_parent_only(
-        match.candidate_ids, auth_cache, client, term=terms[-1])
+        match.candidate_ids, auth_cache, term=terms[-1])
 
     if resolution in ('parent_resolved', 'freq_resolved'):
         if match.skipped_had_candidates:
@@ -3833,82 +2816,47 @@ def main(args):
     def elapsed():
         return f"[{time.time() - start:.1f}s]"
 
-    client = None
+    _LOCAL.load(args.mnt, args.pa, dict_source=args.dict, env_path=args.env)
+    log.info("Local data ready. %s", elapsed())
 
-    if args.local:
-        _LOCAL.load(args.mnt, args.pa, dict_source=args.dict, env_path=args.env)
-        log.info("Local data ready. %s", elapsed())
+    # Country aliases go into the abbreviation table as well as the
+    # segmenter, so a segment like "US" is index-backed end to end. Without
+    # this, splitting "Illinois US" would leave "US" with no name_cache
+    # entry and turn a resolvable row into no_auth_match.
+    abbreviations = dict(JURISDICTION_ABBREVIATIONS)
+    if args.segment_commaless:
+        abbreviations.update(COUNTRY_ABBREVIATIONS)
 
-        # Country aliases go into the abbreviation table as well as the
-        # segmenter, so a segment like "US" is index-backed end to end. Without
-        # this, splitting "Illinois US" would leave "US" with no name_cache
-        # entry and turn a resolvable row into no_auth_match.
-        abbreviations = dict(JURISDICTION_ABBREVIATIONS)
-        if args.segment_commaless:
-            abbreviations.update(COUNTRY_ABBREVIATIONS)
+    expand_abbreviations = partial(query_abbreviation_expansions_local,
+                        jurisdiction_abbreviations=abbreviations)
+    expand_name_variants = partial(query_name_variants_local,
+                          generate_name_variants_fn=_generate_name_variants)
+    apply_transforms = partial(query_fallback_transforms_local,
+                            transform_term_fn=transform_term)
 
-        fn_query_mnt = query_mnt_local
-        fn_authority_by_name = query_authority_by_name_local
-        fn_abbrev = partial(query_abbreviation_expansions_local,
-                            jurisdiction_abbreviations=abbreviations)
-        fn_variants = partial(query_name_variants_local,
-                              generate_name_variants_fn=_generate_name_variants)
-        fn_transforms = partial(query_fallback_transforms_local,
-                                transform_term_fn=transform_term)
-        fn_preposition = query_preposition_extractions_local
-        fn_spelling = query_spelling_corrections_local
-        fn_cardinal = query_cardinal_strip_local
-        fn_auth_batch = query_authority_batch_local
-        fn_prefetch = prefetch_parent_chains_local
-        fn_helper = resolve_helper_term_local
-        fn_fs = None
-
-        fn_segment = None
-        if args.segment_commaless:
-            fn_segment = CommalessSegmenter(
-                pa_by_name=_LOCAL.pa_by_name, pa_by_uuid=_LOCAL.pa_by_uuid,
-                mnt_by_raw=_LOCAL.mnt_by_raw, mnt_by_value=_LOCAL.mnt_by_value,
-                country_aliases=COUNTRY_ABBREVIATIONS)
-    else:
-        client = FileMakerClient(args.env)
-        log.info("Authenticating with FileMaker...")
-        client.auth()
-        log.info("Connected. %s", elapsed())
-
-        fn_query_mnt = partial(query_mnt, client)
-        fn_authority_by_name = partial(query_authority_by_name, client)
-        fn_abbrev = partial(query_abbreviation_expansions, client)
-        fn_variants = partial(query_name_variants, client)
-        fn_transforms = partial(query_fallback_transforms, client)
-        fn_preposition = partial(query_preposition_extractions, client)
-        fn_spelling = partial(query_spelling_corrections, client)
-        fn_cardinal = partial(query_cardinal_strip, client)
-        fn_auth_batch = partial(query_authority_batch, client)
-        fn_prefetch = partial(prefetch_parent_chains, client)
-        fn_helper = partial(resolve_helper_term, client)
-        fn_fs = partial(query_fs_places, client)
-
-        fn_segment = None
-        if args.segment_commaless:
-            log.warning("--segment-commaless is local-mode only; comma-less "
-                        "segmentation skipped under --api")
+    segmenter = None
+    if args.segment_commaless:
+        segmenter = CommalessSegmenter(
+            pa_by_name=_LOCAL.pa_by_name, pa_by_uuid=_LOCAL.pa_by_uuid,
+            mnt_by_raw=_LOCAL.mnt_by_raw, mnt_by_value=_LOCAL.mnt_by_value,
+            country_aliases=COUNTRY_ABBREVIATIONS)
 
     entries = load_entries(args.input)
     log.info("Loaded %d entries", len(entries))
 
-    parsed, all_terms, jurisdiction_hints = parse_entries(entries, segment_fn=fn_segment)
+    parsed, all_terms, jurisdiction_hints = parse_entries(entries, segment_fn=segmenter)
     log.info("Unique terms to look up: %d", len(all_terms))
-    if fn_segment is not None and fn_segment.examined:
+    if segmenter is not None and segmenter.examined:
         log.info("Phase 0: %d of %d comma-less multi-word rows segmented",
-                 fn_segment.accepted, fn_segment.examined)
-        if fn_segment.reasons:
+                 segmenter.accepted, segmenter.examined)
+        if segmenter.reasons:
             log.info("  left as single term: %s",
                      ', '.join(f'{reason}={count}' for reason, count
-                               in sorted(fn_segment.reasons.items(),
+                               in sorted(segmenter.reasons.items(),
                                          key=lambda kv: -kv[1])))
 
     fs_hits = {}
-    if args.local and _LOCAL.fs_by_raw:
+    if _LOCAL.fs_by_raw:
         for place, _guid, _freq, _terms in parsed:
             uid = _LOCAL.fs_by_raw.get(canonicalize_place(place))
             if uid:
@@ -3919,26 +2867,26 @@ def main(args):
     helper_term_str = args.helper_term or ''
 
     log.info("\nPhase 1a: MNT lookups %s", elapsed())
-    name_cache = fn_query_mnt(all_terms)
+    name_cache = query_mnt_local(all_terms)
     mnt_matched = sum(1 for v in name_cache.values() if v)
     log.info("  %d terms matched via MNT %s", mnt_matched, elapsed())
 
     log.info("\nPhase 1b: Authority Place lookups by name %s", elapsed())
     name_cache.current_origin = 'exact'
-    fn_authority_by_name(all_terms, name_cache)
+    query_authority_by_name_local(all_terms, name_cache)
     combined = sum(1 for v in name_cache.values() if v)
     log.info("  Combined: %d terms matched %s", combined, elapsed())
 
     log.info("\nPhase 1b2: Jurisdiction abbreviation expansion %s", elapsed())
     name_cache.current_origin = 'abbrev'
-    abbrev_added = fn_abbrev(all_terms, name_cache)
+    abbrev_added = expand_abbreviations(all_terms, name_cache)
     after_abbrev = sum(1 for v in name_cache.values() if v)
     log.info("  +%d UUIDs added from abbreviation expansion "
              "(%d terms matched) %s", abbrev_added, after_abbrev, elapsed())
 
     log.info("\nPhase 1b3: Name variant expansion %s", elapsed())
     name_cache.current_origin = 'variant'
-    variant_added = fn_variants(all_terms, name_cache)
+    variant_added = expand_name_variants(all_terms, name_cache)
     after_variants = sum(1 for v in name_cache.values() if v)
     log.info("  +%d UUIDs added from name variants "
              "(%d terms matched) %s", variant_added, after_variants, elapsed())
@@ -3947,7 +2895,7 @@ def main(args):
     unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
     log.info("  %d terms unmatched, applying transforms...", len(unmatched))
     name_cache.current_origin = 'transform'
-    fn_transforms(unmatched, name_cache)
+    apply_transforms(unmatched, name_cache)
     after = sum(1 for v in name_cache.values() if v)
     log.info("  After transforms: %d terms matched (+%d new) %s",
              after, after - combined, elapsed())
@@ -3959,7 +2907,7 @@ def main(args):
     if transformable_matched:
         log.info("  Enriching %d MNT-matched transformable terms...",
                  len(transformable_matched))
-        enrich_added = fn_transforms(transformable_matched, name_cache)
+        enrich_added = apply_transforms(transformable_matched, name_cache)
         log.info("  After enrichment: +%d UUIDs added %s", enrich_added, elapsed())
 
     # Re-run name variants on transformed forms so that e.g. "near St. Charles"
@@ -3978,13 +2926,7 @@ def main(args):
         for orig_term, variants in transform_variants.items():
             key = orig_term.lower()
             for variant in variants:
-                if args.local:
-                    uuids = _query_name_local(variant)
-                else:
-                    query = [{"Auth_Place_Name": f"=={variant}"}]
-                    records = client.find("Authority_Place", query, limit=100)
-                    uuids = {field_str(r['fieldData'], 'UUID') for r in records
-                             if field_str(r['fieldData'], 'UUID')}
+                uuids = _query_name_local(variant)
                 new_uuids = uuids - name_cache.get(key, set())
                 if new_uuids:
                     name_cache[key].update(new_uuids)
@@ -3999,7 +2941,7 @@ def main(args):
     still_unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
     log.info("  %d terms still unmatched, scanning for embedded place names...", len(still_unmatched))
     name_cache.current_origin = 'preposition'
-    preposition_added = fn_preposition(still_unmatched, name_cache)
+    preposition_added = query_preposition_extractions_local(still_unmatched, name_cache)
     after_preposition = sum(1 for v in name_cache.values() if v)
     log.info("  After preposition extraction: %d terms matched (+%d new) %s",
              after_preposition, after_preposition - after, elapsed())
@@ -4022,7 +2964,7 @@ def main(args):
         log.info("  %d illegible terms excluded from spelling correction",
                  len(all_terms) - len(spell_terms))
     name_cache.current_origin = 'spelling'
-    spelling_added, spelling_corrections = fn_spelling(
+    spelling_added, spelling_corrections = query_spelling_corrections_local(
         spell_terms, name_cache, sym_spell, transform_map=transform_map)
     after_spelling = sum(1 for v in name_cache.values() if v)
     log.info("  After spelling: %d terms matched (+%d new, %d UUIDs) %s",
@@ -4034,18 +2976,10 @@ def main(args):
     still_unmatched = [t for t in all_terms if not name_cache.get(t.lower())]
     log.info("  %d terms still unmatched, trying cardinal strip...", len(still_unmatched))
     name_cache.current_origin = 'cardinal_strip'
-    cardinal_added = fn_cardinal(still_unmatched, name_cache, transform_map)
+    cardinal_added = query_cardinal_strip_local(still_unmatched, name_cache, transform_map)
     after_cardinal = sum(1 for v in name_cache.values() if v)
     log.info("  After cardinal strip: %d terms matched (+%d new) %s",
              after_cardinal, after_cardinal - after_spelling, elapsed())
-
-    if fn_fs:
-        log.info("\nPhase 1e: FamilySearch lookups for unresolved city terms %s", elapsed())
-        name_cache.current_origin = 'fs'
-        fn_fs(parsed, name_cache)
-        after_fs = sum(1 for v in name_cache.values() if v)
-        log.info("  After FS: %d terms matched (+%d new) %s",
-                 after_fs, after_fs - after_spelling, elapsed())
 
     all_auth_ids = set()
     for ids in name_cache.values():
@@ -4054,19 +2988,19 @@ def main(args):
     log.info("\n  %d unique authority IDs to resolve", len(all_auth_ids))
 
     log.info("\nPhase 2: Batch resolve authority records %s", elapsed())
-    auth_cache = fn_auth_batch(all_auth_ids)
+    auth_cache = query_authority_batch_local(all_auth_ids)
     log.info("  %d authority records cached %s", len(auth_cache), elapsed())
 
     log.info("\nPhase 2b: Pre-fetch parent chains %s", elapsed())
     before = len(auth_cache)
-    fn_prefetch(auth_cache)
+    prefetch_parent_chains_local(auth_cache)
     log.info("  %d parent records added, %d total cached %s",
              len(auth_cache) - before, len(auth_cache), elapsed())
 
     helper_term = None
     if helper_term_str:
         log.info("\nResolving helper term: '%s' %s", helper_term_str, elapsed())
-        helper_term = fn_helper(helper_term_str, auth_cache)
+        helper_term = resolve_helper_term_local(helper_term_str, auth_cache)
         if helper_term:
             log.info("  Helper term resolved: uuid=%s level=%s ancestors=%d %s",
                      helper_term['uuid'], helper_term['level'],
@@ -4078,13 +3012,13 @@ def main(args):
     if ascii_cache:
         log.info("  ASCII fallback index: %d folded entries", len(ascii_cache))
 
-    _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
+    _run_phase3(args, parsed, name_cache, auth_cache, jurisdiction_hints,
                 ascii_cache, helper_term, spelling_corrections, start, elapsed,
                 fs_hits=fs_hits,
-                segment_decisions=(fn_segment.decisions if fn_segment else None))
+                segment_decisions=(segmenter.decisions if segmenter else None))
 
 
-def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints,
+def _run_phase3(args, parsed, name_cache, auth_cache, jurisdiction_hints,
                 ascii_cache, helper_term, spelling_corrections, start, elapsed,
                 fs_hits=None, segment_decisions=None):
     """Phase 3 + output — shared by both local and FM modes."""
@@ -4108,7 +3042,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
             match = MatchResult([fs_uid], depth=len(terms),
                                 match_type='mnt_full_string')
         else:
-            match = match_entry(terms, name_cache, auth_cache, client, place,
+            match = match_entry(terms, name_cache, auth_cache, place,
                                 jurisdiction_hints=jurisdiction_hints,
                                 ascii_cache=ascii_cache,
                                 helper_term=helper_term,
@@ -4124,7 +3058,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
         # "Italy, Sicily" where the broader term is listed first.
         if match.match_type == 'parent_only' and match.skipped_terms:
             retry = match_entry(list(reversed(terms)), name_cache, auth_cache,
-                                client, place,
+                                place,
                                 jurisdiction_hints=jurisdiction_hints,
                                 ascii_cache=ascii_cache,
                                 helper_term=helper_term,
@@ -4133,7 +3067,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
                 match = retry
 
         if match.match_type == 'parent_only' and match.candidate_ids:
-            match = resolve_parent_match(match, terms, auth_cache, client)
+            match = resolve_parent_match(match, terms, auth_cache)
             if match.match_type == 'parent_rejected':
                 recoverable_rejects += 1
 
@@ -4165,7 +3099,6 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
         log.info("  Rejected %d parent matches with recoverable specific terms",
                  recoverable_rejects)
 
-    fm_calls = 0
     (output_path, tie_path, spelling_log_path, segment_log_path,
      level_log_path) = _resolve_output_paths(args.input, args.output_dir)
     write_results(results, output_path)
@@ -4182,7 +3115,7 @@ def _run_phase3(args, parsed, name_cache, auth_cache, client, jurisdiction_hints
     if segment_decisions:
         write_segment_log(segment_decisions, segment_log_path)
         log.info("  Segmentation log: %s", segment_log_path)
-    print_summary(results, fm_calls, time.time() - start, output_path)
+    print_summary(results, time.time() - start, output_path)
 
 
 def build_cli():
@@ -4205,27 +3138,19 @@ def build_cli():
                              "single-term matches (e.g. 'Utah, USA'). "
                              "Omit to run without one.")
 
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument('--local', action='store_true', default=True,
-                      help="Use local TSV data (default)")
-    mode.add_argument('--api', dest='local', action='store_false',
-                      help="Use FileMaker API instead of local TSV data")
-
     parser.add_argument('--env',
-                        help="Path to .env file for FileMaker credentials "
-                             "(required with --api) or Supabase password "
+                        help="Path to a .env file supplying SUPABASE_PASSWORD "
                              "(used with --dict live)")
     parser.add_argument('--dict', nargs='?', const='live',
                         help="Supplement MNT with the Supabase place dictionary "
                              "(union). Pass a directory of TSV exports, or no "
                              "value for a live connection (needs SUPABASE_PASSWORD "
-                             "via --env or the environment). Local mode only.")
+                             "via --env or the environment).")
     parser.add_argument('--segment-commaless',
                         action=argparse.BooleanOptionalAction, default=True,
                         help="Split comma-less place strings into hierarchy "
                              "terms before matching, e.g. 'Swift Minnesota' -> "
-                             "['Swift', 'Minnesota'] (default: on). Local mode "
-                             "only; ignored under --api. Writes a "
+                             "['Swift', 'Minnesota'] (default: on). Writes a "
                              "<stem>_NN_segments.tsv side file. Use "
                              "--no-segment-commaless to reproduce pre-"
                              "segmentation output for A/B comparison.")
@@ -4271,9 +3196,6 @@ if __name__ == '__main__':
     parser = build_cli()
     args = parser.parse_args()
     args = prompt_missing(args)
-
-    if not args.local and not args.env:
-        parser.error("--env is required when using --api mode")
 
     apply_level_scope(args)
 
