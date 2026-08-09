@@ -1674,8 +1674,16 @@ class TestFrequencyDisambiguation:
         freq = {('x', U1): 9, ('x', U2): 1}
         assert _disambiguate_by_frequency('x', [U1, U2], freq) is None
 
-    def test_mixed_origin_missing_freq_returns_none(self):
+    def test_mixed_origin_missing_freq_counts_as_zero(self):
         freq = {('y', U1): 500}          # U2 is MNT-only, no freq entry
+        assert _disambiguate_by_frequency('y', [U1, U2], freq) == U1
+
+    def test_missing_freq_still_subject_to_floor(self):
+        freq = {('y', U1): 9}            # clears the ratio, misses FREQ_MIN
+        assert _disambiguate_by_frequency('y', [U1, U2], freq) is None
+
+    def test_all_candidates_missing_returns_none(self):
+        freq = {('other', U1): 500}      # nothing recorded under this term
         assert _disambiguate_by_frequency('y', [U1, U2], freq) is None
 
     def test_empty_freq_returns_none(self):

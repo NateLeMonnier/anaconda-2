@@ -1,2 +1,3 @@
 term	uuid	auth_name	jurisdiction	rows_last_run	last_input
+bridge	28497DD9-89AF-4381-9FBF-2412E5389498	Bridge	City	1	snowball2_sample_5k.tsv
 city	24503A39-8CA7-43FB-93AE-407F3FE52581	City of Glasgow	Council area	2	snowball2_sample_5k.tsv

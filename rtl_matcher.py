@@ -1972,20 +1972,26 @@ def cap_candidates(ranked_ids, context=""):
 
 
 def _disambiguate_by_frequency(term, candidates, dict_freq):
-    """Pick a winner by dictionary frequency. Fires only when EVERY candidate
-    has a frequency entry for this term (mixed dict/MNT-origin sets fall
-    through to population rules — absence of freq is not evidence against an
-    MNT mapping). Winner needs FREQ_MIN observations and FREQ_RATIO times the
-    runner-up."""
+    """Pick a winner by dictionary frequency, counting a candidate with no
+    frequency entry for this term as zero.
+
+    Absence used to abstain: a mixed dict/MNT-origin set fell through rather
+    than let a dict-attested candidate beat an MNT-curated one on silence.
+    That gate blocked 37% of ambiguous terms while protecting a narrow case.
+    The dictionary attests some term for 100% of the UUIDs MNT maps, so a
+    missing (term, uuid) pair says the spelling is unobserved, not that the
+    place is unknown; and a curated MNT mapping that carries real context has
+    already resolved through _full_string_fast_path before a single term ever
+    reaches here. Winner still needs FREQ_MIN observations and FREQ_RATIO
+    times the runner-up, so an all-missing set (every candidate at zero)
+    resolves nothing.
+    """
     if not term or not dict_freq or len(candidates) < 2:
         return None
     key = term.lower()
     freqs = []
     for uid in candidates:
-        f = dict_freq.get((key, uid))
-        if f is None:
-            return None
-        freqs.append((f, uid))
+        freqs.append((dict_freq.get((key, uid)) or 0, uid))
     freqs.sort(key=lambda x: (-x[0], x[1]))
     top_f, top_uid = freqs[0]
     if top_f >= FREQ_MIN and top_f >= FREQ_RATIO * freqs[1][0]:
