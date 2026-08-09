@@ -114,25 +114,25 @@ class PAIndex:
         if not candidates:
             return Resolution(None, 'absent', [])
 
-        replaced = [c for c in candidates
-                    if c.replacement_uuid and c.replacement_uuid != c.uuid]
-        if replaced and len(candidates) == len(replaced):
+        live = [c for c in candidates
+                if not c.replacement_uuid or c.replacement_uuid == c.uuid]
+        if not live:
             return Resolution(None, 'replaced', candidates)
 
-        if len(candidates) == 1:
-            return Resolution(candidates[0].uuid, 'unique', candidates)
+        if len(live) == 1:
+            return Resolution(live[0].uuid, 'unique', live)
 
         proposed = _chain_tokens(proposed_chain) - {_match_key(leaf)}
         if not proposed:
-            return Resolution(None, 'needs_disambiguation', candidates)
+            return Resolution(None, 'needs_disambiguation', live)
 
         scored = []
-        for c in candidates:
+        for c in live:
             overlap = len(proposed & (_chain_tokens(c.full_chain)
                                       - {_match_key(c.term)}))
             scored.append((overlap, c))
         best = max(s for s, _ in scored)
         winners = [c for s, c in scored if s == best]
         if best > 0 and len(winners) == 1:
-            return Resolution(winners[0].uuid, 'chain_matched', candidates)
-        return Resolution(None, 'needs_disambiguation', candidates)
+            return Resolution(winners[0].uuid, 'chain_matched', live)
+        return Resolution(None, 'needs_disambiguation', live)

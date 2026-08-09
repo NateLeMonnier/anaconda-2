@@ -107,6 +107,20 @@ def test_replaced_uuid_is_flagged_not_silently_followed(index):
     assert result.uuid is None
 
 
+def test_mixed_replaced_and_live_candidates_drops_the_superseded_row():
+    # A term can have some rows superseded and others still current. The
+    # superseded row must never be returned as the answer, nor offered to
+    # the model as a disambiguation candidate.
+    idx = PAIndex([
+        row('Taylor', 'U-TAYLOR-OLD', 'Taylor, Texas, USA',
+            replacement='U-TAYLOR-NEW'),
+        row('Taylor', 'U-TAYLOR-NEW', 'Taylor, Texas, USA'),
+    ])
+    result = idx.resolve('Taylor', 'Taylor, Texas, USA')
+    assert result.uuid == 'U-TAYLOR-NEW'
+    assert all(c.uuid != 'U-TAYLOR-OLD' for c in result.candidates)
+
+
 def test_from_tsv_reads_the_real_column_order(tmp_path):
     path = tmp_path / 'pa.tsv'
     path.write_text(
