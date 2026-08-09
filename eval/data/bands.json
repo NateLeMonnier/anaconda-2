@@ -1,0 +1,18 @@
+{
+  "seed": 42,
+  "corpus": "/Users/natelemonnier/storied/resources/np_records_snowball4_locations.tsv",
+  "bands": {
+    "head": {
+      "strings": 12593,
+      "records": 213679713
+    },
+    "mid": {
+      "strings": 528892,
+      "records": 29423056
+    },
+    "tail": {
+      "strings": 5395713,
+      "records": 15984033
+    }
+  }
+}

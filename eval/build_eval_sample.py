@@ -41,19 +41,32 @@ def load_exclusions(path):
 
 
 def load_corpus(path, exclusions):
-    rows = []
+    """One row per guid, with frequency summed across the corpus.
+
+    snowball4 carries one row per (place, inferred_location) pair, not per
+    place string: 142,029 guids appear on several rows with their record
+    count split between them, so `Brown University, Rhode Island` shows as 8
+    and 4 rather than 12. Summing first is what makes band assignment correct
+    and keeps guid the unique key the scorer joins on. Aggregating by guid
+    rather than place is safe — no guid maps to more than one place string,
+    though 2,498 place strings carry more than one guid.
+    """
+    totals = {}
     with open(path, encoding='utf-8', newline='') as f:
         for rec in csv.DictReader(f, delimiter='\t'):
             place = (rec.get('place') or '').strip()
-            if not place or place in exclusions:
+            guid = (rec.get('guid') or '').strip()
+            if not place or not guid or place in exclusions:
                 continue
             try:
                 freq = int(float(rec.get('frequency') or 0))
             except ValueError:
                 continue
-            rows.append({'place': place, 'guid': (rec.get('guid') or '').strip(),
-                         'frequency': str(freq)})
-    return rows
+            if guid in totals:
+                totals[guid]['frequency'] += freq
+            else:
+                totals[guid] = {'place': place, 'guid': guid, 'frequency': freq}
+    return [dict(r, frequency=str(r['frequency'])) for r in totals.values()]
 
 
 def band_record_totals(rows):

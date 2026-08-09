@@ -53,6 +53,14 @@ Supports two modes:
 - **Direct mode** — Evaluate a single output file: `python evaluate_normalizer.py output.tsv --input raw.tsv`
 - **Pipeline mode** — Evaluate Phase 1 multi-file output: `python evaluate_normalizer.py --pipeline outputs/ prefix --input raw.tsv`
 
+### eval/
+
+Record accuracy measurement against a blind labeled sample of snowball4 — the
+share of records that resolve to the correct authority record, reweighted by
+frequency band. Labels come from two independent model families that never see
+matcher output, and the labeling path is built leaf-first so it shares no
+failure mode with the matcher it grades. See `eval/README.md` for the runbook.
+
 ### test_rtl_matcher.py
 
 Unit tests for the RTL matcher: comma-less segmentation, parent chain pre-fetching, candidate ranking and provenance, jurisdiction filtering, tie detection, transforms, spelling correction, proximity fallback, and parent-only resolution. Run with `python -m pytest test_rtl_matcher.py`.

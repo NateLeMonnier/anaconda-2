@@ -2,10 +2,63 @@
 from build_eval_sample import (
     band_for,
     band_record_totals,
+    load_corpus,
     load_exclusions,
     split_dev_heldout,
     stratified_sample,
 )
+
+
+def write_corpus(tmp_path, rows):
+    path = tmp_path / 'corpus.tsv'
+    body = ''.join(f'{p}\t{inf}\t{g}\t{fr}\n' for p, inf, g, fr in rows)
+    path.write_text('place\tinferred_location\tguid\tfrequency\n' + body,
+                    encoding='utf-8')
+    return str(path)
+
+
+def test_load_corpus_sums_frequency_across_rows_sharing_a_guid(tmp_path):
+    # snowball4 has one row per (place, inferred_location) pair, so 142,029
+    # guids arrive with their record count split. Summing first is what makes
+    # band assignment correct.
+    path = write_corpus(tmp_path, [
+        ('Brown University, Rhode Island', '', 'G1', '8'),
+        ('Brown University, Rhode Island', 'Rhode Island', 'G1', '4'),
+    ])
+    rows = load_corpus(path, set())
+    assert len(rows) == 1
+    assert rows[0]['frequency'] == '12'
+
+
+def test_load_corpus_keeps_guid_unique(tmp_path):
+    # The scorer joins on guid; a duplicate would silently drop a row.
+    path = write_corpus(tmp_path, [
+        ('A, State', '', 'G1', '5'), ('A, State', 'X', 'G1', '5'),
+        ('B, State', '', 'G2', '7'),
+    ])
+    rows = load_corpus(path, set())
+    assert len({r['guid'] for r in rows}) == len(rows)
+
+
+def test_load_corpus_summing_can_promote_a_row_into_a_higher_band(tmp_path):
+    path = write_corpus(tmp_path, [
+        ('Split, State', '', 'G1', '6'), ('Split, State', 'X', 'G1', '6'),
+    ])
+    rows = load_corpus(path, set())
+    assert band_for(int(rows[0]['frequency'])) == 'mid'  # 12, not 6
+
+
+def test_load_corpus_drops_excluded_place_strings(tmp_path):
+    path = write_corpus(tmp_path, [
+        ('Seen, State', '', 'G1', '5'), ('Fresh, State', '', 'G2', '5'),
+    ])
+    rows = load_corpus(path, {'Seen, State'})
+    assert [r['guid'] for r in rows] == ['G2']
+
+
+def test_load_corpus_skips_rows_missing_a_guid(tmp_path):
+    path = write_corpus(tmp_path, [('A, State', '', '', '5')])
+    assert load_corpus(path, set()) == []
 
 
 def corpus(n_head=50, n_mid=50, n_tail=50):

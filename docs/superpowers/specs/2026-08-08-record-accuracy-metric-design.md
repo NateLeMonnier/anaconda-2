@@ -21,10 +21,17 @@ and the label level.
 
 ## Corpus
 
-`resources/np_records_snowball4_locations.tsv` — 6,079,253 distinct place strings
-covering 259,087,272 records. Columns: `place`, `inferred_location`, `guid`,
-`frequency`. Format is ordinary comma-delimited input
+`resources/np_records_snowball4_locations.tsv` — 6,079,253 rows covering
+259,087,272 records. Columns: `place`, `inferred_location`, `guid`, `frequency`.
+Format is ordinary comma-delimited input
 (`Syracuse, New York, United States of America`).
+
+A row is one (place, inferred_location) pair, not one place string. 142,029
+guids appear on several rows with their record count split between them —
+`Brown University, Rhode Island` shows as 8 and 4 rather than 12. The sampler
+sums by guid first, which yields 5,937,224 unique rows and keeps guid the
+unique key the scorer joins on. Aggregating by guid is safe: no guid maps to
+more than one place string, though 2,498 place strings carry more than one guid.
 
 Every run in `rtl-outputs/` is `snowball2_sample_5k`. Snowball4 has never been fed
 to the matcher. Overlap with `snowball2_ground_truth.tsv` is 26 strings out of
@@ -33,11 +40,13 @@ rather than by discipline.
 
 Frequency distribution:
 
+Measured after guid aggregation and after dropping the 26 seen strings:
+
 | Band | Range | Strings | % strings | Records | % records |
 |---|---|---|---|---|---|
-| head | freq >= 1000 | 13,144 | 0.22% | 210,802,610 | 81.36% |
-| mid | freq 10-999 | 558,493 | 9.19% | 31,926,302 | 12.32% |
-| tail | freq 1-9 | 5,507,616 | 90.60% | 16,358,360 | 6.31% |
+| head | freq >= 1000 | 12,593 | 0.21% | 213,679,713 | 82.47% |
+| mid | freq 10-999 | 528,892 | 8.91% | 29,423,056 | 11.36% |
+| tail | freq 1-9 | 5,395,713 | 90.88% | 15,984,033 | 6.17% |
 
 Because snowball4 is effectively inexhaustible, a burned held-out set can always be
 replaced with a fresh blind one. That is the durable answer to test-set decay.
@@ -116,7 +125,7 @@ Every row gets two labels from one pass:
 information it actually receives. The delta between the two columns sizes the LLM
 enrichment step that was deliberately descoped: how many rows it would recover, and
 against a per-token price, what it would cost. The recoverable ceiling is bounded by
-mid plus tail at 18.6% of records, before subtracting the rows that already resolve.
+mid plus tail at 17.6% of records, before subtracting the rows that already resolve.
 
 ### Consensus
 
