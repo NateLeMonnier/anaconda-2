@@ -35,8 +35,9 @@
 **Interfaces:**
 - Consumes: nothing.
 - Produces:
-  - `normalize_term(s: str) -> str`
+  - `normalize_term(s: str) -> str` — index-side normalization
   - `normalize_chain(s: str) -> str`
+  - `_match_key(s: str) -> str` — comparison-side normalization, also used by Step 5's verification
   - `PARow` namedtuple with fields `level level_name uuid term full_chain parent_id population replacement_uuid`
   - `Resolution` namedtuple with fields `uuid status candidates`, where `status` is one of `'unique'`, `'chain_matched'`, `'needs_disambiguation'`, `'absent'`, `'replaced'`
   - `PAIndex(rows: list[PARow])` with attribute `by_term: dict[str, list[PARow]]`
@@ -87,6 +88,17 @@ def test_normalize_term_drops_punctuation():
     assert normalize_term("St. Mary's") == 'st marys'
 
 
+def test_normalize_term_drops_parentheticals():
+    # PA marks superseded places inline: Term "Prussia", chain leaf
+    # "Prussia (historical)".
+    assert normalize_term('Prussia (historical)') == 'prussia'
+
+
+def test_normalize_term_keeps_jurisdiction_qualifiers():
+    # Qualifier stripping belongs to chain comparison, not the index.
+    assert normalize_term('Pike County') == 'pike county'
+
+
 def test_normalize_chain_keeps_comma_structure():
     assert normalize_chain('Syracuse, Onondaga, New York, USA') == \
         'syracuse, onondaga, new york, usa'
@@ -120,6 +132,17 @@ def test_ambiguous_term_without_disambiguating_chain_needs_a_second_call(index):
     assert result.status == 'needs_disambiguation'
     assert result.uuid is None
     assert len(result.candidates) == 3
+
+
+def test_qualifier_mismatch_between_term_and_chain_still_matches():
+    # PA disagrees with itself on qualifiers for 12.7% of rows.
+    idx = PAIndex([
+        row('Pike', 'U-PIKE-OH', 'Pike County, Ohio, USA', level='5'),
+        row('Pike', 'U-PIKE-KY', 'Pike County, Kentucky, USA', level='5'),
+    ])
+    result = idx.resolve('Pike', 'Pike, Ohio, USA')
+    assert result.status == 'chain_matched'
+    assert result.uuid == 'U-PIKE-OH'
 
 
 def test_absent_term_reports_absent(index):
@@ -166,6 +189,7 @@ proposed chain against PA's FullChainName, never by chain-connection scoring,
 evidence rank, or population. The MNT is never read.
 """
 import csv
+import re
 import sys
 import unicodedata
 from collections import namedtuple
@@ -178,14 +202,31 @@ PARow = namedtuple(
 
 Resolution = namedtuple('Resolution', 'uuid status candidates')
 
+_PAREN = re.compile(r'\([^)]*\)')
+_APOSTROPHE = str.maketrans('', '', "'’")
+_QUALIFIER = re.compile(
+    r'\b(county|parish|borough|township|twp|municipality|oblast|krai|raion)\b')
+
 
 def normalize_term(s):
-    """Casefold, strip accents, drop punctuation, collapse whitespace."""
+    """Casefold, strip accents and parentheticals, drop punctuation.
+
+    Apostrophes are deleted rather than spaced, so "St. Mary's" gives
+    "st marys" and not "st mary s". Parentheticals go because PA marks
+    superseded places inline: Term "Prussia", FullChainName leaf
+    "Prussia (historical)".
+
+    Jurisdiction qualifiers are NOT stripped here — this keys the index, and
+    PA's Term column already carries the bare form ("Pike") while
+    FullChainName carries the qualified one ("Pike County"). Stripping here
+    would collide counties with same-named cities for no gain.
+    """
     if not s:
         return ''
-    decomposed = unicodedata.normalize('NFKD', s)
+    decomposed = unicodedata.normalize('NFKD', _PAREN.sub(' ', s))
     stripped = ''.join(c for c in decomposed if not unicodedata.combining(c))
-    kept = ''.join(c if c.isalnum() else ' ' for c in stripped.lower())
+    stripped = stripped.lower().translate(_APOSTROPHE)
+    kept = ''.join(c if c.isalnum() else ' ' for c in stripped)
     return ' '.join(kept.split())
 
 
@@ -197,9 +238,22 @@ def normalize_chain(s):
     return ', '.join(p for p in parts if p)
 
 
+def _match_key(s):
+    """normalize_term plus jurisdiction-qualifier stripping.
+
+    For comparing a model-proposed chain against FullChainName only, never
+    for the index. PA disagrees with itself on qualifiers — Term "Pike"
+    against chain leaf "Pike County", Term "Amur" against "Amur Oblast" —
+    for 12.7% of rows. Stripping both sides of the comparison takes that
+    to 0.30%, the residual being rarer foreign administrative suffixes,
+    which fall through to model disambiguation rather than mismatching.
+    """
+    return ' '.join(_QUALIFIER.sub(' ', normalize_term(s)).split())
+
+
 def _chain_tokens(chain):
-    """Set of normalized parts of a chain, leaf included."""
-    return {p for p in normalize_chain(chain).split(', ') if p}
+    """Set of match keys for a chain's parts, leaf included."""
+    return {k for k in (_match_key(p) for p in (chain or '').split(',')) if k}
 
 
 class PAIndex:
@@ -250,14 +304,14 @@ class PAIndex:
         if len(candidates) == 1:
             return Resolution(candidates[0].uuid, 'unique', candidates)
 
-        proposed = _chain_tokens(proposed_chain) - {normalize_term(leaf)}
+        proposed = _chain_tokens(proposed_chain) - {_match_key(leaf)}
         if not proposed:
             return Resolution(None, 'needs_disambiguation', candidates)
 
         scored = []
         for c in candidates:
             overlap = len(proposed & (_chain_tokens(c.full_chain)
-                                      - {normalize_term(c.term)}))
+                                      - {_match_key(c.term)}))
             scored.append((overlap, c))
         best = max(s for s, _ in scored)
         winners = [c for s, c in scored if s == best]
@@ -269,38 +323,52 @@ class PAIndex:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd /Users/natelemonnier/storied/code/anaconda-2 && python -m pytest eval/test_pa_index.py -v`
-Expected: PASS, 11 passed
+Expected: PASS, 14 passed
 
 - [ ] **Step 5: Assert FullChainName agrees with the ParentID walk**
 
-The design assumes `FullChainName` is the flattened parent chain, so it is read rather than walked. Verify once against the real file:
+The design assumes `FullChainName` is the flattened parent chain, so it is read rather than walked. Verify once against the real file.
+
+The walk and the column are not the same length — the walk continues up to the continent, which `FullChainName` omits. So the check is subsequence containment in order, not list equality, and it compares on `_match_key` because PA disagrees with itself on qualifiers.
 
 ```bash
 cd /Users/natelemonnier/storied/code/anaconda-2
-python - <<'PY'
-from eval.pa_index import PAIndex, normalize_term
-import csv, sys, random
+PYTHONPATH=eval python - <<'PY'
+import csv, random, sys
+from pa_index import PAIndex, _match_key
 csv.field_size_limit(sys.maxsize)
-PA = '/Users/natelemonnier/storied/resources/place-authority-mnt-tsv/PA6_16_2026v77.tsv'
+PA = ('/Users/natelemonnier/storied/resources/place-authority-mnt-tsv/'
+      'PA6_16_2026v77.tsv')
 idx = PAIndex.from_tsv(PA)
 by_uuid = {r.uuid: r for r in idx.rows}
 random.seed(42)
-sample = random.sample([r for r in idx.rows if r.parent_id], 500)
-bad = 0
+sample = random.sample([r for r in idx.rows if r.parent_id and r.full_chain], 500)
+
+bad = []
 for r in sample:
-    walk, cur, seen = [r.term], r.parent_id, set()
+    walk, cur, seen = [_match_key(r.term)], r.parent_id, set()
     while cur and cur in by_uuid and cur not in seen:
         seen.add(cur)
-        walk.append(by_uuid[cur].term)
+        walk.append(_match_key(by_uuid[cur].term))
         cur = by_uuid[cur].parent_id
-    if [normalize_term(t) for t in walk] != \
-       [normalize_term(p) for p in r.full_chain.split(',')]:
-        bad += 1
-print(f'{bad}/500 disagree')
+    chain = [_match_key(p) for p in r.full_chain.split(',') if _match_key(p)]
+    i = 0
+    for part in chain:
+        while i < len(walk) and walk[i] != part:
+            i += 1
+        if i == len(walk):
+            bad.append((r.term, r.full_chain))
+            break
+        i += 1
+print(f'{len(bad)}/500 disagree')
+for t, c in bad[:10]:
+    print(f'  {t!r} -> {c!r}')
 PY
 ```
 
-Expected: a low count. If it exceeds 25, stop and report — the design's risk section calls for replacing the column read with the walk, which changes `PAIndex.resolve` and needs a decision before proceeding.
+Expected: 15 or fewer. The residual is foreign administrative suffixes that `_match_key` does not strip, which is harmless — an unmatched chain part sends the row to `needs_disambiguation`, where the model picks, rather than producing a wrong label.
+
+If it exceeds 15, stop and report. That would mean `FullChainName` is not the parent chain, and the design's risk section calls for replacing the column read with the walk — a change to `PAIndex.resolve` that needs a human decision first.
 
 - [ ] **Step 6: Commit**
 
