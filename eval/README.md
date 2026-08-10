@@ -345,6 +345,11 @@ rows go to 99.1% once the stop-list is loaded, against 91.1% without it.
 |---|---|---|---|---|
 | baseline | `mnt_dev_03` | 67.4% | 58.3% | 75.5% |
 | name-fragment demotion | `mnt_dev_08` | 67.7% | 59.6% | 74.7% |
+| same, held-out half | `mnt_heldout_01` | 68.5% | — | — |
+
+Held-out ran once at the fragment change, aggregates only. It lands 0.8 points
+above dev with every band within about two, so nothing measured on dev is
+fitted to it.
 
 The fragment change fixed 33 rows and broke 4, two of which are rows where
 abstaining was the correct answer. Gains sit outside head — head +1, mid +18,
