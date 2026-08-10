@@ -28,6 +28,7 @@ from rtl_matcher import (
     _is_bare_jurisdiction,
     is_description,
     is_supported_level,
+    load_entries,
     LocalData,
     lookup_name,
     lookup_name_with_origin,
@@ -2905,3 +2906,136 @@ class TestTermAttribution:
         assert rows[0]['level'] == '2'
         assert rows[0]['raw_term'] == 'Hollis'
         assert rows[1]['name'] == 'Queens'
+
+
+# ---------------------------------------------------------------------------
+# Input reading
+# ---------------------------------------------------------------------------
+
+
+class TestLoadEntries:
+    def write(self, tmp_path, text):
+        path = tmp_path / 'input.tsv'
+        path.write_text(text, encoding='utf-8')
+        return str(path)
+
+    def test_reads_a_plain_input_tsv(self, tmp_path):
+        path = self.write(tmp_path,
+                          'place\tguid\tfrequency\nMalone, NY\tG1\t7\n')
+        assert load_entries(path)[0]['place'] == 'Malone, NY'
+
+    def test_skips_the_provenance_comment_the_eval_builders_write(self, tmp_path):
+        # Both eval sample builders stamp seed and corpus above the header.
+        # Without this the header read is the comment and every column is
+        # reported missing.
+        path = self.write(tmp_path,
+                          '# seed=42 source=MNT\n'
+                          'place\tguid\tfrequency\nMalone, NY\tG1\t7\n')
+        entries = load_entries(path)
+        assert entries[0]['place'] == 'Malone, NY'
+        assert entries[0]['guid'] == 'G1'
+
+    def test_skips_several_comment_lines(self, tmp_path):
+        path = self.write(tmp_path,
+                          '# one\n# two\nplace\tguid\tfrequency\nA\tG1\t1\n')
+        assert len(load_entries(path)) == 1
+
+    def test_a_place_string_starting_with_a_hash_is_still_a_row(self, tmp_path):
+        # Only the leading block is provenance. '#4 Mine' is a place.
+        path = self.write(tmp_path,
+                          'place\tguid\tfrequency\n'
+                          '#4 Mine, Pennsylvania\tG1\t1\nMalone, NY\tG2\t1\n')
+        assert [e['place'] for e in load_entries(path)] == [
+            '#4 Mine, Pennsylvania', 'Malone, NY']
+
+    def test_a_missing_place_column_still_raises(self, tmp_path):
+        path = self.write(tmp_path, '# seed=42\nguid\tfrequency\nG1\t1\n')
+        with pytest.raises(ValueError, match='place'):
+            load_entries(path)
+
+
+class TestNameFragmentGate:
+    """A dictionary row can map a bare term onto a longer name that only
+    starts with it — `pinellas` reaching Pinellas Park. Those matches are
+    wrong three to four times as often as they are right, so a term that also
+    reaches a proper match should not have to compete with them.
+    """
+
+    def install(self, monkeypatch, records):
+        local = LocalData()
+        local.pa_by_uuid = records
+        monkeypatch.setattr(rtl_matcher, '_LOCAL', local)
+
+    def pa(self):
+        return {
+            'county': {'Auth_Place_Name': 'Pinellas'},
+            'park': {'Auth_Place_Name': 'Pinellas Park'},
+            'airfield': {'Auth_Place_Name': 'Pinellas Army Airfield'},
+            'suffixed': {'Auth_Place_Name': 'Pinellas'},
+        }
+
+    def test_a_longer_name_containing_the_term_is_a_fragment(self, monkeypatch):
+        self.install(monkeypatch, self.pa())
+        assert rtl_matcher.is_name_fragment('Pinellas', 'park')
+        assert rtl_matcher.is_name_fragment('Pinellas', 'airfield')
+
+    def test_an_exact_name_is_not_a_fragment(self, monkeypatch):
+        self.install(monkeypatch, self.pa())
+        assert not rtl_matcher.is_name_fragment('Pinellas', 'county')
+
+    def test_a_term_longer_than_the_name_is_not_a_fragment(self, monkeypatch):
+        # "Pinellas County" reaching Pinellas is a jurisdiction suffix being
+        # absorbed, the most reliable class in the corpus.
+        self.install(monkeypatch, self.pa())
+        assert not rtl_matcher.is_name_fragment('Pinellas County', 'county')
+
+    def test_matching_is_on_whole_tokens(self, monkeypatch):
+        # Cambridge must not read as a fragment of Cambridgeshire; that is a
+        # different place, not a truncated reference to this one.
+        self.install(monkeypatch, {'shire': {'Auth_Place_Name': 'Cambridgeshire'}})
+        assert not rtl_matcher.is_name_fragment('Cambridge', 'shire')
+
+    def test_a_term_in_the_middle_of_a_name_is_a_fragment(self, monkeypatch):
+        self.install(monkeypatch, {'x': {'Auth_Place_Name': 'North Clinton Township'}})
+        assert rtl_matcher.is_name_fragment('Clinton', 'x')
+
+    def test_a_fragment_ranks_below_a_proper_match(self, monkeypatch):
+        self.install(monkeypatch, self.pa())
+        cache = {'county': make_auth_record_full('county', level='5'),
+                 'park': make_auth_record_full('park', level='4')}
+        ranked = rank_candidates(['park', 'county'], cache, parent_level=None,
+                                 term='Pinellas')
+        assert [uuid for uuid, _ in ranked][0] == 'county'
+        assert dict(ranked)['park'][0] == 1      # weak tier
+        assert dict(ranked)['county'][0] == 0
+
+    def test_a_fragment_still_wins_when_nothing_better_competes(self, monkeypatch):
+        # "Valleyfield, Que." wants Salaberry-de-Valleyfield. Deleting
+        # fragments outright loses those; demoting them keeps them usable.
+        self.install(monkeypatch, {'long': {'Auth_Place_Name': 'Salaberry de Valleyfield'}})
+        cache = {'long': make_auth_record_full('long', level='4')}
+        ranked = rank_candidates(['long'], cache, parent_level=None,
+                                 term='Valleyfield')
+        assert [uuid for uuid, _ in ranked] == ['long']
+
+    def test_ranking_without_a_term_is_unchanged(self, monkeypatch):
+        self.install(monkeypatch, self.pa())
+        cache = {'park': make_auth_record_full('park', level='4')}
+        assert dict(rank_candidates(['park'], cache, parent_level=None))['park'][0] == 0
+
+    def test_an_unknown_uuid_is_not_treated_as_a_fragment(self, monkeypatch):
+        # Unit tests drive the lookups with plain dicts and no PA loaded; the
+        # gate has to be inert there rather than deleting everything.
+        self.install(monkeypatch, {})
+        assert not rtl_matcher.is_name_fragment('Pinellas', 'park')
+
+    def test_the_lookup_itself_is_left_alone(self, monkeypatch):
+        # Filtering at lookup time would run before chain verification, which
+        # is where a legitimate fragment proves itself.
+        self.install(monkeypatch, self.pa())
+        cache = NameCache()
+        cache.current_origin = 'mnt'
+        for uuid in ('county', 'park', 'airfield'):
+            cache['pinellas'].add(uuid)
+        got = lookup_name_with_origin('Pinellas', cache, {})
+        assert set(got) == {'county', 'park', 'airfield'}

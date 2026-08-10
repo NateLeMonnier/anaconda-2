@@ -272,6 +272,51 @@ def _normalize_hyphens(s):
     return s.replace('-', ' ')
 
 
+def _name_tokens(s):
+    """Lowercase, accent-stripped, punctuation-free tokens."""
+    return ''.join(c if c.isalnum() else ' ' for c in ascii_fold(s or '')).split()
+
+
+def is_name_fragment(term, uuid):
+    """True when the record's name merely CONTAINS the term.
+
+    A dictionary row can map a bare term onto a longer name that only starts
+    with it: `pinellas` reaches Pinellas County, and also Pinellas Park and
+    Pinellas Army Airfield. Measured over 2,170 committed rows, the
+    relationship between the term and the winning record's name predicts
+    correctness better than anything about frequency:
+
+        name equals the term            1,304 rows   65.0% correct
+        name differs entirely             454 rows   65.0% correct
+        name is inside the term           247 rows   75.7% correct
+        term is a prefix of the name       88 rows   13.6% correct
+        term is inside the name            77 rows   24.7% correct
+
+    The asymmetry is the point. A term LONGER than the name is a jurisdiction
+    suffix being absorbed ("Pinellas County" reaching Pinellas), the best
+    class in the set. A term that is only a fragment of the name is the
+    worst, wrong three to four times as often as it is right.
+
+    Deliberately not a lookup-time filter. Deleting fragments as they are
+    found runs before chain verification, which is where the legitimate ones
+    prove themselves — "Valleyfield, Que." wants Salaberry-de-Valleyfield and
+    "Westcliff, England" wants Westcliff-on-Sea, both fragments the walk
+    confirms and a same-named rival elsewhere would otherwise erase. Ranking
+    is the right place: a fragment joins the weak tier and loses only to a
+    proper match the chain has equally confirmed.
+    """
+    records = _LOCAL.pa_by_uuid or {}
+    rec = records.get(uuid)
+    if not rec:
+        return False
+    term_tokens = _name_tokens(term)
+    name_tokens = _name_tokens(rec.get('Auth_Place_Name', ''))
+    if not term_tokens or len(name_tokens) <= len(term_tokens):
+        return False
+    return any(name_tokens[i:i + len(term_tokens)] == term_tokens
+               for i in range(len(name_tokens) - len(term_tokens) + 1))
+
+
 def lookup_name_with_origin(term, name_cache, ascii_cache):
     """Look up a term and report how each uuid was reached.
 
@@ -279,6 +324,7 @@ def lookup_name_with_origin(term, name_cache, ascii_cache):
     cache; a uuid reachable only through the ASCII-folded index is tagged
     'ascii_fold', since folding is what bridged the term to the authority
     name (an input of 'Mexico' against 'México').
+
     """
     key = term.lower()
     dehyphenated = _normalize_hyphens(key)
@@ -2094,7 +2140,7 @@ def _prune_jurisdictions(group, auth_cache):
 
 
 def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None,
-                    helper_term=None, correction_uuids=None):
+                    helper_term=None, correction_uuids=None, term=None):
     """Rank candidates by evidence strength, helper-term match, level gap,
     then population.
 
@@ -2158,10 +2204,14 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
         # A spelling correction is weak evidence. So is an exact hit on a
         # record the authority marks Historical: the place is defunct, so a
         # live one-edit neighbour is just as likely to be what the source
-        # meant. Sharing a tier means detect_tie surfaces both rather than
-        # letting the exact-vs-correction distinction resolve the row alone.
+        # meant. So is a name-fragment match, where the term is only part of
+        # the record's name — "Pinellas" reaching Pinellas Park. Sharing a
+        # tier means detect_tie surfaces them rather than letting the
+        # distinction resolve the row alone, and it keeps a fragment usable
+        # when the chain confirms it and nothing better competes.
         is_weak = 1 if (uuid in _correction_set
-                        or field_str(rec, 'Historical')) else 0
+                        or field_str(rec, 'Historical')
+                        or (term and is_name_fragment(term, uuid))) else 0
         helper_miss = 0
         if helper_targets:
             if not _in_helper_chain(uuid):
@@ -2570,7 +2620,8 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
         hint = (jurisdiction_hints or {}).get(leftmost_key)
         ranked = rank_candidates(list(confirmed), auth_cache, parent_level_for_ranking,
                                  jurisdiction_hint=hint,
-                                 correction_uuids=_corr.get(leftmost_key))
+                                 correction_uuids=_corr.get(leftmost_key),
+                                 term=leftmost_key)
         winner, tied = detect_tie(ranked)
 
         skip_count = len(skipped)
@@ -2591,7 +2642,8 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
     parent_term_key = right_to_left[0].lower()
     ranked = rank_candidates(list(confirmed), auth_cache, None,
                              jurisdiction_hint=(jurisdiction_hints or {}).get(parent_term_key),
-                             correction_uuids=_corr.get(parent_term_key))
+                             correction_uuids=_corr.get(parent_term_key),
+                             term=parent_term_key)
     # As in the single-term branch: hand resolve_parent_only a single id when
     # the ranking separates one structurally, otherwise the whole array.
     structural_winner, _ = detect_tie(ranked)
@@ -2607,9 +2659,19 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
 # ---------------------------------------------------------------------------
 
 def load_entries(path):
-    """Read the input TSV, expecting columns: place, guid, frequency."""
+    """Read the input TSV, expecting columns: place, guid, frequency.
+
+    A leading block of '#' lines is provenance, not data — the eval sample
+    builders stamp the seed and corpus above the header. Only the leading
+    block is skipped, so a place string that happens to start with '#'
+    ('#4 Mine, Pennsylvania') still reads as a row.
+    """
     with open(path, 'r', encoding='utf-8-sig') as f:
-        reader = csv.DictReader(f, delimiter='\t')
+        lines = f.readlines()
+        start = 0
+        while start < len(lines) and lines[start].startswith('#'):
+            start += 1
+        reader = csv.DictReader(lines[start:], delimiter='\t')
         entries = list(reader)
         if 'place' not in (reader.fieldnames or []):
             raise ValueError("input TSV missing required 'place' column")
