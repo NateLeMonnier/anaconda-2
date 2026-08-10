@@ -1,5 +1,12 @@
 # Record Accuracy Metric — Design
 
+> **Superseded, 2026-08-10.** The two-model labeling pass described here
+> was dropped: labels were wrong too often and too slow to produce at 5k.
+> Labels now come from the curators' own `Match_Authority_ID` in the MNT,
+> against a sample held out of the dictionary the matcher loads. The band
+> weighting, the record-accuracy definition, and the scorer carried over
+> unchanged. See `eval/README.md`.
+
 Date: 2026-08-08
 Status: Approved, not yet implemented
 

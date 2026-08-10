@@ -1,10 +1,11 @@
-"""Shared label schema for the eval labelers.
+"""Shared label schema for the eval set.
 
-Two label columns per row. `label_string_only` may climb only to places named
-in the input string and drives the headline metric, because it scores the
-matcher against information it actually receives. `label_world` may climb
-using model world knowledge; the delta between them sizes the LLM enrichment
-step that was descoped.
+Two label columns per row, a holdover from a labeling pass that used two model
+families and has since been dropped in favour of the curators' own mappings.
+`label_string_only` drives the metric. `label_world` was for what outside
+knowledge could reach; the MNT builder writes the same value into both, so the
+distinction currently carries no signal and is kept only so existing label
+files parse.
 
 Two sentinels stand in for a UUID, and they are not the same thing. `NONE`
 means no correct answer exists, so the row leaves the denominator. `ABSTAIN`

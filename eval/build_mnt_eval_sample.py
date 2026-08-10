@@ -11,8 +11,7 @@ full table resolves 100% of these strings by exact lookup and 86.7% through
 the full-string fast path. `build_mnt_holdout.py` is not optional.
 
 Bands split on `Total`, the record count, and follow the MNT's own
-distribution rather than the 1000/10 split `build_eval_sample.py` uses on
-snowball4. `Total` >= 100,000 is 10,159 strings carrying roughly 80% of all
+distribution. `Total` >= 100,000 is 10,159 strings carrying roughly 90% of all
 records, so it gets sampled at about 15% and carries the headline.
 
 Rows with an empty `Total` (15.1% of the table) are outside the sampling

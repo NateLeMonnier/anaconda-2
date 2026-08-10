@@ -22,10 +22,28 @@ import csv
 import os
 import re
 import sys
-
-from pa_index import normalize_term
+import unicodedata
 
 csv.field_size_limit(sys.maxsize)
+
+_PAREN = re.compile(r'\([^)]*\)')
+_APOSTROPHE = str.maketrans('', '', "'’")
+
+
+def normalize_term(s):
+    """Casefold, strip accents and parentheticals, drop punctuation.
+
+    Apostrophes are deleted rather than spaced, so "St. Mary's" gives
+    "st marys". Parentheticals go because PA marks superseded places inline:
+    Term "Prussia", FullChainName leaf "Prussia (historical)".
+    """
+    if not s:
+        return ''
+    decomposed = unicodedata.normalize('NFKD', _PAREN.sub(' ', s))
+    stripped = ''.join(c for c in decomposed if not unicodedata.combining(c))
+    stripped = stripped.lower().translate(_APOSTROPHE)
+    kept = ''.join(c if c.isalnum() else ' ' for c in stripped)
+    return ' '.join(kept.split())
 
 DEFAULT_PA = ('/Users/natelemonnier/storied/resources/'
               'place-authority-mnt-tsv/PA6_16_2026v77.tsv')

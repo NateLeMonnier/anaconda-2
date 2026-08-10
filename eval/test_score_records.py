@@ -1,6 +1,6 @@
 """Tests for the record accuracy scorer."""
 from labels import ABSTAIN, NONE
-from score_records import band_order, bucket, score, world_delta
+from score_records import band_order, bucket, score
 
 
 def label(guid, string_only, world=None, band='head'):
@@ -94,18 +94,6 @@ def test_score_accepts_a_dict_keyed_by_guid():
     labels = {'G1': label('G1', 'U-1')}
     got = score({'G1': matched('G1', 'U-1')}, labels, TOTALS)
     assert got['bands']['head']['correct'] == 1
-
-
-def test_world_delta_counts_rows_world_knowledge_would_have_recovered():
-    labels = {'G1': label('G1', NONE, 'U-9'), 'G2': label('G2', 'U-1', 'U-1')}
-    got = world_delta(labels)
-    assert got['recoverable'] == 1
-    assert got['total'] == 2
-
-
-def test_world_delta_ignores_rows_neither_column_resolved():
-    labels = {'G1': label('G1', NONE, NONE)}
-    assert world_delta(labels)['recoverable'] == 0
 
 
 # ---------------------------------------------------------------------------

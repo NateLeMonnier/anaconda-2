@@ -5,9 +5,9 @@ string accuracy. Abstain is an empty authority_id — verified as an exact
 partition against match_type on a 5k run, so no match_type list is hardcoded
 here. Ancestors get no partial credit.
 
-Bands come from the bands file rather than a constant, because the two eval
-sets split differently: snowball4 on head/mid/tail at 1000/10, the MNT set on
-head/mid/low/tail at 100000/1000/10, which is where its own record mass sits.
+Bands come from the bands file rather than a constant. The MNT set splits
+head/mid/low/tail at 100000/1000/10, which is where its record mass sits, and
+a future set on another corpus will not split the same way.
 """
 import argparse
 import csv
@@ -83,15 +83,6 @@ def score(matcher_rows, labels, band_totals):
             'excluded_none': excluded_none, 'missing_from_output': missing}
 
 
-def world_delta(labels):
-    """Rows the descoped LLM enrichment step would have recovered."""
-    recoverable = sum(
-        1 for lab in labels.values()
-        if lab['label_string_only'] == NONE
-        and lab.get('label_world') not in (NONE, '', None))
-    return {'recoverable': recoverable, 'total': len(labels)}
-
-
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', required=True, help='rtl_matcher results TSV')
@@ -105,7 +96,6 @@ def main(argv=None):
         band_totals = json.load(f)['bands']
     rows = read_matcher_output(args.output)
     result = score(rows, labels, band_totals)
-    delta = world_delta(labels)
 
     print(f'record accuracy   {result["record_accuracy"]:.1%}')
     for b in band_order(band_totals):
@@ -115,7 +105,6 @@ def main(argv=None):
               f'acc={s["accuracy"]:.1%}')
     print(f'excluded, no PA record  {result["excluded_none"]}')
     print(f'missing from output     {result["missing_from_output"]}')
-    print(f'world-knowledge upside  {delta["recoverable"]} of {delta["total"]} rows')
 
     if args.detail:
         with open(args.detail, 'w', encoding='utf-8', newline='') as f:

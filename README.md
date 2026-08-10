@@ -55,11 +55,13 @@ Supports two modes:
 
 ### eval/
 
-Record accuracy measurement against a blind labeled sample of snowball4 — the
-share of records that resolve to the correct authority record, reweighted by
-frequency band. Labels come from two independent model families that never see
-matcher output, and the labeling path is built leaf-first so it shares no
-failure mode with the matcher it grades. See `eval/README.md` for the runbook.
+Record accuracy measurement against a held-out sample of the Master
+Normalization Table — the share of records that resolve to the correct
+authority record, reweighted by frequency band. Labels are the curators' own
+`Match_Authority_ID`, so there is no labeling pass. The MNT rows the sample
+draws from are stripped out of the dictionary the matcher loads, since it
+reads the MNT and would otherwise answer from memory. See `eval/README.md`
+for the runbook.
 
 ### test_rtl_matcher.py
 

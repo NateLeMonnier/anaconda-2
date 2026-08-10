@@ -1,5 +1,12 @@
 # Record Accuracy Metric Implementation Plan
 
+> **Superseded, 2026-08-10.** The two-model labeling pass described here
+> was dropped: labels were wrong too often and too slow to produce at 5k.
+> Labels now come from the curators' own `Match_Authority_ID` in the MNT,
+> against a sample held out of the dictionary the matcher loads. The band
+> weighting, the record-accuracy definition, and the scorer carried over
+> unchanged. See `eval/README.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Measure what share of records `rtl_matcher` resolves to the correct Place Authority record, using a blind eval set drawn from a corpus the matcher has never seen.
