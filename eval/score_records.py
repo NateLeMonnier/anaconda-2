@@ -4,22 +4,42 @@ Headline is record accuracy: the sum over bands of band record share times band
 string accuracy. Abstain is an empty authority_id — verified as an exact
 partition against match_type on a 5k run, so no match_type list is hardcoded
 here. Ancestors get no partial credit.
+
+Bands come from the bands file rather than a constant, because the two eval
+sets split differently: snowball4 on head/mid/tail at 1000/10, the MNT set on
+head/mid/low/tail at 100000/1000/10, which is where its own record mass sits.
 """
 import argparse
 import csv
 import json
 import sys
 
-from labels import NONE, read_labels
+from labels import ABSTAIN, NONE, read_labels
 
 csv.field_size_limit(sys.maxsize)
-BAND_ORDER = ('head', 'mid', 'tail')
+BAND_ORDER = ('head', 'mid', 'low', 'tail')
+
+
+def band_order(band_totals):
+    """Bands present in the weights file, in the canonical broad-to-narrow
+    order, with anything unrecognised appended so it is never dropped."""
+    known = [b for b in BAND_ORDER if b in band_totals]
+    return tuple(known + sorted(b for b in band_totals if b not in BAND_ORDER))
 
 
 def bucket(authority_id, label):
-    if not (authority_id or '').strip():
+    """Correct, wrong, or abstain for one row.
+
+    An ABSTAIN label inverts the usual reading: the curator marked the string
+    Illegible or Ambiguous, so claiming nothing is the right answer and
+    committing to any UUID is wrong.
+    """
+    committed = (authority_id or '').strip()
+    if label == ABSTAIN:
+        return 'correct' if not committed else 'wrong'
+    if not committed:
         return 'abstain'
-    return 'correct' if authority_id.strip() == label else 'wrong'
+    return 'correct' if committed == label else 'wrong'
 
 
 def read_matcher_output(path):
@@ -30,9 +50,10 @@ def read_matcher_output(path):
 def score(matcher_rows, labels, band_totals):
     by_guid = (matcher_rows if isinstance(matcher_rows, dict)
                else {r['guid']: r for r in matcher_rows})
+    order = band_order(band_totals)
 
     bands = {b: {'correct': 0, 'wrong': 0, 'abstain': 0, 'scored': 0,
-                 'accuracy': 0.0} for b in BAND_ORDER}
+                 'accuracy': 0.0} for b in order}
     excluded_none = 0
     missing = 0
 
@@ -48,11 +69,11 @@ def score(matcher_rows, labels, band_totals):
         band[bucket(row.get('authority_id', ''), lab['label_string_only'])] += 1
         band['scored'] += 1
 
-    for b in BAND_ORDER:
+    for b in order:
         if bands[b]['scored']:
             bands[b]['accuracy'] = bands[b]['correct'] / bands[b]['scored']
 
-    live = [b for b in BAND_ORDER if bands[b]['scored']]
+    live = [b for b in order if bands[b]['scored']]
     weight_total = sum(band_totals[b]['records'] for b in live) or 1
     record_accuracy = sum(
         (band_totals[b]['records'] / weight_total) * bands[b]['accuracy']
@@ -87,7 +108,7 @@ def main(argv=None):
     delta = world_delta(labels)
 
     print(f'record accuracy   {result["record_accuracy"]:.1%}')
-    for b in BAND_ORDER:
+    for b in band_order(band_totals):
         s = result['bands'][b]
         print(f'{b:5s} n={s["scored"]:>4} correct={s["correct"]:>4} '
               f'wrong={s["wrong"]:>4} abstain={s["abstain"]:>4} '

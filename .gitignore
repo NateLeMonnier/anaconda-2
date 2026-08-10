@@ -220,6 +220,16 @@ __marimo__/
 # Evaluator and RTL matcher outputs (date folders with run results)
 results/*/
 rtl-outputs/*/
+eval/runs/*/
+
+# Derived eval artifacts. All rebuildable: the pool is one FileMaker draw,
+# everything under it is a pure function of the pool and the seed. The
+# holdout MNT is a 116MB filtered copy of the source table and must never
+# land in a commit.
+eval/data/mnt_holdout.tsv
+eval/data/dict/
+eval/data/dict_holdout/
+eval/data/mnt_dev_detail.tsv
 
 # macOS
 .DS_Store

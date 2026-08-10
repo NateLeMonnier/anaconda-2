@@ -1,6 +1,6 @@
 """Tests for the record accuracy scorer."""
-from labels import NONE
-from score_records import bucket, score, world_delta
+from labels import ABSTAIN, NONE
+from score_records import band_order, bucket, score, world_delta
 
 
 def label(guid, string_only, world=None, band='head'):
@@ -106,3 +106,63 @@ def test_world_delta_counts_rows_world_knowledge_would_have_recovered():
 def test_world_delta_ignores_rows_neither_column_resolved():
     labels = {'G1': label('G1', NONE, NONE)}
     assert world_delta(labels)['recoverable'] == 0
+
+
+# ---------------------------------------------------------------------------
+# ABSTAIN — the MNT set's Illegible and Ambiguous rows
+# ---------------------------------------------------------------------------
+
+def test_abstaining_on_an_abstain_label_is_correct():
+    # A curator marked the string Illegible. Claiming nothing is the answer.
+    assert bucket('', ABSTAIN) == 'correct'
+
+
+def test_committing_against_an_abstain_label_is_wrong():
+    # This is the low-evidence gate's only test: resolving `the village` to
+    # The Village, Oklahoma has to score as a miss, not as an abstain.
+    assert bucket('U-1', ABSTAIN) == 'wrong'
+
+
+def test_abstain_labels_stay_in_the_denominator():
+    labels = {'G1': label('G1', ABSTAIN, ABSTAIN)}
+    got = score([matched('G1', '')], labels, TOTALS)
+    assert got['excluded_none'] == 0
+    assert got['bands']['head']['scored'] == 1
+    assert got['bands']['head']['accuracy'] == 1.0
+
+
+def test_abstain_is_not_confused_with_none():
+    # NONE leaves the denominator, ABSTAIN does not. Collapsing the two would
+    # let the matcher score 100% by abstaining on every illegible row while
+    # the rows quietly left the count.
+    labels = {'G1': label('G1', NONE, NONE), 'G2': label('G2', ABSTAIN, ABSTAIN)}
+    got = score([matched('G1', ''), matched('G2', 'U-1')], labels, TOTALS)
+    assert got['excluded_none'] == 1
+    assert got['bands']['head']['wrong'] == 1
+
+
+# ---------------------------------------------------------------------------
+# Band order comes from the weights file
+# ---------------------------------------------------------------------------
+
+def test_band_order_follows_the_weights_file_not_a_constant():
+    assert band_order(TOTALS) == ('head', 'mid', 'tail')
+
+
+def test_band_order_handles_the_four_band_mnt_split():
+    mnt = dict(TOTALS, low={'strings': 10, 'records': 100})
+    assert band_order(mnt) == ('head', 'mid', 'low', 'tail')
+
+
+def test_an_unrecognised_band_is_appended_rather_than_dropped():
+    weird = dict(TOTALS, ultra={'strings': 1, 'records': 1})
+    assert band_order(weird)[-1] == 'ultra'
+
+
+def test_scoring_a_four_band_set_weights_the_extra_band():
+    totals = {'head': {'strings': 10, 'records': 8000},
+              'low': {'strings': 10, 'records': 2000}}
+    labels = {'H': label('H', 'U-1', band='head'),
+              'L': label('L', 'U-2', band='low')}
+    got = score([matched('H', 'U-1'), matched('L', 'WRONG')], labels, totals)
+    assert abs(got['record_accuracy'] - 0.8) < 0.001

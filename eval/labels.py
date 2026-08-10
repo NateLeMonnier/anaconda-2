@@ -5,6 +5,13 @@ in the input string and drives the headline metric, because it scores the
 matcher against information it actually receives. `label_world` may climb
 using model world knowledge; the delta between them sizes the LLM enrichment
 step that was descoped.
+
+Two sentinels stand in for a UUID, and they are not the same thing. `NONE`
+means no correct answer exists, so the row leaves the denominator. `ABSTAIN`
+means the correct answer is to claim nothing — a curator marked the string
+Illegible or Ambiguous — so the row stays in the denominator and an empty
+`authority_id` scores correct. Only the MNT set emits `ABSTAIN`; it is what
+measures the low-evidence gate without a second metric.
 """
 import csv
 import sys
@@ -12,6 +19,7 @@ import sys
 csv.field_size_limit(sys.maxsize)
 
 NONE = 'NONE'
+ABSTAIN = 'ABSTAIN'
 
 LABEL_FIELDS = [
     'guid', 'place', 'band',

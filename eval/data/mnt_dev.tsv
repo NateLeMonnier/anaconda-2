@@ -1,0 +1,2502 @@
+# seed=42 source=MNT generated_from=build_mnt_eval_sample.py
+place	guid	frequency	band
+rural Winfred, SD	mnt-ecc0dfbd5104	522619	head
+Reidsville, PA	mnt-2c786ff896dd	524254	head
+Westerton, Scotland	mnt-a21c065fafa8	525408	head
+Schoharie Valley, NY	mnt-f2e3348b2fa9	522305	head
+Rusk co, WI	mnt-39c0beb834dd	521965	head
+Conneaut-ville, Pennsylvania	mnt-e19ce18961fa	523921	head
+Gonzalez, Trinidad	mnt-6402dc49b732	525370	head
+Bonesteel, NE	mnt-49ed7400637a	525891	head
+Kanturk, Ireland	mnt-0a9311f7e20b	114056	head
+Hefi, Anhui Province	mnt-0ddd34cf9586	523895	head
+Minivelle, MO	mnt-8b82c97fdcba	523821	head
+Pledges, TX	mnt-635800e84dfa	526164	head
+Terre Noire, Nova Scotia	mnt-a48e332d132d	521591	head
+Silvi, Marina	mnt-70a5ceaa6ce9	524834	head
+Eureka, Greenwood County	mnt-8226b9c02ebb	524036	head
+Edgebrook, Chicago	mnt-383df5b38ab6	520862	head
+El Tepetate Loreto, Zacatecas	mnt-0db3fabec0f1	520441	head
+Zusamzell, Germany	mnt-269a1134544d	522038	head
+Mondoui, WI	mnt-833ac1c1e232	515984	head
+Moron, Ciego de Avila	mnt-04d29a03d930	519583	head
+Oscealoa, Arkansas	mnt-7a6801458a06	518273	head
+Cow Head, NL	mnt-34a9e14c5140	523954	head
+Krombeke, Belgium	mnt-9363c55c63a2	517606	head
+Elcart, IN	mnt-c0492dbb6f61	520580	head
+Koutsopodi, Greece	mnt-90401f2b0dae	523235	head
+Sicily, Prov. di Ragusa	mnt-1a45d5a8e576	519010	head
+Lexington Co, SC	mnt-447c26842ffb	525906	head
+Blueball, Pennsylvania	mnt-465cdc970c0c	519784	head
+LeMonte, MO	mnt-530cfb09087b	522108	head
+Grovainia, Ga.	mnt-72bcded18b91	526108	head
+South Litchfield Township, IL	mnt-c515ce7a273d	525809	head
+Mitcheville, Iowa	mnt-42894c010263	517499	head
+Sucoc, Narvacan	mnt-7cddb95527dc	519378	head
+Brngy 8, Sarrat	mnt-adbdf4b41d3c	526752	head
+Mcd	mnt-ae285bc5b17d	126640	head
+Minot, Alabama	mnt-5d7783df5684	527211	head
+Newcastle, Ireland	mnt-56e92a4c22f9	120653	head
+Vasiliki, Greece	mnt-9ebcf72211d6	519172	head
+Kosoma, Okla	mnt-cd4b5e51e403	519044	head
+Orwigsburg RD, PA	mnt-a60f060b35c7	518794	head
+Tacliacozzo, Italy	mnt-3a382a228560	527067	head
+Lillburn, Mo	mnt-66c5693c2d18	525386	head
+Blair County, W. Va	mnt-0878bffcac3b	519268	head
+Los Quiotes, Michoacan	mnt-2c2df2344243	519640	head
+Coppis, TX	mnt-793b6886f3e1	527032	head
+Solares Cantabria, Spain	mnt-3fd7a43183cd	517089	head
+ILLEGIBLE, Pinellas, Florida	mnt-511a09691e4f	109381	head
+rural Villisca/Stanton, IA	mnt-64b922db34dc	521223	head
+Chevermont Limberg, Holland	mnt-afa1f84acfa9	523802	head
+Wafangdian, China	mnt-a5ce57c85c8e	526482	head
+Pinagree, North Dakota	mnt-70bd5b7de028	522088	head
+Savinal, NM	mnt-2c1e21cd7951	523481	head
+Cool Springs, MO	mnt-fbff5c3394fa	525336	head
+Brzeznica, Poland	mnt-db8635b7ba9c	522607	head
+West, W.Va.	mnt-9781869dc702	526543	head
+Sokol, Czechoslovakia	mnt-27467d660f9a	521106	head
+Franklin, Izard County	mnt-af8b0a91fb1e	522389	head
+Itoman Okinawa, Japan	mnt-c29a3f5a48de	524727	head
+N. Oxford, MA	mnt-68637ba48e94	522166	head
+Tarkiln, R.I.	mnt-5bc20e0fd318	517161	head
+near Dadeville, Missouri	mnt-dc4f0c6e9f6e	523217	head
+Randolph Co, Alabama	mnt-b85af11fd90b	517279	head
+ST PANCRAS, MARYLEBONE, London-Middlesex	mnt-3855a51e2258	139080	head
+Wacounda, Wash	mnt-10b2c0ca4219	522081	head
+Krolik-Polski, Poland	mnt-ca038e08de76	522421	head
+Lundville, Montana	mnt-ee44d44627c3	526944	head
+Guanabacoa, Ciudad DeLa Habana	mnt-59d6bad7eec3	524138	head
+Stolp, Pommern Germany	mnt-f8bc451f4217	518645	head
+Lee Co., South Carolina	mnt-c42ec68ac847	523542	head
+Piraeus, Athens	mnt-c0fcc2c7a519	527168	head
+Osalem, Texas	mnt-ee42c5f87492	518797	head
+Taopia, Minn.	mnt-7b892a8cf50f	516979	head
+Gopher Hill, OK	mnt-c9f1e48cd755	526143	head
+Willenberg, East Prussia	mnt-1d9ac217f458	527267	head
+Chenango Falls, NY	mnt-46b7e9a10065	520154	head
+Guilford, Michigan	mnt-150dcdcad10b	516221	head
+Wainesville, Mo.	mnt-0bd54893b26f	516905	head
+Sonat, Yugoslavia	mnt-86a941817290	518278	head
+Wanamaker Township, MO	mnt-f1a4ccb954e2	523723	head
+Bitonto Bari, Italy	mnt-824662d474f2	523902	head
+Westin, Ohio	mnt-71d38320f5a3	519075	head
+Ottumua, Iowa	mnt-cb709d6074bf	523779	head
+Luzerne County, Penn.	mnt-c00538cad800	516106	head
+Cessions, Texas	mnt-8096253c9912	521560	head
+Valpacos, Portugal	mnt-944f9c53375c	526748	head
+Enniscorthy, Ireland	mnt-82c0e018dfc1	162331	head
+North Hempstead, Nassau, New York	mnt-f354be129331	163012	head
+Brosna, County Roscommon	mnt-1e2dfe526ce7	523883	head
+Caldeira do Senhor Santo Cristo, S3o Jorge	mnt-64299c9a645e	524035	head
+Tarnowskie Gory, Poland	mnt-f1e53708b180	520378	head
+Santa Gertrudis, Michoacan	mnt-af592403306c	525802	head
+Snyder-Fluvanna, Texas	mnt-aafd11ca18ae	522712	head
+Wakaw, Sask	mnt-25b08a49ec77	517353	head
+Santiaguito, Mexico	mnt-60fac0083e0c	522984	head
+Flanreua, South Dakota	mnt-35294632dca3	525972	head
+MANCHESTER, MANCHESTER, Lancashire	mnt-4f190e3bb71f	146020	head
+Sommersville, W. Virginia	mnt-3a83c634dbbc	522238	head
+Pigua, OH	mnt-51ffcbac063c	516544	head
+Elba Township, Ill.	mnt-f3aa7181626b	517905	head
+Red Hill community, South Roanoke County	mnt-919cf2082c8f	516895	head
+New DeRoche, Hot Spring Co.	mnt-714704f33100	525648	head
+Wilke County, NC	mnt-fec2b4020a83	525533	head
+Whittles, Pittsylvania County	mnt-7cc323f39aa5	521525	head
+Bochum-Linden-Dahlhausen, Germany	mnt-797a40139550	524376	head
+St. Mathias Township, Ft. Ripley	mnt-29b78511f492	521618	head
+Saville Twp., Pennsylvania	mnt-d2866ded63d5	517540	head
+Charleston, Neb.	mnt-c705bc3bbed5	524032	head
+Valmaior, Portugal	mnt-de0d88694d85	516716	head
+Plane, VA	mnt-ee59f6f77535	517168	head
+Breskins, Holland	mnt-724207e98498	522914	head
+Gwalior, MP	mnt-34d9d26da8d9	518142	head
+Seminary Township, rural Vandalia	mnt-8bab887ad73d	520727	head
+Cepio, Guanajuato	mnt-c68f88701fe9	523403	head
+Grant Township, Wright County	mnt-7e2db214aa7c	520206	head
+Mj”lby, Sweden	mnt-3df18b87ad46	516228	head
+Westfield, Minn.	mnt-c4c9a9cb87ca	525773	head
+Hilo, Hawai'i	mnt-38e259483ec4	517882	head
+Interlachen Park, Minnesota	mnt-ee19b8e2dfa4	526312	head
+Nansemond County, Suffolk	mnt-70fd716503b9	519028	head
+Lost River Township, Martin County	mnt-4cac2c448344	515938	head
+Neira, Caldas	mnt-c4be91aa8ae7	524099	head
+Mount Jackson Resort, Forestville	mnt-5345d2283851	517599	head
+rural Melrose, KY	mnt-1fb78224009e	526828	head
+NULL, San Francisco, California	mnt-9b77387617b8	381058	head
+Vandalia, Fayette County	mnt-d2c4aa63fa44	516623	head
+Whortonsville Community, Pamlico County	mnt-fc8ae52a890f	521088	head
+Ingham, Queensland	mnt-89c40f9f3dbe	516174	head
+ISLINGTON, FINSBURY, London-Middlesex	mnt-af1c720f3ef0	120233	head
+Sarasota County, Fla.	mnt-f13d61868238	517287	head
+Liapades, Greece	mnt-7fec517452db	521197	head
+Taito, Taiwan	mnt-7894c0b73e6a	523230	head
+Raisinville Twp, MI	mnt-1db7538b1768	521364	head
+Gramville, Kentucky	mnt-74104a361e35	520958	head
+Saric Sonora, MX	mnt-d266cb76bf88	520990	head
+Pinecreek, WV	mnt-99b5ad303a13	525828	head
+Oswego, Ohio	mnt-e1623e23b78d	520875	head
+Graylin, Mich.	mnt-65ecb9200c14	525974	head
+Leyden Twsp., Cook County	mnt-fb3b1fcb4554	516831	head
+Valleyfield, Que.	mnt-42a652a5c7b7	520845	head
+Liberty Center, Philadelphia	mnt-bd76492c5de5	527007	head
+Wichita Falls, state	mnt-eb6e0edd6dcf	526118	head
+Leeds Village, Quebec	mnt-2b4c83abe017	518096	head
+Lownds County, Miss.	mnt-596273dcae16	524550	head
+Lotung, Taiwan	mnt-ac235684352a	525846	head
+N. BERGEN, New Jersey, United States	mnt-03a61534eafb	526168	head
+Irving, Scotland	mnt-878bb6ca929c	524519	head
+Wichita, MO	mnt-45fc6db32592	521217	head
+Greenhorn Mountain, CA	mnt-4956f53f415c	519463	head
+Kopmount, Pennsylvania	mnt-717da4b13f31	518593	head
+Olvey, Ark.	mnt-afd784d85ba7	523512	head
+Luzon Community, TX	mnt-3c4e53a6b8a4	517344	head
+Chevy County, TN	mnt-462b568fedf4	520261	head
+Ortanna, Pa.	mnt-4aa0234bf8a5	517558	head
+Placenta, California	mnt-ac0dcea722e2	518410	head
+Walden, Colo	mnt-6aac17a5a20a	516584	head
+Guangdong (Canton), China	mnt-f30c9930f18e	524106	head
+Nandalur, Cuddapah District	mnt-f4d425bc919b	523926	head
+Butuan City, Agusan Philippines	mnt-d8a7914ad009	525453	head
+Sao Fidelis, Rio de Janeiro	mnt-22bd6a5edcc9	527086	head
+south of Riverton, NE	mnt-345a7424e515	522027	head
+South Arm Twp, MI	mnt-27b232079831	526571	head
+Corocoran, MN	mnt-4200f1c7db83	524265	head
+Platha, Germany	mnt-b0b200fa35a4	516978	head
+Centurepy, Italy	mnt-a746ccb847ba	518639	head
+Bistritz, Austria-Hungary	mnt-84496213d25b	521410	head
+Los Terrones, Mexico	mnt-38fdd4b2036a	523800	head
+Schonborn, Yugoslavia	mnt-8729e59c0a43	525839	head
+near East Lynn, W.Va.	mnt-2b4103ddd377	520731	head
+Kilmallock, Ireland	mnt-4fb6b65deb6a	125003	head
+Pitalito, Colombia	mnt-641e1836e9e4	525365	head
+Lyle, IA	mnt-817355a135e2	518866	head
+Savannah Bluff, Horry County	mnt-02cdb8c215b0	516080	head
+Talavera, Philippines	mnt-ec00b2a65a92	527193	head
+Oostburg, Wisc.	mnt-810bdf0e2beb	525055	head
+Miryang-si, South Korea	mnt-565249a8f831	518584	head
+Sangha, Greece	mnt-1a3e2002773f	517115	head
+PADDINGTON, MARYLEBONE, London-Middlesex	mnt-2a8cd6a61e76	103687	head
+Pidigon Province, Abra	mnt-e5e464904d0b	522420	head
+Narango, Texas	mnt-b9566bf7de06	519732	head
+St. Andrews Township, Walsh County	mnt-d3a660510dbb	518265	head
+near Colfax, IN	mnt-ded380929c4d	521842	head
+Downpatrick, Ireland	mnt-be610f8a7531	154946	head
+Itan, Texas	mnt-16aa4d1e4107	516787	head
+Bowmans, Mahanoy City	mnt-29590239f5ae	519682	head
+Santa Maria El Zapote, Oaxaca	mnt-004f30ab0cca	525204	head
+Greenwood Lake, West Mansfield	mnt-db321dc824af	521926	head
+Mirpur, pre-partition India	mnt-f69a76afa231	520362	head
+rural Dakota County, NE	mnt-ab2ef27aa955	524924	head
+Fanore, County Clare	mnt-b23d9152926b	526062	head
+rural Wibaux, Mont.	mnt-190ae5b09c43	527085	head
+N. Harpersfield, NY	mnt-c53f0340faa9	524732	head
+Gbatar, Rivercess County	mnt-05dfb224bfc1	525654	head
+Vanna, Ga.	mnt-558a0c0b5a79	523808	head
+Scheringen, Germany	mnt-533da6d4a5ef	521958	head
+Blowing Springs, Tenn.	mnt-110a122f7aa1	524259	head
+Leesburg Township, IN	mnt-2066094eb5d6	519781	head
+Miyagham Karjan, India	mnt-198807b6e7f7	516323	head
+rural Fort Ransom, ND	mnt-e665d82c1854	524296	head
+Eastern Coal Field, Kentucky	mnt-9ee1a4ac153d	518868	head
+Montechristi, Dominican Republic	mnt-659f887a2dd5	516377	head
+Faja Grande, Flores	mnt-399472aadd0a	517111	head
+Ocumare, Del Tuy	mnt-3ebf373135b7	526358	head
+Ruska Poruba, Czechoslovakia	mnt-2ee1f4a2ac44	526446	head
+Lynndal, Utah	mnt-b4fd2f5b4bb5	525368	head
+Minnesoto, NJ	mnt-e9d8d21e170c	518965	head
+Guia, Canary Islands	mnt-f9ce1ba11f26	520822	head
+Edmonds Statsman, ND	mnt-4e0864222176	521804	head
+Gondoriz Arcos de Valdevez, Spain	mnt-28e1bc4856f8	517762	head
+Browstown, Indiana	mnt-ae25f4e730bc	526216	head
+LeMesa, CA	mnt-657572cdf6bd	519654	head
+Grays Knobb, Kentucky	mnt-afa07e8d4e60	522685	head
+Terrell & Dougherty County, GA	mnt-f95fcd9bc497	525424	head
+Combee Settlement, Polk County	mnt-502d44b33ad3	518956	head
+KuIm, ND	mnt-c4ecbab10cb7	524660	head
+Murillo (Chimes), Arkansas	mnt-19f05ef8ef33	519393	head
+South Dakota, California	mnt-20533a3bdb2a	516968	head
+Whiting, Ky.	mnt-ad5b389ac736	522159	head
+Bunker Hill, Ingham County	mnt-55b26547b40f	521843	head
+Coweta County, Okla.	mnt-a17cf8484119	520999	head
+Guanica, Puerto	mnt-648a39a741ba	526660	head
+Lemont Furnance, PA	mnt-6aaddd9d4ddc	522234	head
+Whon, Coleman County	mnt-dbafaffb9b6e	522063	head
+Monroe Township, Wyoming	mnt-d8cd65eb8ff5	518451	head
+Osburn, S.C.	mnt-e62f4d67f6fc	519600	head
+Rusk, Oklahoma	mnt-5bf4df56d35d	520373	head
+Luzzi, Calabria	mnt-e78d3c9f0aaf	526253	head
+NULL, LANCASTER	mnt-4565649dcdeb	132594	head
+Reisbach, Germany	mnt-971cc45659aa	523558	head
+South End of Boston, MA	mnt-db1530711062	520950	head
+South Hadley Center, Massachusetts	mnt-3a298013c51b	518098	head
+Itoman City, Okinawa	mnt-01597587bd9e	516822	head
+Bolivar County, TN	mnt-eed6886791ac	518113	head
+Kyabram, Victoria, Australia	mnt-dc4ffb185227	520676	head
+Pline Bluff, Arkansas	mnt-538f9f7a5f55	517914	head
+Lezach¢w, Poland	mnt-5a9093f227e8	516629	head
+Kom di, Hungary	mnt-b233926aed32	515967	head
+Loucks Mills, Pa.	mnt-05536bc99935	522325	head
+Reedham, England	mnt-dc995e94e822	517769	head
+Springfield, Washington Co.	mnt-1a0f647548bc	525359	head
+Sullivan Twp., near Kirksville	mnt-ecc2601e4fe2	520365	head
+Santa Ines, Mexico	mnt-f45cc95baff6	516585	head
+Oran, Scott County	mnt-62795e020a0d	524477	head
+Pine Grove Twp., MI	mnt-dc3f65168508	525780	head
+El Indio Ranch, Tx	mnt-a94247b2f746	517899	head
+Oregon Township, Wisconsin	mnt-cbe0bcc952cf	520219	head
+Plantation Blairmont, Guyana	mnt-9e8956b8035d	523026	head
+Regina Sask, Canada	mnt-66eb5269c793	520783	head
+Graceviile, Fla.	mnt-f777040f636a	519051	head
+Chama, Colo	mnt-0915dd13d0c0	522658	head
+Buck's Prairie, Lawrence Co.	mnt-82531206e05d	524188	head
+Five Points, Calif.	mnt-9702b716e366	521190	head
+Council Hills, Okla.	mnt-b77f410a27cf	524701	head
+Monceau Sur Sambre, Belgium	mnt-b5b9135a7f63	527280	head
+Lens Pas de Callais, France	mnt-0aecf08108bd	517686	head
+Kricova, Ukraine	mnt-3a00ceb5603e	519335	head
+near Bethpage, Tennessee	mnt-236077d8f3be	521135	head
+Santurce, Mayaguez	mnt-77f8dbb9eb7b	520248	head
+Jasmine, Texas	mnt-0607f393692d	517386	head
+Westcliff, England	mnt-3cd15754f2ff	517811	head
+Lucille Township, OK	mnt-449d258610d8	524420	head
+Russell Co., Kan.	mnt-65fbac70f735	524342	head
+Southall, London U.K.	mnt-2cac0bf4fdf4	520955	head
+Whittinsville, MA	mnt-8c2ac89e95cd	524900	head
+Iron River City, MI	mnt-29041109f862	525536	head
+Bodoe, Norway	mnt-bff80a4a36d6	524599	head
+Somanock, Illinois	mnt-696afa481f34	516518	head
+Montello/Dalton, WI	mnt-fb492fdbbed0	523011	head
+Sangolqui, Ecuador	mnt-8e2a5d72008d	523592	head
+Mytelini, Lesvos	mnt-511a2d51c142	518260	head
+Guhagar, India	mnt-d3f3f2ecbf08	526045	head
+Kinuso, Alberta	mnt-1d7075510095	524931	head
+Jackson Twp, Lebanon County	mnt-bd5a13d90b07	523602	head
+Chapara, Cuba	mnt-513b735dc2fe	516866	head
+Farm Colony, North Warren	mnt-1e2c24825ccf	520453	head
+Blaben, North Dakota	mnt-7be92fd32888	517699	head
+Einkarim, Palestine	mnt-83e15d9344d3	516131	head
+Piedritas, Coahuila	mnt-006396579265	526284	head
+Westerman, Pennsylvania	mnt-491c942675f5	521899	head
+Briar Ridge, Whitetop community	mnt-c9d43df75948	517940	head
+rural Marengo, Iowa	mnt-7caea91e05fa	526709	head
+Concrete, Wash	mnt-c8b5324c5e1f	518197	head
+Sommerfield, MA	mnt-febc3b856310	519937	head
+family farm east of Panama, Nebraska	mnt-d5c1e34999b0	525024	head
+Ludo{QUESTIONM}, Romania	mnt-0a0da1a890e2	519630	head
+Randall Manor, Staten Island	mnt-687f38066b0b	526488	head
+Gorzuww WPO, Poland	mnt-830d2a98e7e6	526677	head
+Natal, RN	mnt-3c1ff3f5d5c8	519686	head
+Briary community, Milam County	mnt-6c715bf27800	527100	head
+El Mott, TX	mnt-d384520a67cf	518621	head
+Gpe. Victoria Dgo., Mexico	mnt-b529d53465aa	523344	head
+Pine-ville, LA	mnt-f93bd2fbd6b3	521818	head
+rural New London, Mo.	mnt-c65807be0d07	516298	head
+Oreville, Berks County	mnt-be31b9bc34ef	516490	head
+Tarentun, Pa.	mnt-bc27d365b85f	519400	head
+Oak Hill, East Pittsburgh	mnt-42a5e52d9565	523984	head
+Piana del Grece Albanese, Sicily	mnt-4e47fdfcf98c	521499	head
+Cherry Township, Butler County	mnt-d9407ec757ff	516037	head
+Flatwood, Wilcox County	mnt-5da3af240dcc	526803	head
+Szczyczyn, Poland	mnt-ddba0c7ab8c9	516507	head
+Onowa, IA	mnt-7ac2205a79c8	520746	head
+Sopron, Hungry	mnt-4c462ec49951	516920	head
+Gross St. Nickolaus, Romania	mnt-622a3d3368a7	517819	head
+Granpin, Pa	mnt-46116c5af584	517631	head
+NULL, Cameron, Texas	mnt-8b2a9ea2b2fc	106241	head
+Rutland Township near Granada, MN	mnt-3451d8296761	522215	head
+Lessenair, Co. Clare	mnt-61d27525dabf	522946	head
+Jaszszentlaszlo, Hungary	mnt-24fc9a9ecdad	522745	head
+Eaton Twp, PA	mnt-00418666f339	526539	head
+Ballymena, Ireland	mnt-d2bd00432c5e	210727	head
+Harlowe Community, Craven County	mnt-381e286a800b	519857	head
+Grassey, Missouri	mnt-b94499ac470f	527003	head
+Limesprings, Iowa	mnt-975eda892558	521666	head
+NULL, Hinds, Mississippi	mnt-1cfefb72074d	115351	head
+Columba City, IN	mnt-cb358a77e233	523649	head
+Grenville, Quebec	mnt-7acadbbab051	524281	head
+Tachikawa Airfield, Japan	mnt-00178f20a31b	522301	head
+near Ashland, Illinois	mnt-c73bf808c0f9	526845	head
+Montalecchio, near Fiumalbo	mnt-7703899d4b22	520896	head
+Loyal, Ky.	mnt-efb402b6d959	526607	head
+rural Woodbine, Iowa	mnt-7ecc026fb610	519243	head
+Lehaska, Penn.	mnt-a3d0971cc75a	520833	head
+Whitmire, Arkansas	mnt-5bd7573fd810	516025	head
+Chester, U.K.	mnt-dd01380b93a2	519391	head
+Placenta, Cuba	mnt-0ec87edd50c8	519413	head
+Willoughby, TN	mnt-2be3e23346f8	521078	head
+Bredbury, England	mnt-ca5db8f4fcb0	516095	head
+Pine Bush, N. J.	mnt-7f13c81a170c	518066	head
+Como, state	mnt-f4321ec6df24	525144	head
+Brimerton, Washington	mnt-8fed6ba921be	521991	head
+Bittersville, AR	mnt-e9f523784201	526276	head
+Buchanan Village, Mich.	mnt-6901f92e740f	521291	head
+Greeley County, Nebr.	mnt-559a229f4bb7	519422	head
+Nut Bush, Lunenburg County	mnt-2a544de74362	521920	head
+Mossa, Gorizia	mnt-7ca535b8e1c5	518847	head
+Buck Toy Village, Guangdong Province	mnt-1c53fa79f87b	519296	head
+Bristol, Virginia/Tennessee	mnt-7d51f3d967fe	516665	head
+Aguas Formosas, MG	mnt-4a733f7c5f4b	518077	head
+Ado Ekiti, Ekiti	mnt-8bb213f03be7	518799	head
+Corrail, Haiti	mnt-a030aca0d373	516929	head
+Reinprechting, Bavaria	mnt-aa45e2ba614c	524443	head
+Van Wert, Juniata Co.	mnt-17015de43f31	525490	head
+Santa Cruz Ranch, Mexico	mnt-f908fea36e3a	519638	head
+Jennings Falls, Arkansas	mnt-2e63ac55a25d	526463	head
+Los Animos, CO	mnt-0205bff15f97	519699	head
+Sins, Aargau	mnt-99d43ae7fa9c	520472	head
+Caliornia	mnt-df37f2d0d201	133474	head
+Conellsville, PA	mnt-1d715081fcf1	526935	head
+Brzoza-Krolewska, Poland	mnt-6d53d79bf759	523198	head
+Wilkeson, Wash.	mnt-545f5680dacd	518435	head
+Wakinsville, GA	mnt-79b550efec2f	516976	head
+Goppengen, Germany	mnt-d7fb454a9f89	518443	head
+Itzehoe, West Germany	mnt-a1b880c22da8	522758	head
+Bristle, TN	mnt-de75711fadc0	525728	head
+Lengua Village, Trinidad and Tobago	mnt-0d596c035a61	518462	head
+Charleston, Wash.	mnt-4e9adc268e55	526667	head
+Grotte, Province of Agrigento Sicily	mnt-d8e39a1f02bd	517411	head
+Shimo Kitazawa, Tokyo Prefecture	mnt-d366a7b9240b	518671	head
+Williamson, Franklin County	mnt-8fa058b8b641	526321	head
+Mobley Creek Community, AL	mnt-8c427352bbd4	524901	head
+Lillie, GA	mnt-ad01c8ef8430	517860	head
+Love's Memorial community, TN	mnt-cb1d512f1247	523144	head
+Bryn Mar, WA	mnt-aed95ed013a2	522628	head
+Redding Township, Pennsylvania	mnt-0e64578d7360	524146	head
+Chester, Calif	mnt-81bcd9059bc8	521595	head
+Moncloa, Mexico	mnt-8c40ea513475	516946	head
+Bonawe, Scotland	mnt-394c367e8640	518849	head
+Pickins County, S.C.	mnt-72829d581dac	524627	head
+Santa Cruz Lagoa, St. Michael	mnt-ef90f8cc44ba	522037	head
+Int 'l Falls, MN	mnt-4de96c461c78	526708	head
+Luverne, Rock County	mnt-0df52b761a1c	523702	head
+Murrhouse Buxton, Jamaica	mnt-cc0ac341d34e	523838	head
+Oneonta, TN	mnt-81127ec3ac07	517601	head
+rural Garfield, MN	mnt-c24162baeb43	523067	head
+Grassy Cove/Crossville, TN	mnt-001d277b70ce	523313	head
+Modena, Wis.	mnt-89922087318c	516921	head
+Taymouth Twp, MI	mnt-4128af7bd524	516175	head
+Itta Benna, MS	mnt-0e750a52f3c0	521228	head
+Kirbensville, PA	mnt-ae5aeb767b6b	519266	head
+Sensuntepeque, Cabanas	mnt-7a7d3b4c7f23	527167	head
+Grunsfeld, Germany	mnt-a4b6e6a8295b	517076	head
+Waleka, Florida	mnt-a862a9c016ff	525842	head
+Eastbrookfield, Mass.	mnt-0bd37c6b64ae	521189	head
+Grand Chain, KY	mnt-18257846416e	522695	head
+Kirundo, Burundi	mnt-143402a0e5e4	520745	head
+Koskonong, Missouri	mnt-98eed68cd4b0	524147	head
+Ta Qiao Zhuang, Shandong Province	mnt-79f98dda07ed	516077	head
+Raven Shoe, Ontario	mnt-1942919b6bef	518687	head
+Shickshinny, Salem Twp.	mnt-aee96e01c3a2	525119	head
+rural Huntington, IN	mnt-b1a76413cdf7	519637	head
+Wiesenboden, Germany	mnt-bfb5eaa1435d	520442	head
+Graflinden, Slovenia	mnt-a739313c80c5	521104	head
+Champion, IL	mnt-81c29eae925d	518299	head
+Bronco, NM	mnt-1722e823a87e	516125	head
+Buchanan Twp, MI	mnt-a960fdc2d4f3	517309	head
+Easterville, Iowa	mnt-b418fdc136e5	522322	head
+Wales, Ontario	mnt-dcec49ff2ede	523918	head
+Lee Co., AR	mnt-22d6e812033e	522464	head
+Santo Domingo, Ecuador	mnt-ec6c3923b6e4	526237	head
+Westfalen, West Germany	mnt-0414169b607b	522260	head
+Lynnville, Ky.	mnt-7782f0b423cc	519777	head
+Walsen, Huerfano, Colorado	mnt-81b12542edd5	522826	head
+Easton, Adams County	mnt-3ab8fecebbb1	519799	head
+Chedney, Canada	mnt-a352d563a4dc	523610	head
+rural Washington County, KS	mnt-db4a399e25a7	522094	head
+Levitsburgs, Ohio	mnt-53936a77ffce	519233	head
+Granger/Sunnyside, WA	mnt-8a3b88d7f5b8	519069	head
+Grambrills, Maryland	mnt-be35e9da1c23	526674	head
+Onondaga Twp, MI	mnt-a8feb7c37b59	524326	head
+Cagayan, Camalanuigan	mnt-269a5462dcbe	524071	head
+Nenagh, Ireland	mnt-660fe662c4eb	114516	head
+Gortaleen, County Kerry	mnt-7bab528fa703	518074	head
+Grahn, Carter County	mnt-91cb4e381e87	522416	head
+Rural Condit Township, Illinois	mnt-da9158229ae3	520887	head
+Orvell, TN	mnt-2b47d38a0bc1	521030	head
+LeRoy, GA	mnt-e007512269f5	522205	head
+Luz Garciosa, Azores	mnt-ffe9c059f8a1	522577	head
+Buck Township, Edgar County	mnt-30f27814ad7a	518599	head
+Kurashiki City, Japan	mnt-588ade5d94df	521625	head
+Louden, West Virginia	mnt-aa93f3493d4c	526711	head
+N. Muddy, Jasper County	mnt-d5ff93756337	524978	head
+Sauerkraut, Luzerne Township	mnt-cb4d6a76113c	518472	head
+South Johnsville, Newbrunswick	mnt-db8092ada145	520872	head
+Not Stated	mnt-6807f451acc6	371838	head
+Plavna, Montana	mnt-fbe1c7d7be68	525745	head
+Louny, Czech Republic	mnt-0953496ee14a	524440	head
+Grover, VA	mnt-968de7b69307	520981	head
+Broadlands, Texas	mnt-875e9ecf3b16	525074	head
+Valleyfield, Ontario	mnt-09b680c53f41	525737	head
+Grosse Ille, Michigan	mnt-d32876ce9d80	516693	head
+Leander, W.Va.	mnt-99c1fe0c0cab	517135	head
+Edmunds, SD	mnt-d65c90f33fb4	519479	head
+Nashota, Wis.	mnt-15c45dc61258	522547	head
+Kittatas Co., WA	mnt-6a91f21a1fb8	525888	head
+Phonix City, Ala.	mnt-f50d7f71089b	524864	head
+Ten Mile Community, Madison County	mnt-addbec24c5b9	524527	head
+Eastwood, Syracuse	mnt-4d3e7037bb7c	521160	head
+Sokoto State, Nigeria	mnt-b87bdc2d83fa	516244	head
+West Morlan Co., VA	mnt-fcb859c7c706	527241	head
+Blockton, WV	mnt-e0c08552483e	523680	head
+Irvin College, TN	mnt-9b8bd705aa7e	521834	head
+Flat Roak, AL	mnt-4f3f249f0a94	517011	head
+Eldorado City, OK	mnt-c7f9a647e3cc	522925	head
+South Sebastian County, OK	mnt-0a59ced6ae7d	523787	head
+Randallstown, Northern Ireland	mnt-3f11d1ee73d1	518822	head
+Feodosiya, Crimea	mnt-2bfe1ccefbb7	524278	head
+Edward’s, NY	mnt-1bf22d389620	517953	head
+Somerville, Mo.	mnt-15d4bf1069a0	517389	head
+Kurayoshi, Honshu	mnt-2d0241015bdd	517968	head
+Facatativa, Cundinamarca	mnt-bf0282bba41c	523578	head
+Los Pinos, N.M.	mnt-80a408d2d0b8	522928	head
+Moiese Valley, MT	mnt-759a7bf4e2c5	516281	head
+Picket, Arkansas	mnt-27772e80d67b	517633	head
+Leavenworth, Wash	mnt-4843e1704b04	519903	head
+Schoenersville, Lehigh County	mnt-59003bd8cb8b	519341	head
+Shanafaraghaun, Finny	mnt-4d98d9bf5eb5	527142	head
+Old Allison, Bryan County	mnt-342dbb67a452	524607	head
+Ostrowy Baranowskie, Poland	mnt-bb04f34773b6	523893	head
+Gresham Community, Marion County	mnt-0335b8f9a8f5	523247	head
+Edgewood, NE	mnt-713e11251c76	523889	head
+Bryan's Station, Fayette County	mnt-2a0b508418b8	520279	head
+PHILADELPHIA, Philadelphia, PENNSYLVANIA	mnt-b4e5d9779154	1465028	head
+Gossel, KS	mnt-2f53eed3c0b2	522475	head
+Shelby, HC	mnt-75956ccc23a5	519931	head
+Gospie, Croatia	mnt-1e78d54a58f1	526198	head
+Rapho Twp., Lancaster County	mnt-c26ae32e6b3b	517286	head
+Santa Rita, Jalisco	mnt-907b53cc352e	526525	head
+Santo Antonio, Alem Capelas	mnt-096b334cbb70	524282	head
+Newland Community, Pasquotank County	mnt-cb3c28274879	521397	head
+Arbelaez, Cundinamarca	mnt-1175c72774f3	521570	head
+South Hampton, Mass	mnt-ab1c2af1df4d	522683	head
+Amasoma, Bayelsa State	mnt-aed2f4e15b19	523885	head
+Guerrero Tamaulipas, Mexico	mnt-381eeb1954c5	519753	head
+South Newington, Wilton	mnt-f14ae298708a	523527	head
+Sandy Town, Indiana	mnt-79b4ef5db3ab	519411	head
+Redwood Community, VA	mnt-4ce1d16e22f4	521099	head
+Walkers Creek, Va.	mnt-317a36c054b4	522031	head
+Mooresville Town, Livingston County	mnt-54848b6ba308	522137	head
+Olive Creek, OK	mnt-75602940dac0	520832	head
+Rancho Nuevo Zaragoza, Chihuahua	mnt-201f5cc0fcc7	519671	head
+Walk Chalk, Pennsylvania	mnt-185469efaf25	525871	head
+near Drexel, Mo.	mnt-52259a8e1aaa	518157	head
+Lewisburg, West Va	mnt-7f208cc1eec2	522206	head
+Grays Flat, Calif.	mnt-e57d37f37e4d	526911	head
+Tann, Bavaria	mnt-f14dfea696ae	520749	head
+Pirka, Austria	mnt-88a91a487ea5	519672	head
+Greenwood, Morgan County	mnt-b525b16f2463	520228	head
+Lemar, S.C.	mnt-bae1d0e2c582	518523	head
+Etzatlan, MX-JA	mnt-1b69fc4414f3	525844	head
+near Bluefield, WV	mnt-2c6857b9a30e	522756	head
+Goodhope, Arkansas	mnt-20e79e14cada	525496	head
+Candon, Ilocos	mnt-788ada06d4cb	521091	head
+Guardia Lombardi, Amelino	mnt-6bd45f4e4e4f	519911	head
+Colville, Stevens County	mnt-071ae97b0f24	522776	head
+Westfork, AR	mnt-2138e5411f42	526158	head
+Loughmore, County Tipperary	mnt-8418989b8903	519163	head
+Muingmore, Bunahowen Belmullet Co. Mayo	mnt-e63aea51616f	519888	head
+Grasdeno, Macedonia	mnt-2997235c7acd	520529	head
+Santa, Illocos Sur	mnt-0fddd5dc6a15	517394	head
+Ekolaka, Montana	mnt-b379c279d6bd	522427	head
+Plattskill, New York	mnt-d5b8f13521ef	524459	head
+Tayum Abra, Philippines	mnt-dba834f201a1	516597	head
+Sapps Still, Coffee County	mnt-989fc763c42f	517112	head
+Flandreau, North Dakota	mnt-2d83104f16e6	523997	head
+Van Syckles Corner, NJ	mnt-d86af437fab0	523415	head
+Cherokee Reservation, OK	mnt-f7c21689f45c	520082	head
+Naguilayan, Binmaley	mnt-3493fd0bb8fb	524763	head
+Green River Cove, NC	mnt-151af465fee8	520734	head
+Luang Namtha, Laos	mnt-c8b9424c4098	526503	head
+Lewellyn, Neb.	mnt-42d22a1e58d4	519353	head
+Inkster, Mich	mnt-385efefdc970	516079	head
+West Rosebud, MT	mnt-ec930cbdaa03	526618	head
+Confluence, Md.	mnt-13af0868bc82	521071	head
+Mundamala, Pathanamthitta	mnt-0fe4190438ba	526801	head
+Granden, MO	mnt-d85119ff27b4	521874	head
+Van Nays, California	mnt-f8ac3d67850f	520880	head
+Rain Marion, SC	mnt-532062abe2b1	517395	head
+Kistler, Pa.	mnt-553584a27a24	519259	head
+Jack's Fork, MO	mnt-8f6c702dbacd	521449	head
+Minto, MN	mnt-3ac6d1865250	518478	head
+S. Mango D'Aquino, Italy	mnt-a17ea04259f8	522363	head
+Pleasantville, TX	mnt-a0a2efbe0093	525100	head
+Sarasota, NY	mnt-e0c92f0ce36e	522722	head
+Rawhide Tea Kettle Hill, WY	mnt-bcaed62ff806	516279	head
+Brice, Oh.	mnt-5ea90fc5753c	520629	head
+Bodanka, Poland	mnt-3b7b65872451	518304	head
+Santa Barabara, Honduras	mnt-114cc5b56086	516980	head
+Grogogh Grange, Co. Sligo	mnt-8c059e6d87bf	524218	head
+Kuling, Hunan Province	mnt-5ec035962e7f	522245	head
+Bodeau, Arkansas	mnt-353a33147409	519646	head
+Farrar, Perry County	mnt-ac54f5223903	522413	head
+Los Hornos, Michoacan	mnt-3163d3aad3ab	516739	head
+Brisbie, Arizona	mnt-5abe08283f24	518838	head
+Reeds Ferry, N.H.	mnt-c2adb827257a	525481	head
+Naguab, Puerto Rico	mnt-69c7bbf2570c	521275	head
+Talmalco, Illinois	mnt-a366de5f344c	522721	head
+South Los Angeles, Los Angeles, California	mnt-bba47b2f2cbd	241201	head
+Scotland County, near Laurinburg	mnt-332267abbc8a	525883	head
+Buck Mt., Pa.	mnt-fe5bc6680216	519141	head
+Nanticoke Borough, PA	mnt-4b3acb400630	516531	head
+Rybotycze, Ukraine	mnt-72ac8c633072	516074	head
+Ray County, CO	mnt-80662ec37348	516734	head
+Pike Community, TX	mnt-f9c456d48900	523550	head
+Koroni, Messinia	mnt-97bbdf2a849e	519705	head
+Charleston, Florida	mnt-7b392185c7f9	516350	head
+Lower Lafourche Parish, LA	mnt-36fca7ea129f	522089	head
+Gor bridge, Scotland	mnt-9a26d3371741	521356	head
+S. Bronx, N.Y.	mnt-53cbc8688b26	520292	head
+Biscoitos, Terceira	mnt-063962885830	517434	head
+Zug, Kentucky	mnt-943247f8f098	520513	head
+Muotathal, Otten Switzerland	mnt-0122caffdc4e	519118	head
+Guemes Island, Wash.	mnt-c1a34d73d8d4	524851	head
+Geraci, Siculo	mnt-af99b2fda5ac	518035	head
+Tachikawa U.S. Air Force Base, Japan	mnt-9508eabb7c47	526241	head
+S.S. Cosma e Damiano, Italy	mnt-c0689e45eaad	520301	head
+Valley Falls, Ore.	mnt-6b5e0e9b7ce7	518090	head
+El Lorrio Vizcaya, Spain	mnt-56947d93037c	527096	head
+Osborne Island, NJ	mnt-4b84d292f7b7	517123	head
+Phouc Tien, Viet Nam	mnt-8619b906146a	517985	head
+Sao Paulo, SP	mnt-f537b63abac1	518162	head
+Chancay, Perú	mnt-cec1cbcb85e6	516832	head
+Jensen, Arkansas	mnt-bf6abe187dcf	523648	head
+Colony Center, California	mnt-3b838ba052a9	526015	head
+South Poultney, NY	mnt-b1b47179d4cf	523801	head
+Wakeene, Kan.	mnt-9fff4f136f0c	522954	head
+Schoenbrunn Village, Ohio	mnt-c2a9bf7fe1a8	524831	head
+Jeferson, Pennsylvania	mnt-199e61e74618	517850	head
+Bobadella, Boticas	mnt-2d217d2939a9	525735	head
+Greenup City, KY	mnt-f996d9d37ce1	521203	head
+zonder beroep	mnt-099cd937575a	900559	head
+Santa Rita, Chalatenango El Salvador	mnt-5b4b5260e8c4	524430	head
+Tacabamba, Peru	mnt-3f3d5a910b80	517415	head
+South Moline Township, IL	mnt-22b51e825d25	525438	head
+NULL, Allegheny, Pennsylvania	mnt-d4e78953c0ad	118414	head
+Greencastle Co. Tyrone, N. Ireland	mnt-1d1de6212c5e	516295	head
+Taylorville, Canada	mnt-558af35dd472	523968	head
+Lillooett, British Columbia	mnt-474ca4044343	518775	head
+Inwood Section of NYC, NY	mnt-5ab086e2ba0a	520237	head
+Wiamuma, Fla.	mnt-f3e3d7702e70	524113	head
+Valley View, Polson	mnt-d6c9c9ba9767	516532	head
+Edgartown, Martha's Vineyard	mnt-402ba00cd00d	516590	head
+Brzesc Nad Bog, Poland	mnt-512a6679db0b	525769	head
+Gran Bois, Louisiana	mnt-8ff69d21192a	520074	head
+Terra Ceia Community, Beaufort County	mnt-9b29711c48e1	521651	head
+Monpelier, Ohio	mnt-8525fa5812d4	526990	head
+LeRay, Texas	mnt-c338903aec63	523881	head
+Wikigan, Illinois	mnt-af2f3717c215	524354	head
+Fairview Hill, Oklahoma	mnt-5f4f325cd9a8	523611	head
+Straleel, Kilcar	mnt-47365c35e6d9	525910	head
+West Point Township No. 6, Butler County	mnt-2608218fae29	517130	head
+Moneygold, County Sligo	mnt-1a498b7846c0	517768	head
+rural Scales Mound, Illinois	mnt-2112bc6ea74a	523319	head
+Guantanimo, Cuba	mnt-8cf7a15d6971	527090	head
+Cosanza, Italy	mnt-fb0062b042b6	526433	head
+Olaa, Keaau	mnt-47497b1d8760	521828	head
+Landis, Saskatchewan, Canada	mnt-590eae76c9c2	524704	head
+Stanhope, Pine Grove Township	mnt-73ca3e8b53a1	517608	head
+Offley Mills, Hanover County	mnt-3b673b77af96	522426	head
+Graham’s Island, ND	mnt-902fada2428e	525729	head
+Grace-mont, OK	mnt-685a83d83795	523088	head
+Flatbush Avenue, Queens	mnt-3b89d228d8bb	523098	head
+Guangdong Province, Kaiping City	mnt-64546dbd6afd	523455	head
+Raul, W. Va.	mnt-1c186ab4b65d	518757	head
+rural Farson, Iowa	mnt-bbf452864a5e	517848	head
+Mochuhl, Germany	mnt-4b906a57c330	523836	head
+Jakes Prairie, MO	mnt-1619bbccb980	522793	head
+Sobow, Poland	mnt-37c51cc5c5c4	519519	head
+Zuckmantel, Romania	mnt-e0c52ff2bbbd	520824	head
+Irland, IN	mnt-d3af13cf5acd	520485	head
+Westfeld, NJ	mnt-c69e94503a85	522377	head
+Farfar, Scotland	mnt-f957d87d3469	526654	head
+Pikerni, Arcadia	mnt-f2bbc561afbe	521751	head
+Raleigh Township, IL	mnt-0f8f850910d0	522139	head
+Overton, Rusk County	mnt-f88c9ec2923d	521719	head
+Chao De Monte, Fogo	mnt-07ea81f9cad5	522906	head
+Liberty Township, Crawford County	mnt-8443ceb0ad8d	519333	head
+Ramonville, TX	mnt-363738170d99	524596	head
+Kinuza, Pa	mnt-9a54af7ac6fa	523287	head
+Kroscienko, Poland	mnt-ab098ad1b646	524280	head
+Pinehill, PA	mnt-b1d36561dd26	520527	head
+Ailinglaplap, Republic of Marshall Islands	mnt-9edf166cb61a	522641	head
+Tarm, Denmark	mnt-60ae0fd41129	521011	head
+Afikpo, Ebonyi State	mnt-b1e42902321a	523425	head
+Pru	mnt-7dff28414d52	419866	head
+Klein-Heilig-Kreuz (Fulda), Germany	mnt-51a3caaff843	521744	head
+Aix Les Bains, Savoie	mnt-fafec50da907	525710	head
+Gulp, Missouri	mnt-d86d15c2fb6d	516094	head
+rural Severance, KS	mnt-f84174ed5d90	526957	head
+Muzlja, Yugoslavia	mnt-c7a73ece36dd	518222	head
+Friendship Community, Stamps	mnt-0645a8765e1f	520238	head
+Castleblayney, Ireland	mnt-6b1d28233163	125280	head
+Kiralyhelmec, Hungary	mnt-026eaadc8635	518894	head
+Hda., La Troje	mnt-a869240badfa	519627	head
+Klanac, Lika	mnt-2d074ff99ae6	521956	head
+Lower, MA	mnt-5579b1c2bfd7	520871	head
+Ruston, Tacoma	mnt-52af89eafac8	521879	head
+Monte Corvino, Pugliano	mnt-0af1c78589f8	520886	head
+Spokane, Spokane County	mnt-7da85b18fd06	521220	head
+Walsh, MO	mnt-7f7228a8b778	520205	head
+Lost Creek (Oshkosh), NE	mnt-b259d2fddaa8	517620	head
+Brookfield Township, Minn.	mnt-6c43ffb4b6b0	524623	head
+Santa Rosalia de Camarco, Chihuahua	mnt-2ef41b245b43	522848	head
+Foraker, Osage County	mnt-573a9af43140	520804	head
+Tenefly, New Jersey	mnt-12dcf3c35852	523526	head
+Sao Mateus, Terceira	mnt-32dae2411a68	516592	head
+Scarborough, Pa	mnt-b9273ed8068e	517746	head
+Lowton, OK	mnt-3fa331210515	526089	head
+Scarbough, England	mnt-68ba1e2be7e5	526365	head
+Bridgeport, Ariz.	mnt-9e5b65d234c5	526598	head
+Inismor, Co. Galway	mnt-f96089bbe6fe	522226	head
+Isle of Sylt, Germany	mnt-c9dab2b72618	518119	head
+rural Manabi province, Ecuador	mnt-0ba1d4639b0c	521529	head
+Brunners Island, York County	mnt-38c79e09882b	517878	head
+Nangalisan Sta. Lucia Ilocos Sur, Philippines	mnt-407f0dd76f99	526246	head
+geen beroep vermeld	mnt-46559628d27f	409393	head
+Cormona, Texas	mnt-a1e79a3bda0e	520496	head
+Chekon, China	mnt-73e43522da88	523852	head
+West Minton, PA	mnt-1a95c68bbc50	517171	head
+Columbis, MS	mnt-be3cb1a7d15f	520710	head
+Kane, Pottawattamie, Iowa	mnt-ad8cc4fbb5b7	106201	head
+Kita-Kyushu, Japan	mnt-52e92cc64c8f	517362	head
+South Franklin Township, Washington	mnt-8323270b01ff	516758	head
+Omega Park Community, Pulaski County	mnt-d8d20957c492	524143	head
+Kolto, Hungary	mnt-ddef2553d2fe	521621	head
+ship, route from New York to Florida	mnt-94960aa22f47	520153	head
+Los Alamos, Zacatecas	mnt-1581c7feb2d3	525561	head
+Santiere, IN	mnt-9d4ed583b4a4	517097	head
+Cloncurry, Queensland, Australia	mnt-21b607c1669b	523613	head
+Eldora Community, Marion County	mnt-4ce7572c885b	517285	head
+Arbroath, Anguo	mnt-11672d906090	522824	head
+Murray, Orleans County	mnt-6884a78e98ec	522176	head
+Stari Grad, Hvar	mnt-b31c5ca67588	520978	head
+Lettopalena, Abruzzo	mnt-0033ce7a7e95	523582	head
+Raliegh County, WV	mnt-784b3201de46	516056	head
+Murilaga, Spain	mnt-1e79180f0bfb	517916	head
+El Nacimiento, Coahuila	mnt-c44dc8e8b775	519843	head
+Boice City, OK	mnt-3e2cbb5db6d8	522844	head
+Pleasanton, KY	mnt-c8c402fb07f8	520305	head
+Whitestone, L.I.	mnt-771d7df21355	526878	head
+Pinewald, N.J.	mnt-a32d0176c6e8	521895	head
+Bland, Ark.	mnt-16bd056a01ba	516908	head
+Rathdrum, Ireland	mnt-72816b51a368	161591	head
+Grandigue, NB	mnt-7bdca4b97874	519488	head
+Talehina, Oklahoma	mnt-94b2db408db7	518558	head
+Osborneville, IL	mnt-65f72f0e78cb	526705	head
+Ironta, VA	mnt-5ca69bbeaa10	523728	head
+Maayon, Capiz	mnt-7b544f7e6625	523392	head
+Black Hammer, Minn.	mnt-eb31321cd470	519371	head
+Guiliano, Italy	mnt-19c547115b75	522361	head
+Sugar Creek Township, Gomer	mnt-42c685859a86	520835	head
+rural Quapaw, Okla.	mnt-cb02f6d40b66	516302	head
+Tepatitan, Mexico	mnt-74ca3df86362	521760	head
+Santa Rosa, La Union	mnt-1f3d63d4bd08	521623	head
+Birnumwood, WI	mnt-574e178de2df	523969	head
+Boyle, Ireland	mnt-ce51478e5039	120673	head
+Corum Community, OK	mnt-a5e212b32ba6	525319	head
+Okeagbe Akoko, Ondo State	mnt-f49994dc9100	525826	head
+Tecelote, NM	mnt-bc573bc411f0	517296	head
+Monte, Bustillos	mnt-f0f40183826c	526858	head
+Gonzalez Ortega del Teul, Zacatecas	mnt-451e4a77166d	516987	head
+Chalice, Idaho	mnt-e34a5875f461	527036	head
+Chartinho Santarem, Portugal	mnt-9f570860c2ab	524026	head
+Erwin, Harnett	mnt-b886e4257e6a	526245	head
+Cherry Tree, Indiana	mnt-57065963fe03	524746	head
+Modukuru, India	mnt-18d275bbd7f2	519061	head
+Tempest, Illinois	mnt-a80d9dd829a1	517804	head
+Eden Township near Vinton, IA	mnt-f492a70fe03f	521225	head
+Smith Twp., Whitley County	mnt-979baed0d73a	524913	head
+Port Huron, St. Clair, Michigan	mnt-3ca44bf7a75a	107706	head
+Sapang-Dalaga, Mindanao	mnt-89b960383b25	524729	head
+Claremorris, Ireland	mnt-e662d0f790a5	110791	head
+Monastir, Yugoslavia	mnt-606e7b00ba52	526589	head
+Sedalia, Doddridge County	mnt-221e04c5e048	518312	head
+Waldrop, Va.	mnt-abdcf4687de7	526723	head
+rural Holmesville, NE	mnt-48768220b95e	524707	head
+Cherry Lane Township, NC	mnt-2c2bf8248f3e	518063	head
+Muncelul De Sus, Jud. Iasi	mnt-bbfaf9aa98e8	522393	head
+Blaine township, Clay County	mnt-74f75be155c2	519381	head
+Nashua, N. H.	mnt-64cb020527d3	517109	head
+SCO	mnt-95c1b7cbd015	164426	head
+Montediprocida, Napoli Italy	mnt-9101d4147d5c	522065	head
+Jellys Ferry, California	mnt-36e311ae981e	526333	head
+Ferslev, Denmark	mnt-7b8189eef37e	516138	head
+Broadford Parish, County Clare	mnt-6fb5010f27ed	523421	head
+Sangrur District, Punjab	mnt-c0ae6f54fc68	526739	head
+Kryemenchug, Ukraine	mnt-54b86512ff97	523292	head
+Sapulpa Creek, OK	mnt-57d14e17e917	522935	head
+Souris Valley, Saskatchewan	mnt-aefa415d4a36	519897	head
+Magherafelt, Ireland	mnt-9791f145fe56	144460	head
+Pillnitz, Germany	mnt-a26dea70a01c	523367	head
+NULL, Sullivan, New York	mnt-963fc000abb4	103080	head
+Montigiano, Italy	mnt-dc2decf2e4f7	523329	head
+Terhan, Persia	mnt-fae380283802	525244	head
+Cowen, W.V.	mnt-4a9e07857562	523962	head
+Courley Town, Michigan	mnt-ce723eebf99c	518791	head
+Van, W.V.	mnt-098156731680	526782	head
+Adamy, Lwow	mnt-a7d0d6eeea7c	521269	head
+Smithon, Pennsylvania	mnt-65552052010b	523825	head
+Sorozhinskaya, Russia	mnt-229cdc81b6c4	525012	head
+family home, Los Banos	mnt-18725681fa2a	523248	head
+Breemen, Georgia	mnt-914393ab5235	524575	head
+Liddie Ville, LA	mnt-ac97fc4e0294	519027	head
+Owl Creek, IN	mnt-b66792d4f05f	516164	head
+Bremerhaven, Bremen	mnt-60cba4ad615b	524231	head
+Halkida, Evoia	mnt-6f685e52c76c	525670	head
+Blue Jay Five, West Virginia	mnt-40ecfd30a416	527082	head
+Naguilian, Ilocos Sur	mnt-de762fe51b64	522375	head
+Blairville, PA	mnt-fe09e3984330	521002	head
+Loris County, South Carolina	mnt-300db654d80c	518995	head
+Fertile Township, Walsh County	mnt-1eb52ae75754	520557	head
+Vasilikon, Epirus	mnt-e4c33b44a83b	518603	head
+Fadette, Geneva, Alabama	mnt-eb0c205e570e	2761	mid
+ST PAUL COVT GARDEN, NULL, WESTMINSTER, MIDDLESEX	mnt-1163518c9741	1548	mid
+Walton Magisterial District, Charlotte, Virginia	mnt-d8af0450b2a5	8178	mid
+South Portland town South Portland city (west part) Ward 4-7, Cumberland, Maine	mnt-23ae0f25462b	2700	mid
+FULWOOD, FULWOOD, NULL, NULL, LANCASHIRE, LANCASHIRE	mnt-3ae912df862c	1268	mid
+BIRMINGHAM, BIRMINGHAM, B'HAM CENTRAL, BIRMINGHAM	mnt-27130d3d1320	2923	mid
+Bellwood and Chancellor, Geneva, Alabama	mnt-8aaecc45fb38	2041	mid
+Portland, Preston, WV	mnt-446ff0a7d037	2880	mid
+ST BEE, WHITEHAVEN, Cumberland	mnt-7be594941970	4314	mid
+North Bellevernon, Westmoreland, Pennsylvania	mnt-dae80d6cdac9	5701	mid
+Justice Precinct 7, Lee, Texas	mnt-eef28db6de6b	1175	mid
+NEW WINDSOR, WINDSOR, BERKSHIRE, BERKSHIRE	mnt-5372268fdc20	7956	mid
+Monroe Township, Wayne, Iowa	mnt-08fddc4c6be0	1606	mid
+kenoas	mnt-66bf7feaa1a0	1291	mid
+KIPPAX, KIPPAX, NULL, NULL, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-9b09c6a0a4be	2535	mid
+ST GEORGE HANOVER SQR (PART OF), LONDON, SAINT GEORGE HANOVER SQUARE, ST GEORGE HANOVER SQR, LONDON	mnt-a7ba53e46d34	3101	mid
+Atwater, Upson, Georgia	mnt-ce6ef3979ee3	2581	mid
+Borough of Manhattan, Election District 2 New York City Ward 2, New York County, New York	mnt-ba6a86fb73cc	1132	mid
+Burke, Cleveland & Lick Creek Townships, Little River, Arkansas	mnt-f693f7b4acc7	2012	mid
+Fulton County, OH	mnt-8f7e108b688b	10102	mid
+Shelby, Jefferson, IN	mnt-3da50fc44d66	1662	mid
+MAYFIELD CITY, MAG DIST 6, GRAVES, Kentucky	mnt-2b116ccde573	3678	mid
+inuika	mnt-b4bc3aaf575a	1322	mid
+South Fork, Monroe, MO	mnt-e7a5c007957b	1514	mid
+ST MARY BISHOPHILL SENIOR, YORK, Yorkshire	mnt-67ed3a9b2892	4003	mid
+Plowden Mills, Clarendon, South Carolina	mnt-c918940950e6	4741	mid
+Hahnstown, Westmoreland, Pennsylvania	mnt-5f71f1fb85ac	3001	mid
+Prince Crossroads, Lee, Alabama	mnt-460e942cc72e	1141	mid
+Militia Districts 1079, 1469, Easom Hill, Blooming Grove, Polk, Georgia	mnt-d9549e29f40e	1134	mid
+Precinct 3 Charleston city Ward 4, Charleston, South Carolina	mnt-f64e65358fd7	2698	mid
+Simpson, Harrison, WV	mnt-a2fa0971e974	1635	mid
+PART HOVE, STEYNING, SUSSEX, SUSSEX	mnt-7e07b2184f59	1290	mid
+Nicholson boroughs Nicholson, Wyoming, Pennsylvania	mnt-5de58a90616f	1021	mid
+Harrison Township, Benton, Iowa	mnt-013c10bba3d7	1065	mid
+Election Precinct 9, Choctaw, Alabama	mnt-7bc9fce9f9b0	1166	mid
+Ft. Lupton, Colorado	mnt-d6d1bd3348c9	8424	mid
+Pine Bluff, Jefferson, Arkansas	mnt-775b0c58e02b	1246	mid
+ST LAWRENCE, CONGLETON, CHESHIRE, CHESHIRE	mnt-03ce3a693967	1273	mid
+EGHAM, EGHAM, WINDSOR, CHERTSEY, SURREY	mnt-bea0a2140c90	1305	mid
+RADCLIFFE, RADCLIFFE, NULL, NULL, LANCASHIRE, LANCASHIRE	mnt-65b0d95c4b95	2491	mid
+Scates Mill, Christian, KY	mnt-05148cff51ad	1669	mid
+Madison Township, Fremont, Iowa	mnt-d0279583ca0f	2155	mid
+Civil District 1 Sweetwater town, Monroe, Tennessee	mnt-2471dfa866d4	2759	mid
+Gardi, Wayne, Georgia	mnt-0539b00514b7	1081	mid
+Finley Township, Christian, Missouri	mnt-e96721e199ce	4186	mid
+NULL, Mitchell, Iowa	mnt-f4dbc4b17a94	1164	mid
+Pastures, Augusta, VA	mnt-91b64a3dbd77	3878	mid
+Columbia Township Columbia city (south part) Ward 3-4, Boone, Missouri	mnt-4cedf4cf0db4	1850	mid
+Rensselaerwick Town, Albany, New York	mnt-c80e0ac15fa1	1254	mid
+Spencer, Powhatan, VA	mnt-f580a4f1d9d7	1341	mid
+ENID AAF OKLAHOMA	mnt-5b196996065d	1090	mid
+District 1 York city Ward 9, York, Pennsylvania	mnt-309c4cad9ec9	2701	mid
+LOFTHOUSE WITH CARLTON PART OFF, WAKEFIELD, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-01c737faa77c	1235	mid
+WHITECHAPEL, TOWER HAMLET, London-Middlesex	mnt-18477e7eb37e	3860	mid
+ILFRACOMBE, NULL, Devon	mnt-4634a562b9b1	3951	mid
+DRAYTON IN HALES, MARKET DRAYTON, SHROPSHIRE, SHROPSHIRE	mnt-9dd9e2b65db9	5347	mid
+ST MARY NEWINGTON S E, WALWORTH, NULL, LAMBETH, LONDON, LONDON	mnt-09cd9a029224	1274	mid
+entaia	mnt-202a7c882832	1294	mid
+Totaro Magisterial District Lawrenceville, Brunswick, Virginia	mnt-9b00cd0db6bc	1741	mid
+ST MARY WHITECHAPEL, WHITECHAPEL, LONDON, LONDON	mnt-399c2100be3e	6683	mid
+ST PAULS, DEPTFORD, NULL, GREENWICH, KENT	mnt-ca1012dbd608	23574	mid
+Genesee Township, Whiteside, Illinois	mnt-c65cd9ca6746	2472	mid
+Forestborough, Susquehanna, Pennsylvania	mnt-41e73da3d4aa	7021	mid
+BATTERSA, WANDSWORTH, LONDON, LONDON	mnt-9673b1fdc25c	7621	mid
+ST MARY MAGDALEN WITHIN, TAUNTON, SOMERSET, SOMERSET	mnt-51ba2f0fa3c3	1237	mid
+Meadows Crossroads, Lee, Alabama	mnt-70dad56c896a	1600	mid
+YSTRADGYNLAIS LOWER PT OF, PONTARDAWE, GLAMORGANSHIRE, GLAMORGANSHIRE	mnt-8912f4172d4e	1240	mid
+naryana	mnt-c87bc4e151ec	1320	mid
+Militia Districts 1213, 1401, Middle 9th, Jones Mill Jones Mill town, Meriwether, Georgia	mnt-df9ff9f47495	2269	mid
+ST PETER PORT, ST PETER PORT, NULL, NULL, ISLANDS IN THE BRITISH SEAS	mnt-5841bb9a2144	8993	mid
+NEW JERSEY, LIMITED SERVICE OR IRISH FREE STATE	mnt-a7b6adf71126	1174	mid
+Aitkin, Aitkin, Minnesota	mnt-b42c6b75c7d2	7504	mid
+ST ALBAN, NULL, Hertfordshire	mnt-3a8fc5da5282	3849	mid
+CHARLOTTE TOWNSHIP 1, CHADWICK HOSKINS, MECKLENBURG, North Carolina	mnt-a92b7db8a6d2	1442	mid
+Sandsuck, Pendleton, KY	mnt-b846345af6f4	1538	mid
+SCARBOR'O, NULL, SCARBOR'O, YORKSHIRE - NORTH RIDING, YORKSHIRE - NORTH RIDING	mnt-115e756c8f34	1258	mid
+Huron Township, Wayne, Michigan	mnt-fce09e34e275	1742	mid
+WESTOVER FIELD CHICOPEE FALLS MASSACHUSETTS	mnt-dad2801c9bd9	1031	mid
+Pataskala, OH	mnt-eb6e1986c6e8	1940	mid
+POWHATTAN TOWNSHIP, BROWN, Kansas	mnt-dd3179ff3676	1441	mid
+Tyler Magisterial District, Charles City, Virginia	mnt-6bee93a70b2c	4081	mid
+GWERSYLLT, SUMMER HILL, NULL, NULL, DENBIGHSHIRE, DENBIGHSHIRE	mnt-c164f70152df	1272	mid
+Miami Gardens, FL	mnt-4247fa1bf7f5	1705	mid
+Dale Magisterial District, Chesterfield, Virginia	mnt-8ff89dd04b44	8881	mid
+WESTERLEIGH (PART OF), WESTERLEIGH (PART OF), CHIPPING SODBURY, THORNBURY, GLOUCESTERSHIRE	mnt-2d56b65bf155	1309	mid
+ALL SAINTS, NEWCASTLE UPON TYNE, NEWCASTLE ON TYNE, NORTHUMBERLAND	mnt-8474c90f11c3	3136	mid
+Hanover Township, Northampton, Pennsylvania	mnt-523c1ecdac53	1328	mid
+BEAVER DAM TWP, CUMBERLAND, North Carolina	mnt-a527140cf7e9	1442	mid
+HORNINGLOW, BURTON ON TRENT, BURTON ON TRENT, STAFFORDSHIRE	mnt-4d3244cac04a	3101	mid
+S PAUL DEPT, GREENWICH, LONDON, LONDON	mnt-c60c1416f6eb	1269	mid
+JAY TWP 3, DELAWARE, Oklahoma	mnt-25c2581bb207	1442	mid
+ELDORADO TOWN, COMM PREE I, SCHLEICHER, Texas	mnt-63ad61d55073	1438	mid
+Cool Springs Township, Election Precinct 2 Forest city, Rutherford, North Carolina	mnt-8ef8de90a89e	2007	mid
+Riverhead, Augusta, VIRGINIA	mnt-7caff517659a	4465	mid
+ST PAULS DEPTFORD, DEPTFORD, NULL, GREENWICH, KENT	mnt-188a99992401	1637	mid
+Precinct 4 Omaha city Ward 7, Douglas, Nebraska	mnt-9e9c58bdb4f4	1943	mid
+ST PETER IN THE EAST, NULL, OXFORD, OXFORDSHIRE	mnt-7eb02deb958c	1174	mid
+ALDERSHOT, FARNHAM, BASINGSTOKE, HAMPSHIRE	mnt-26e5c3e24b10	3142	mid
+Saxony Meiningen	mnt-0d803eff5032	1459	mid
+Justice Precinct 6, Webb, Texas	mnt-5845b718f2e6	1146	mid
+Warthen, Washington, Georgia	mnt-500bba0c8587	2161	mid
+Carthage Township, Athens, Ohio	mnt-31ba326853a1	3490	mid
+SELBY, SELBY, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-8fbd0e757c04	5915	mid
+ST PAUL, NEWLYN, NULL, NULL, CORNWALL	mnt-2ff687ef0c8e	1924	mid
+Shoal Creek, Hart, GA	mnt-38b46569eb16	1398	mid
+Sheldon, Franklin, VT	mnt-8ca47ec31cbb	1529	mid
+CADOXTON, NULL, Glamorgan	mnt-8666852f8bf2	3815	mid
+INCE IN MAKERFIELD, NULL, DIVISION OF SOUTH WEST LANCASHIRE, LANCASHIRE, LANCASHIRE	mnt-562572872eb3	1249	mid
+Olive, Clinton, IA	mnt-e2402373d93a	1291	mid
+Ham Lake, Anoka, Minnesota	mnt-b5ad830d4879	1741	mid
+ST OLAVE, NULL, SOUTHWARK, SURREY	mnt-587ede8435ba	4523	mid
+MARKSVILLE, Avoyelles, LA	mnt-1d41b71842a0	5685	mid
+Pickens, Edgefield, SC	mnt-f8f3c498d132	5636	mid
+North Brookfield, Worcester, MA	mnt-ea917332ee4f	4943	mid
+Cass Township, Clayton, Iowa	mnt-28c2c0e6c0b7	3047	mid
+Coulterville, Randolph, IL	mnt-09ab41a1db6a	1281	mid
+Precinct 1 Omaha city Ward 8, Douglas, Nebraska	mnt-d770b4e68682	1642	mid
+Canaan, Somerset, ME	mnt-78c4c5bf7a55	1281	mid
+Little Pine Creek, Madison, North Carolina	mnt-a4df434b5411	1179	mid
+LOS ANGELES CITY, 63 ASSEMBLY D, LOS ANGELES, California	mnt-2a787f4501e2	1437	mid
+Collinsville, Madison, IL	mnt-af424b06762e	7721	mid
+Cleveland, Cuyahoga, Ohio	mnt-aec988ee0c4d	58473	mid
+MANCHESTER (PART OF), MANCHESTER, MANCHESTER NORTH EAST DIVISION (PART OF), LANCASHIRE	mnt-71489c8b6c66	3168	mid
+Burlington, Bradford, PA	mnt-97294a98b97b	1294	mid
+Town of Coeymans, Election District 1-2, Albany, New York	mnt-db2c62663ac1	2730	mid
+Bluff, Twiggs, Georgia	mnt-aab49bda659f	2461	mid
+Clam Lake, Wexford, Michigan	mnt-c6d2b37bf586	1861	mid
+NULL, CALNE, WILTSHIRE, WILTSHIRE	mnt-6e5a3093cf4d	1275	mid
+Brook Park, OH	mnt-af09fd563ac7	1712	mid
+HEDWORTH M & JARROW, SOUTH SHIELDS, DURHAM, DURHAM	mnt-025f1b4a5219	1251	mid
+PUTNEY, ROCHAMPTON, NULL, NULL, LONDON, LONDON	mnt-eeec7f9c7ee6	1264	mid
+Beat 1 Oxford city, Lafayette, Mississippi	mnt-441fcd0dd0ab	1817	mid
+Ivy Township, Buncombe, North Carolina	mnt-a425517e6279	3958	mid
+Rivanna, Albemarle, VA	mnt-ce165060e62b	4491	mid
+Alabama Polytechnic Institute, Lee, Alabama	mnt-f6ea1e488ede	3061	mid
+NULL, Prince William, Virginia	mnt-6f268600af66	6882	mid
+ST PETER, SANDWICH, NULL, SANDWICH, KENT	mnt-b92415a81af1	1091	mid
+HORNSEY, FINSBURY, Middlesex	mnt-d61039faf3f6	4332	mid
+Beat 2 Durant town, Holmes, Mississippi	mnt-e3481cd3f840	1765	mid
+COLUMBIA TWP, HAMILTON, Ohio	mnt-c05402a61904	1434	mid
+Palmyra, Wayne, NY	mnt-7665ff0ad7cc	5257	mid
+Seton Hill College, Westmoreland, Pennsylvania	mnt-9413943f007c	1141	mid
+ST SEPULCHRE MIDDX, NULL, FINSBURY, MIDDLESEX	mnt-94ad2f6c0a9a	1157	mid
+Sherman, De Kalb, MO	mnt-67180351eb6e	1611	mid
+Judicial Township 5, Mariposa, California	mnt-d4f1c618f989	1174	mid
+nowthlia	mnt-d5d58cfba451	1300	mid
+Ft. Edward, NY	mnt-f42eb3e16229	12127	mid
+Owenton, KY	mnt-a184b9e42eb7	1944	mid
+Goffstown, Hillsborough, NEW HAMPSHIRE	mnt-07814d45383f	6455	mid
+ALEX CITY, 21, TALLAPOOSA, Alabama	mnt-99d1fcdf56a9	1439	mid
+Center Magisterial District, Fauquier, Virginia	mnt-846b8e3044ec	17096	mid
+RED WING CITY, GOODHUE, Minnesota	mnt-294787ebe334	3760	mid
+Precinct 1, Dallas, TX	mnt-8f9acc0c8117	4593	mid
+Chesapeake Magisterial District, Elizabeth City, Virginia	mnt-8c22334710e9	20464	mid
+PUERTO RICO (INCLUDING VIRGIN ISLANDS AND CUBA)	mnt-4acdf3e9efd4	46703	mid
+Van BurenVan Buren, Wayne, Michigan	mnt-343314d25299	3421	mid
+DENBY, WORTLEY, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-916f27e0f8c5	1252	mid
+ST MATTHEW BETHNALL GREEN, BETHNAL GREEN, LONDON, LONDON	mnt-452c56e0481f	1263	mid
+SCARBORO, NULL, SCARBOROUGH, YORKSHIRE - NORTH RIDING, YORKSHIRE - NORTH RIDING	mnt-cebef5eb1544	2630	mid
+ST LUKE (PART OF), HOLBORN, EAST DIVISION OF FINSBURY PARLIAMENTARY BOROUGH (PART OF), LONDON	mnt-317d4352f3e0	2999	mid
+MONTGOMERY TWP, ASHLAND, Ohio	mnt-bbfa242cde58	1435	mid
+MARYSVILLE, Yuba, CA	mnt-fa33f72a8649	4352	mid
+TUSCALOOSA CITY, PRECT 16 COURTHOUSE, TUSCALOOSA, Alabama	mnt-6562cbbdbb5c	3633	mid
+Scott Township, Fremont, Iowa	mnt-6e90d8c0640a	2688	mid
+NULL, NULL, NOTTINGHAMSHIRE, NOTTINGHAMSHIRE	mnt-190fee41a733	1272	mid
+BULWELL, NULL, Nottinghamshire	mnt-9c851afdea0c	4275	mid
+American Fork city Ward 1-3, Utah, Utah	mnt-d03d608e3694	2732	mid
+Oliver, Jefferson, PA	mnt-2cbd35ed1275	1306	mid
+Militia Districts 328, 1505, Bloodworth, Ivey, Wilkinson, Georgia	mnt-8521fc3f1001	1999	mid
+Steer Pen, Chesterfield, South Carolina	mnt-ce37fa2883f8	3181	mid
+LPOOL, LPOOL, NULL, LPOOL, LANCASHIRE, LANCASHIRE	mnt-0d98ca7668e5	2603	mid
+Magisterial District 1, Brownsville Brownsville town, Edmonson, Kentucky	mnt-4a3cd918bfc0	2015	mid
+Civil District 5, Ashpark, Lauderdale, Tennessee	mnt-d1d036ed404f	1142	mid
+81	mnt-1d513c0bcbe3	11183	mid
+Election District 2 Rochester City Ward 20, Monroe, New York	mnt-9e2b896c7ea4	2014	mid
+FIUME & NAPLES	mnt-83da75d0aa96	1175	mid
+DOUGLAS, NULL, Isle of Man	mnt-cc8f015dfeb6	3943	mid
+ST PETERS, NULL, LIVERPOOL, LANCASHIRE	mnt-62878e4712ca	1254	mid
+Lower Saucon Township, Shimersville District, Northampton, Pennsylvania	mnt-adc3a61d7fd4	2000	mid
+ST NICHOLAS, HARWICH, Essex	mnt-d1398c01843e	3787	mid
+Whatleys Store, Lee, Alabama	mnt-af7e4fa42e05	2461	mid
+Malden, Middlesex, Massachusetts	mnt-beb9541c672a	2039	mid
+ST JOHN HORSELYDOWN, NULL, SOUTHWARK, LONDON, LONDON	mnt-9979d834a3b0	2537	mid
+LIMEHOUSE (PART OF), STEPNEY, LIMEHOUSE DIVISION TOWER HAMLETS (PART OF), LONDON	mnt-d867b6823def	1315	mid
+BROOKLYN BOROUGH, A D 16, KINGS, New York	mnt-7f603d8dd030	3651	mid
+SOUTH LYNN, NULL, KING'S LYNN, NORFOLK, NORFOLK	mnt-46eb0ce42e46	1264	mid
+BRITONFERRY, NULL, Glamorgan	mnt-17cc1f665f6b	4233	mid
+Prairie, Washington, AR	mnt-7cca5cb0615f	3322	mid
+Wayne, Monroe, OH	mnt-1d6f6898c0ef	1282	mid
+Morton County, ND	mnt-018b426190e1	4169	mid
+Hurlbut Township, Logan, Illinois	mnt-230ad9fa43a9	1032	mid
+BAYOU METO TWP, PULASKI, Arkansas	mnt-d4f8413194f4	1434	mid
+Whitley City, KY	mnt-a41e30350a2e	1829	mid
+Clover district, Tucker, West Virginia	mnt-3212de51103f	1174	mid
+Monroe Township, Madison, Iowa	mnt-d41dcdd7e900	1232	mid
+Military Springs, Lamar, Alabama	mnt-012c02943a2b	1141	mid
+District 1253, Washington, Georgia	mnt-107e8e41a34f	1164	mid
+WUERDLE & WARDLE, WARDLE, NULL, NULL, LANCASHIRE, LANCASHIRE	mnt-4fa861001277	1266	mid
+Smiths River, Patrick, VA	mnt-e9f91aee23c4	1373	mid
+Fulton County, Illinois	mnt-6f91787414b2	8466	mid
+NEITHROP, BANBURY, Oxfordshire	mnt-0919021d4064	3872	mid
+Selma, Wexford, Michigan	mnt-92e7426708f6	1741	mid
+Mokena, IL	mnt-9eb67b0910e0	1750	mid
+District 613, Butts, Georgia	mnt-92780f6ef65b	1157	mid
+South Fork, Forsyth, NC	mnt-0b895d9797ad	1459	mid
+Cowan Township, Wayne, Missouri	mnt-9a82286837b7	1912	mid
+Union Township Crawfordsville city Ward 2, Montgomery, Indiana	mnt-36b795b955b6	1722	mid
+HANLEY, HANLEY, HANLEY, NULL, STOKE ON TRENT, STAFFORDSHIRE, STAFFORDSHIRE	mnt-b47c9f58c837	2579	mid
+ST JOHN AT HACKNEY, HACKNEY, LONDON, LONDON	mnt-593fac907168	5517	mid
+ST MARY STRATFORD BOW, POPLAR, BOW AND BROMLEY DIVISION OF TOWER HAMLETS, LONDON	mnt-0bc9d39f65e2	1313	mid
+Grass Spring, Jackson, Alabama	mnt-60ca77b3bbc4	1321	mid
+Beat 1 Meridian city Ward 2, Lauderdale, Mississippi	mnt-903fcb2f503c	1712	mid
+Starrucca, Venango, Pennsylvania	mnt-bdc1e986ed1a	1381	mid
+YEADON PART OF, YEADON (PART OF), WHARFEDALE, OTLEY PART OF, YORKSHIRE WEST RIDING	mnt-4c554abdab35	1317	mid
+Mt. Pleasant Township, PA	mnt-2b55e689108a	2483	mid
+SEAFORTH, WEST DERBY, ORMSKIRK LANCASHIRE, LANCASHIRE	mnt-6ac2adb03931	1301	mid
+Sheffield, Warren, PA	mnt-a332f7a44406	1425	mid
+Leander, TX	mnt-cfa19ccabcc5	1902	mid
+ST CLEMENT, IPSWICH, SUFFOLK, SUFFOLK	mnt-80f9be131d4b	6389	mid
+ST PAUL SHADWELL, NULL, TOWER HAMLETS, MIDDLESEX	mnt-58fd941a9efe	1333	mid
+Salt Creek, Holmes, OH	mnt-477dd6f6d4ca	1494	mid
+SOUTH EASTON, Northampton, PA	mnt-815626e6c6f1	4548	mid
+BACUP, HASLINGDEN, ROSSENDALE, LANCASHIRE	mnt-35b448d92659	3161	mid
+Kirby, Dillon, South Carolina	mnt-1fae4cf9f4ff	3361	mid
+Providance Township, Randolph, North Carolina	mnt-daf3594c9350	1145	mid
+TEDDINGTON, NULL, Surrey (ex.Metro)	mnt-09d1efabbd44	4053	mid
+ST PAUL COVENT GARDEN, NULL, WESTMINSTER, MIDDLESEX	mnt-62490cf4adf5	2145	mid
+Shoe Heel, Robeson, NORTH CAROLINA	mnt-04bbafdc15a2	1661	mid
+Post Oak and Black, Geneva, Alabama	mnt-71adaf0c8478	2341	mid
+Ft Wayne, Allen, Indiana	mnt-23288c2eed8e	1554	mid
+WIDNES, WIDNES, PRESCOT, WIDNES DIVISION, LANCASHIRE	mnt-7db48099b3b6	1308	mid
+Valley View, Schuylkill, Pennsylvania	mnt-9c2ba3bbcd82	1981	mid
+HAMPTON, KINGSTON ON THAMES, SURREY, SURREY	mnt-d2304b1008a3	5798	mid
+Red Bank, Lawrence, Alabama	mnt-ed98c17e0219	1261	mid
+ST MARY CHURCH, TORQUAY, NEWTON ABBOT, TORQUAY, DEVONSHIRE	mnt-c2820ba99d91	3000	mid
+ANALY J TWP, SONOMA, California	mnt-86156a609a3b	1439	mid
+Justice Precinct 7, Henderson, Texas	mnt-3d32b7c38eba	1155	mid
+Quietude, Darlington, South Carolina	mnt-3ec63bc3c7b0	1681	mid
+CUCKFIELD, NULL, Sussex	mnt-7d38ca1ade12	4382	mid
+Plum Bayou, Jefferson, AR	mnt-ce574b4bf001	2968	mid
+Precinct 4 Seattle city Ward 8, King, Washington	mnt-359b271056a0	2003	mid
+OTLEY, WHARFEDALE, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-7e9faba8d02d	7967	mid
+BENTONVILLE, Adams, OH	mnt-8813393b522a	1282	mid
+Providence Magisterial District, Fairfax, Virginia	mnt-bedd5925776d	38821	mid
+HASLINGDEN PT OF, HASLINGDEN, ROSSENDALE (PT OF), LANCASHIRE	mnt-de968c7e6a7f	1313	mid
+Lorance Township (north half) Marble Hill village, Bollinger, Missouri	mnt-661678a51bb3	1702	mid
+wisonrn	mnt-8f4c3f574e6a	1315	mid
+STANLEY, STANLEY, SHARDLOW, ILKESTON, DERBYSHIRE	mnt-5b67276c2dab	1307	mid
+HUCKNALL, NULL, Nottinghamshire	mnt-a14b1fa7c270	4086	mid
+Jordan Township, Lycoming, Pennsylvania	mnt-1ee1eec229e8	1352	mid
+Mt. Juliet, TN	mnt-771764a26d3b	4509	mid
+WEST HAM (PART OF), WEST HAM, SOUTH DIVISION WEST HAM (PART OF), WEST HAM	mnt-598bd9b83c4c	2995	mid
+Ridge, Lamar, Alabama	mnt-c36bc93091ac	1021	mid
+MAYFIELD, ASHBOURNE, DERBYSHIRE, DERBYSHIRE	mnt-059441765b3a	1279	mid
+AYLESBURY, AYLESBURY, Buckinghamshire	mnt-1601dcca65b8	3869	mid
+Gardner, Worcester, Massachusetts	mnt-92b8b3386250	1037	mid
+Saratoga, Douglas, NE	mnt-970a94752720	1443	mid
+Morgan, Cherokee, South Carolina	mnt-87de1654a7c9	8581	mid
+Pine Creek Magisterial District, Carroll, Virginia	mnt-dfe4ee18a008	9171	mid
+Agua Fria, Santa Fe, New Mexico Territory	mnt-e0fef374bc33	1600	mid
+HEANOR PT OF, HEANOR, BASFORD, ILKESTON, DERBYSHIRE	mnt-96a60f7ec1f6	1304	mid
+LAMBETH, LAMBETH, KENNINGTON DIVISION OF LAMBETH, LONDON	mnt-c621c5b25f72	3026	mid
+Salt Works, Clarke, AL	mnt-b9a2426bf948	1451	mid
+Gum Log, Union, Georgia	mnt-e489beb03a5d	1201	mid
+LITTLEPORT, NULL, Cambridgeshire	mnt-b27939a1b402	3869	mid
+District 841, Forsyth, Georgia	mnt-7dd1fe37274c	1174	mid
+Centreville, St. Joseph, Michigan	mnt-2ad01426e5db	2730	mid
+WAYNE T, WAYNE, Indiana	mnt-bf1a7c03b3a3	1438	mid
+BEXHILL, BEXHILL, BATTLE, RYE SUSSEX, SUSSEX	mnt-8ecb47791a52	2972	mid
+BRITISH NORTH AMERICA OR CANADA OR LABRADOR OR NEWFOUNDLAND	mnt-37da935c1bce	1410	mid
+missonsrn	mnt-ff44726608d8	1320	mid
+Cunningham Magisterial District, Fluvanna, Virginia	mnt-975c874fe68f	3781	mid
+HOPE TOWNSHIP 1, WILLIAMSBURG, South Carolina	mnt-5110abd136d2	1440	mid
+New York, New York, New York	mnt-2f25ff081989	53970	mid
+Park, St. Joseph, Michigan	mnt-00cb2ffcf9b5	3071	mid
+Eagle, Hancock, OH	mnt-360ebfa77a42	1288	mid
+Boligee, Greene, Alabama	mnt-c10ef76b09ef	5491	mid
+ST PAUL'S SCULCOATES, NULL, KINGSTON UPON HULL, YORKSHIRE - EAST RIDING	mnt-d309c5b8d134	3549	mid
+IRTHLINGBOROUGH, IRTHLINGBOROUGH, NULL, NULL, NORTHAMPTONSHIRE, NORTHAMPTONSHIRE	mnt-3ab72bdbf240	1273	mid
+Barnett, Warren, Georgia	mnt-d92dcb7b141e	1021	mid
+Ft. Berthold Agency, McLean, North Dakota	mnt-9a56b5ef61a4	1130	mid
+SKELTON, SKELTON, NULL, NULL, YORKSHIRE - NORTH RIDING, YORKSHIRE - NORTH RIDING	mnt-4512b7f9e98a	2604	mid
+Cleveland Cuyahoga Ohio	mnt-c6fffe887ca9	2621	mid
+Pittsfield, Washtenaw, Michigan	mnt-2054190fc20e	4936	mid
+Skaneateles Township (excl. Skaneateles villages), Onondaga, New York	mnt-e77b78b19a4e	2710	mid
+Magisterial District 3, Slaughtersville (west part) Slaughtersville, Vanderburg towns, Webster, Kentucky	mnt-05f09870b4dd	2728	mid
+LONGMONT CITY, BOULDER, Colorado	mnt-f7187a6af12a	3781	mid
+MANGOTSFIELD, SOUNDWELL, NULL, NULL, SOMERSET, SOMERSET	mnt-9f66d7fb993e	1264	mid
+Corning Township, Tehama, California	mnt-87d0e47c82c6	2269	mid
+MEXBOROUGH, NULL, Yorkshire	mnt-fcfd0e7b650d	4316	mid
+Boone Township, Douglas, Missouri	mnt-039196455fbb	2721	mid
+BARNARD CASTLE, NULL, Durham	mnt-3f95898d2174	3923	mid
+Magisterial District 4 Horse Lick, Jackson, Kentucky	mnt-c926cd660b14	2365	mid
+ST MICHAEL, BRISTOL, GLOUCESTERSHIRE, GLOUCESTERSHIRE	mnt-85cf9055ac90	5307	mid
+Creek, Lawrence, Alabama	mnt-065476aaa651	3721	mid
+MALLING, KENT, KENT	mnt-c005eb8ea9c2	7212	mid
+RIPLEY, NULL, NULL, DERBYSHIRE, DERBYSHIRE	mnt-163491e1181e	2546	mid
+HAWKSHEAD & MONK CONISTON WITH SKELWITH, ULVERSTON, LANCASHIRE, LANCASHIRE	mnt-7dc4a98dfc4f	1226	mid
+M CLENNAN, Texas	mnt-9e7dbf89ff39	4036	mid
+District 409, Habersham, Georgia	mnt-5f25f7e5fe67	1465	mid
+RICKERGATE, CARLISLE, CUMBERLAND, CUMBERLAND	mnt-65983a984394	5545	mid
+Alleghany Magisterial District, Craig, Virginia	mnt-cfcf429a97b0	1681	mid
+Sturgis, St. Joseph, Michigan	mnt-ba280592ffbc	26906	mid
+Battletown Magisterial District, Clarke, Virginia	mnt-f92110d6cf8a	6121	mid
+Amsterdam Magisterial District, Botetourt, Virginia	mnt-457bc1190f8d	14101	mid
+Edgcombe, North Carolina	mnt-9e41a9d4bfe4	1324	mid
+ST PHILIP & JACOB OUT, NULL, BRISTOL, GLOUCESTERSHIRE	mnt-5cca4dfce118	3453	mid
+Hillsboro Township, Marion, South Carolina	mnt-53b313d6a09c	1278	mid
+WADSWORTH, NULL, Yorkshire	mnt-ad1957e6f359	4284	mid
+District 1 Scranton city Ward 13, Lackawanna, Pennsylvania	mnt-de84f2d1d6d9	2006	mid
+Grosse Pointe Shores, Wayne, Michigan	mnt-91d82d5a57fb	2401	mid
+Black Walnut, Halifax, VA	mnt-97ebba2dd5c4	4525	mid
+Fairyland, Walker, Georgia	mnt-1cb1e2004287	1981	mid
+SEVENOAKS (PART OF), SEVENOAKS, SEVENOAKS, SEVENOAKS, KENT	mnt-5150b1e63071	1311	mid
+itrinia	mnt-826f2d60b6bb	1285	mid
+St. Paul and Hartford, Geneva, Alabama	mnt-fbb107f252fe	2281	mid
+ST SAVIOUR, NULL, SOUTHWARK, SURREY	mnt-1c325ca3de2c	9112	mid
+HILL TOWN, MERRIMACK, New Hampshire	mnt-d7075cb8e48f	3711	mid
+SPARTA, Sussex, NJ	mnt-37bf0a0c4fef	3093	mid
+HOLY TRINITY MICKLEGATE, YORK, YORKSHIRE - EAST RIDING, YORKSHIRE - EAST RIDING	mnt-54986eebb9ad	1241	mid
+LEVER, LITTLE, NULL, Lancashire	mnt-398f3dabbc6b	4204	mid
+MERTON, MERTON, NULL, NULL, SURREY, SURREY	mnt-01423a0ab92c	2497	mid
+ST NICHOLAS, IPSWICH, NULL, IPSWICH, SUFFOLK	mnt-19de2bdd633d	1344	mid
+Beane Mill, Lee, Alabama	mnt-84005156fc52	1021	mid
+Kingsbury, Washington, NY	mnt-db7716ecd63a	4622	mid
+NEWTON CAP, AUCKLAND, DURHAM, DURHAM	mnt-ef735bd2d0bc	1256	mid
+Justice Precinct 20 San Antonio city Ward 8, Bexar, Texas	mnt-292a88b14a39	2001	mid
+FT OMAHA OMAHA NEBRASKA	mnt-357a407647e7	1070	mid
+CIRENCESTER (PART OF, TOWN OF CIRENCESTER (PART OF), CIRENCESTER, EASTERN OR CIRENCESTER DIVISION OF GLOUCESTERSHIRE (PART OF), GLOUCESTERSHIRE	mnt-9ed1b36765d9	1302	mid
+College Heights, Darlington, South Carolina	mnt-988445c45109	3181	mid
+Mt. Vernon, KY	mnt-4b99192d7299	2098	mid
+Mt. Morris, Michigan	mnt-5889ac6b89a0	2191	mid
+Hazleton, Luzerne, Pennsylvania	mnt-ea5928a409bd	2095	mid
+Chalybeate Springs, Lawrence, Alabama	mnt-ff47d54653fe	1501	mid
+MOORHEAD CITY, MOORHEAD TOWNSHIP, CLAY, Minnesota	mnt-5cf37c629c55	3679	mid
+Judicial Township 2, Kern, California	mnt-57ac910d67e8	1089	mid
+Pine Grove, Van Buren, Michigan	mnt-226a50f54ea6	6527	mid
+Pilot Knob, Simpson, KY	mnt-982edd5f7f3e	3016	mid
+Bermuda Magisterial District, Chesterfield, Virginia	mnt-be90e74d29eb	16478	mid
+POLICE JURY WARD 1 ALEXANDRIA, RAPIDES, Louisiana	mnt-b77984b4c7b8	1437	mid
+Betts, Lamar, Alabama	mnt-70fac61aa4c3	1321	mid
+Baxter, Mountain & Marble Townships, Garland, Arkansas	mnt-3f4dfc2418a2	1136	mid
+Prince Georges, Maryland	mnt-58fd6afdcf43	1806	mid
+Ennis, Ellis, Texas	mnt-0722bd38c6bb	1162	mid
+Manassas District (north part), Prince William, Virginia	mnt-109a4f9cb1e0	1136	mid
+SCULCOATES PART OF, SCULCOATES, KINGSTON UPON HULL (PART OF), YORKSHIRE	mnt-8d81d063c6c8	3079	mid
+WINDLE, WINDLE, NULL, NULL, LANCASHIRE, LANCASHIRE	mnt-5be502faa441	1262	mid
+TETTENHALL, NULL, Staffordshire	mnt-802e30c84f00	4346	mid
+ST MARY MAGDALENE, NEW BROMPTON, NULL, CHATHAM, KENT, KENT	mnt-e7978a07f550	2476	mid
+District 1098, Pickens, Georgia	mnt-196759db5459	1165	mid
+Civil District 7, Jefferson, Tennessee	mnt-78f02b0cbf16	1168	mid
+North Mahoning Township, Indiana, Pennsylvania	mnt-6399e887d8bc	2100	mid
+ST PETER, NULL, SHAFTESBURY, DORSET	mnt-09eb5255ad8a	1004	mid
+Chester, Delaware, Pennsylvania	mnt-b595d9dd7cbe	3077	mid
+Hutchinson, Reno, Kansas	mnt-e0e4bf31c08a	1324	mid
+Schochoh, Logan, KY	mnt-927ae82e5baf	1286	mid
+ST PANCRAS PT WARD 6, NULL, MARYLEBONE, MIDDLESEX	mnt-c3fe9d1c677c	2171	mid
+MOREHEAD CITY TOWN, MOREHEAD CITY TOWNSHIP, CARTERET, North Carolina	mnt-3f504ea1f1ff	1438	mid
+Torrance State Hospital, Westmoreland, Pennsylvania	mnt-66de3d032ffb	4741	mid
+Pennington, NJ	mnt-798656e9d2b5	1704	mid
+Plymouth, Luzerne, Pennsylvania	mnt-16f82932a975	1139	mid
+Crabtree Township, Yancey, North Carolina	mnt-d10f90c8cb13	1646	mid
+outside Praco, Jefferson, Alabama	mnt-11228e988019	1021	mid
+Hazelwood, Chester, South Carolina	mnt-c972604de1f9	1981	mid
+Morris Chapel, Lawrence, Alabama	mnt-e95884cb23ce	2041	mid
+Bridgewater, Washtenaw, Michigan	mnt-f40bd90d2912	5538	mid
+Precinct 5 St. Louis city Ward 19, St. Louis, Missouri	mnt-259ff56bcb1f	1137	mid
+WOLSTANTON, STOKE UPON TRENT, Staffordshire	mnt-1a4d9e2fc62d	4061	mid
+Wales, St. Clair, Michigan	mnt-4550c5271b03	1621	mid
+Charleston District, Precinct 5 Boston city Ward 3, Suffolk, Massachusetts	mnt-15af6ce07977	2708	mid
+LEICESTER PART OF ST MARY (PART OF), LEICESTER, LEICESTER (PART OF), LEICESTERSHIRE	mnt-69efe9483898	1300	mid
+Rutland, Jefferson, NY	mnt-b18ab415dbde	1370	mid
+Burke, Caledonia, VERMONT	mnt-428711ce3c31	2275	mid
+La Fayette, Walker, Georgia	mnt-9cf15b9af91d	12121	mid
+Newman Swamp, Darlington, South Carolina	mnt-dd2da59a4bbe	1741	mid
+DOVER (PART OF), DOVER, DOVER, DOVER (PART OF), KENT	mnt-b3ca87e2f744	2919	mid
+District 70, Burke, Georgia	mnt-82428e34ae72	1163	mid
+Osage Township, Bates, Missouri	mnt-eccffa3b6466	5815	mid
+Jennings Township, Scott, Indiana	mnt-ea5cb57a3928	4082	mid
+RUSHALL, NULL, WALSALL, STAFFORDSHIRE, STAFFORDSHIRE	mnt-e9a20b683d3e	1274	mid
+RODBOROUGH, NULL, STROUD, GLOUCESTERSHIRE, GLOUCESTERSHIRE	mnt-a4b8bd7f053f	1252	mid
+Oconee, Washington, Georgia	mnt-67829b1a0764	2221	mid
+ST NICHOLAS, NULL, YARMOUTH, NORFOLK	mnt-e9f40f215a0f	4871	mid
+Grant district, Cabell, West Virginia	mnt-581e0da37c8c	1168	mid
+inania	mnt-f8fd253203c3	1281	mid
+Marshall Magisterial District, Fauquier, Virginia	mnt-b1066bed2434	6901	mid
+Elizabeth, Lawrence, OH	mnt-4363e1dc0f27	4586	mid
+Basking Ridge, NJ	mnt-2ed6688f5640	1874	mid
+CITY OF NEBRASKA CITY, OTOE, Nebraska	mnt-e03cb4b0f384	3690	mid
+Saline Township, Hempstead, Arkansas	mnt-e3cdb13de915	6411	mid
+GALION CITY, POLK, CRAWFORD, Ohio	mnt-83d2a597f5ef	3740	mid
+Precinct 23 Union (north & east part), Dallas, Alabama	mnt-e7a0bea92fe7	1145	mid
+Scott, Henry, IA	mnt-b1034cd03148	1314	mid
+ST NICHOLAS, NULL, WARWICK, WARWICKSHIRE	mnt-c302470ef96d	1773	mid
+Porter, Van Buren, Michigan	mnt-20c4ac169ae6	3481	mid
+GOWAN FLD BOISE IDAHO	mnt-a7557a228b29	1053	mid
+Sugar Creek, Putnam, OH	mnt-cccd18cad1d7	1301	mid
+ST NICHOLAS, GREAT YARMOUTH, NULL, GREAT YARMOUTH, NORFOLK	mnt-6275b45aa559	5598	mid
+BURTONWOOD, NULL, NULL, LANCASHIRE, LANCASHIRE	mnt-b5193108024f	1269	mid
+ST PHILLIPS, NULL, MANCHESTER, LANCASHIRE	mnt-15bfaaf478aa	1198	mid
+Curdsville Magisterial District, Buckingham, Virginia	mnt-688a438d42e4	5761	mid
+Willis Magisterial District, Dickenson, Virginia	mnt-e7716918419d	10141	mid
+WILTON, NULL, WILTON, WILTSHIRE, WILTSHIRE	mnt-894ae9e6e612	1273	mid
+Burle, Burke, North Carolina	mnt-6405c6ec7ce1	1185	mid
+Caseyville Township Caseyville Village, St. Clair, Illinois	mnt-0f3257298a7d	2010	mid
+SOUTHOVER, LEWES, SUSSEX, SUSSEX	mnt-e05b87e167ba	1267	mid
+Marion Township, Hendricks, Indiana	mnt-a59c2f07f45a	3593	mid
+Bridgeport, Fairfield, Connecticut	mnt-a54ec32516c1	1883	mid
+Washington Township, Sonoma, California	mnt-e0eeaef6d7d0	1261	mid
+Randallstown, MD	mnt-981d40a3826e	1937	mid
+White Pigeon, St. Joseph, Michigan	mnt-f442c93247dd	6769	mid
+isors	mnt-9701f1466efb	1297	mid
+Ft. Lewis, WA	mnt-e42662937799	5198	mid
+TRAMMERE, NULL, BIRKENHEAD, CHESHIRE, CHESHIRE	mnt-636c82e632ab	2627	mid
+Election Precinct 17 Cane Creek, Clarke, Alabama	mnt-2b596c7a91e8	1379	mid
+Blackburn, Lauderdale, Alabama	mnt-09273b943c4f	1801	mid
+WESTBURY, WESTBURY, Wiltshire	mnt-1978eb407c56	4095	mid
+SHIERE, GUILDFORD, SURREY, SURREY	mnt-dcff95b1014b	1282	mid
+Mount Pleasant, Wayne, Georgia	mnt-276c24af8604	2812	mid
+Election Precinct 8 Big Creek, Limestone, Alabama	mnt-4cf6ea6746da	1169	mid
+La Crosse city Ward 8, La Crosse, Wisconsin	mnt-324c9009c935	2860	mid
+ST CLEMENT, FINSBURY, London-Middlesex	mnt-73a5cfa7cba2	3963	mid
+STOWMARKET, NULL, Suffolk	mnt-cfd323bea0c6	4098	mid
+TOXTETH PARK, TOXTETH PARK, LIVERPOOL E TOXTETH, LIVERPOOL C B	mnt-411bdb556366	1302	mid
+Icard, Burke, NC	mnt-1edab11d4211	1281	mid
+LLANELLY, HENGOED, NULL, NULL, CARMARTHENSHIRE, CARMARTHENSHIRE	mnt-2920fc594302	2619	mid
+Sharon Magisterial District, Bland, Virginia	mnt-48482b875fb2	2041	mid
+CP PLAUCHE NEW ORLEANS LOUISIANA	mnt-69138ab2bd95	1090	mid
+KEIGHLEY YORKSHIRE, KEIGHLEY, OTLEY YORKSHIRE, YORKSHIRE	mnt-62d0bb76460c	1310	mid
+Monroe Township Malinta village, Henry, Ohio	mnt-b38d5cf5365b	2007	mid
+Athens, Clarke, Georgia	mnt-450b326c1d40	1206	mid
+virviginia	mnt-153ed12b1535	1307	mid
+West Omaha Precinct (incl. St. James Orphanage) Dundee & Benson villages, Douglas, Nebraska	mnt-e03bc0f5c461	1801	mid
+Bacon Magisterial District, Charlotte, Virginia	mnt-28d3cd48514a	7261	mid
+newhsia	mnt-fe465c62c995	1282	mid
+KENWYN, NULL, Cornwall	mnt-015b39dc45cd	4348	mid
+BARDSTOWN, Nelson, KY	mnt-adfbc189b407	7957	mid
+William Penn, Schuylkill, Pennsylvania	mnt-d37410fe25fe	3056	mid
+Fairview Township, Frontier, Nebraska	mnt-cf4779e7aebf	1173	mid
+LINCOLN TOWNSHIP, OKFUSKEE, Oklahoma	mnt-1f081e1c0acc	1442	mid
+Platteville, Grant, WI	mnt-ff936042808f	3813	mid
+MILITIA DISTRICT 417 BUN CONLIE, WALTON, Georgia	mnt-974701e80093	1439	mid
+99	mnt-9a79be611e02	2593	mid
+Civil Districts 7, 15, Franklin, Tennessee	mnt-29f97cd0f513	1143	mid
+SELINS GROVE, Snyder, PA	mnt-5dfde76faf80	1429	mid
+HACKNEY (PART OF), HACKNEY, CENTRAL DIVISION OF HACKNEY PARLIAMENTARY, LONDON	mnt-df5460011a5b	1304	mid
+Pittsburgh Allegheny Pennsylvania	mnt-3ba4642a6f2c	1104	mid
+WALSALL FOREIGN, WALSALL, NULL, WALSALL, STAFFORDSHIRE, STAFFORDSHIRE	mnt-66a9e62bd559	1261	mid
+Palmer Township, PA	mnt-cd4cf323c619	1907	mid
+Cross Roads, Lauderdale, Alabama	mnt-ab55f178948e	2521	mid
+Powellton Magisterial District, Brunswick, Virginia	mnt-6817b7a4c3a0	5161	mid
+TOWN AND LIVERTIES OSWESTRY, OSWESTRY, SHROPSHIRE, SHROPSHIRE	mnt-62cf0f1d0c67	1277	mid
+TYLDESLEY WITH SHACKERLEY (PART OF), LEIGH, LANCASHIRE, LANCASHIRE	mnt-30d1dd4f5330	1263	mid
+ST STEPHEN, NULL, NULL, HERTFORDSHIRE	mnt-0aea65791269	1595	mid
+EATON BRAY, EATON BRAY, NULL, NULL, BEDFORDSHIRE, BEDFORDSHIRE	mnt-d40f5bdeb511	1275	mid
+Spring Hill, Hickman, Kentucky	mnt-78e8a85304d4	1352	mid
+TEIGNMOUTH, WEST, NULL, Devon	mnt-81c6e6531fa1	4308	mid
+North Clinton Township Clinton town (prt.), Sampson, North Carolina	mnt-5aebc4f3d09c	2269	mid
+RYHOPE, NULL, Durham	mnt-5b72cb96b271	4019	mid
+Washington Township, Jasper, Iowa	mnt-e8040e80f721	3588	mid
+Tishabee, Greene, Alabama	mnt-2cdec019c621	3621	mid
+Cohutta, Whitfield, Georgia	mnt-9aeb7772791c	2161	mid
+Geneva, Van Buren, Michigan	mnt-33c263f04849	3721	mid
+Pajaro Judicial Township, Santa Cruz, California	mnt-5e0a57777203	1156	mid
+Precinct 14 City of St. Louis Ward 1, St. Louis, Missouri	mnt-5e30ab7f836c	1142	mid
+Hootenville, Upson, Georgia	mnt-2ea808e68e5c	1087	mid
+YEARDSLEY CUM WHALEY, NULL, NULL, CHESHIRE, CHESHIRE	mnt-d715728c1925	1273	mid
+BUXTON PART OF, BUXTON, CHAPEL EN LE FRITH, HIGH PEAK (PART OF), DERBYSHIRE	mnt-21a96ee3d09c	1308	mid
+Precinct E Cincinnati City Ward 13, Hamilton, Ohio	mnt-4d684fd64311	2000	mid
+Roanoke Magisterial District, Charlotte, Virginia	mnt-41b0f1821d86	10681	mid
+MENFI	mnt-ccad35a6121c	1028	mid
+DARWEN, LOWER, NULL, Lancashire	mnt-075206c932d1	3876	mid
+Justice Precinct 5, Victoria, Texas	mnt-5f22b5a99fb2	1170	mid
+VILLISCA, Montgomery, IA	mnt-cc6be3753a81	1299	mid
+Marietta, Washington, Ohio	mnt-87ad4ff04157	1170	mid
+White Creek, White, Georgia	mnt-6bd42dab944f	1921	mid
+Canton, Fulton, Illinois	mnt-d05d716a43a2	1094	mid
+Elkland, Tuscola, Michigan	mnt-bb7480c58772	1741	mid
+Carrol, Freeo & Union Townships Bearden town, Ouachita, Arkansas	mnt-d73c52bafb18	2008	mid
+Fredricksburg, VA	mnt-bbf7778816b2	10043	mid
+Paris, Edgar, IL	mnt-7c515d28f510	3669	mid
+Eden, Alameda, CA	mnt-ffec4fe30873	4448	mid
+Belleview & Carlin Preciencts, Calhoun, Illinois	mnt-c78ba54da0f9	2002	mid
+ERITH, DARTFORD, DARTFORD, KENT	mnt-09d27e662872	2992	mid
+Ft. Rucker, Alabama	mnt-c89cbcec0a09	8070	mid
+LOWER BEBINGTON, WIRRAL, CHESHIRE, CHESHIRE	mnt-cafeb7ef7d58	5191	mid
+iaoia	mnt-97935c1e009f	1298	mid
+Temple city Ward 2, Bell, Texas	mnt-4470a8471154	2720	mid
+ST OSWALD, NULL, CHESTER, CHESHIRE	mnt-c2444892446a	4735	mid
+Scott Magisterial District, Fauquier, Virginia	mnt-77b9ba0073b6	10141	mid
+POULTON CUM SEACOMBE, NULL, Cheshire	mnt-0041640726de	4094	mid
+District 463, Newton, Georgia	mnt-825fc1144caf	1278	mid
+EDWARDSVILLE CITY, MADISON, Illinois	mnt-2201f1b3e03a	1494	mid
+Ft. Gibson, OK	mnt-f1bd72a268b2	9732	mid
+Washington, Crawford, KS	mnt-ae7f1638c306	1282	mid
+Precinct 3 St. Louis city Ward 23, St. Louis, Missouri	mnt-1849b6c260c4	1132	mid
+ROTHWELL, HUNSLET, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-a6be10692e1e	6284	mid
+Buffalo Lick Township, Chariton, Missouri	mnt-1b7eb62542d9	1890	mid
+Columbia Magisterial District, Fluvanna, Virginia	mnt-28be427e79b7	3001	mid
+Rockwood, Wayne, Michigan	mnt-7bb931696cb1	2341	mid
+Saline, Perry, MO	mnt-24e52dccc944	1332	mid
+minsuika	mnt-a7ba10f6b6bb	1310	mid
+Crows Nest, Westmoreland, Pennsylvania	mnt-59c357f6c4ab	1741	mid
+Deer Park, NY	mnt-b82c89b2ea07	1793	mid
+Sand Lick Magisterial District, Dickenson, Virginia	mnt-ce41b9a873b6	9781	mid
+FORMBY WALTON ON THE HILL, ORMSKIRK, LANCASHIRE, LANCASHIRE	mnt-9967b5048806	5943	mid
+Choestoe, Union, Georgia	mnt-7a39d8019814	2702	mid
+Centralborough, Somerset, Pennsylvania	mnt-f9e5780f5226	4261	mid
+Massapequa Park, NY	mnt-5228df7ab76e	1767	mid
+Precinct 19 City of St. Louis Ward 1, St. Louis, Missouri	mnt-9f40fbe7cb12	1138	mid
+THORPE NEXT NORWICH, BLOFIELD UNION, NORFOLK, NORFOLK	mnt-f725af3646a4	1317	mid
+Shamokin borough Ward 4, Northumberland, Pennsylvania	mnt-7289e0e66b8f	2714	mid
+Mill Creek Township, Putnam, Indiana	mnt-05e4ce3b6fdd	1087	mid
+Precinct 9 St. Louis city Ward 24, St. Louis, Missouri	mnt-266a3194419e	1148	mid
+BRIGHTON, NULL, Sussex	mnt-ea949a8f2861	3897	mid
+Spencer, Aitkin, Minnesota	mnt-71df71057728	1021	mid
+Doyle, Marion, KS	mnt-00740e89f41b	1283	mid
+BOGOTA BOROUGH, BERGEN, New Jersey	mnt-cef1e5228eed	3740	mid
+Cicero, Cook, Illinois	mnt-6ecef7816db2	2339	mid
+Jackson Township, Shelby, Indiana	mnt-bd16dbd71302	3681	mid
+ihwo	mnt-39c25b2872d7	1323	mid
+Ashland City, TN	mnt-07f074dff926	1833	mid
+FAYETTEVILLE CITY, PRAIRIE TOWNSHIP, WASHINGTON, Arkansas	mnt-645eb03351bc	3702	mid
+Precinct 2 St. Louis city Ward 12, St. Louis, Missouri	mnt-8b0a7ac051b2	1134	mid
+Lake, Florence, South Carolina	mnt-08711999beea	8041	mid
+Liberty Township, North election Precinct, Highland, Ohio	mnt-d5756b55af86	2010	mid
+Champagnolle Township, Calhoun, Arkansas	mnt-866218a64fa8	1482	mid
+Garden, Wayne, Michigan	mnt-30706e2e6ed6	18961	mid
+Bickley, Ware, Georgia	mnt-c68131b19c6f	1921	mid
+4TH CIVIL DISTRICT, MEIGS, Tennessee	mnt-11c2dcf95c6d	1440	mid
+Upper Young Cane, Union, Georgia	mnt-3e3250f6c401	1381	mid
+Precinct 1, Hopkins, TX	mnt-0725883f170f	4510	mid
+Pleasant Valley Township, Wilson, Kansas	mnt-fbbeecef6508	1350	mid
+Lockport, St. Joseph, Michigan	mnt-38e2df0b7169	2161	mid
+Granville Township Granville village, Washington, New York	mnt-d97927ab78db	2700	mid
+JACKSONVILLE CITY, E P 13 B, DUVAL, Florida	mnt-cbae0c303ebe	1438	mid
+St. Clair District (St. Clair Bottom Precinct), Smyth, Virginia	mnt-dd5e554438ba	1143	mid
+SHELBINA, Shelby, MO	mnt-c1a2b6edebcf	1830	mid
+STROUD PT OF, STROUD, GLOUCESTERSHIRE, GLOUCESTERSHIRE	mnt-96c913a4d75a	5675	mid
+BRADFORD CUM BESWICK PART OF, PRESTWICH, LANCASHIRE, LANCASHIRE	mnt-9690694e0160	1322	mid
+SOHAM, NULL, Cambridgeshire	mnt-789c78db2480	4282	mid
+Meadville, Franklin, MS	mnt-55d7ceca6f56	1298	mid
+inniy	mnt-e197c4909778	1309	mid
+Wards 4-5, Cameron, Louisiana	mnt-8366f515aadd	1169	mid
+Marshal, Cumberland, Pennsylvania	mnt-713ec6579baf	1729	mid
+missiippa	mnt-386529c0f9ec	1297	mid
+Southfield, Richmond, NY	mnt-7ac9e3270edf	1303	mid
+Tulare Judicial Township, San Joaquin, California	mnt-0a9d24da2894	4117	mid
+Nottawa, St. Joseph, Michigan	mnt-2a04ae456689	4290	mid
+Big Creek Township, Craighead, Arkansas	mnt-bd031c2aa427	2006	mid
+Waynesville Township Waynesville town, Haywood, North Carolina	mnt-7a32dadf16d1	2009	mid
+Granger, IN	mnt-d6f23c7ff0fc	1888	mid
+FORMERLY NORTH EVINGTON LEICESTER (PART OF), LEICESTER, EASTERN OR MELTON (PART OF), LEICESTER	mnt-7b25bea3e072	1302	mid
+BRENTWOOD CITY, JEFFERSON TOWNSHIP, ST LOUIS, Missouri	mnt-1107647b7750	3639	mid
+WAYLAND, NORFOLK, NORFOLK	mnt-45fd351fa15e	1240	mid
+Oxford, Warren, NJ	mnt-bdb00622474c	4597	mid
+Smith Township, Drew, Arkansas	mnt-ab1ba3b8120b	1190	mid
+Clay Township, Dearborn, Indiana	mnt-0cefb1ebd33c	3672	mid
+Weippe, Lolo, Oro Precincts, Shoshone, Idaho	mnt-345230a16322	1133	mid
+Maspeth, Queens, New York	mnt-ccef91caf755	1112	mid
+District 1205, Fannin, Georgia	mnt-6ea66f9b6b92	1781	mid
+ST JAME'S, DOVER, KENT, KENT	mnt-33131c3d04c7	1257	mid
+Shamrock, Aitkin, Minnesota	mnt-ddd923f0470d	4501	mid
+Homer Township, Will, Illinois	mnt-4c1d22d248ba	3141	mid
+Watts Township, Perry, Pennsylvania	mnt-cad55a667fbf	1505	mid
+NULL, Todd, Kentucky	mnt-2178bb2a4a36	8791	mid
+Dicks Township, Woods, Oklahoma Territory	mnt-102767f82c50	1144	mid
+Cleveland, Cuy, Ohio	mnt-ff1c4358e664	1042	mid
+Murray County, GA	mnt-58bcd9b677f2	4466	mid
+Richview, Washington, IL	mnt-9b78d0fb84f1	1289	mid
+CHARLOTTE T 1, CHADWICK HOSKINS, MECKLENBURG, North Carolina	mnt-8f7db8ecba86	1436	mid
+YEADON (PART OF), WHARFEDALE, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-f9bbb44888cf	7555	mid
+Beat 2, Warren, MS	mnt-2eada65af447	4531	mid
+SAXONY COBURG GOTHA	mnt-71df14740422	1325	mid
+ST PANCRAS, LONDON, NULL, MARYLEBONE, MIDDLESEX	mnt-061dd0dbd1bb	1942	mid
+Roxana, Lee, Alabama	mnt-20d9179fbce6	1321	mid
+Marblehead, Middlesex, Massachusetts	mnt-5e4dba5b6239	1283	mid
+Pinckney, Union, SC	mnt-a16506e279f7	3125	mid
+WYKE, BRADFORD (YORKS), YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-d36347abccec	5934	mid
+St James Township Hibbard, anniston & Whiting villages, Mississippi, Missouri	mnt-892d9583683f	2700	mid
+PLUMSTEAD PART, WOOLWICH, LONDON, LONDON	mnt-8c82c5849f44	7971	mid
+ENFIELD TOWN, THOMPSONVILLE, HARTFORD, Connecticut	mnt-d012e5ded9d2	3674	mid
+LINDLEY, HUDDERSFIELD, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-b423d74efd8f	7571	mid
+Hillvillage, Aitkin, Minnesota	mnt-d197516be192	1081	mid
+ALL SAINTS, DERBY, Derbyshire	mnt-b1886e55bddf	3893	mid
+BURY, NULL, LANCASTER	mnt-d6e8de2be449	1309	mid
+Precinct 6 Mount Hope (south part), Lawrence, Alabama	mnt-c0475a027d6a	1141	mid
+Geneva city Ward 2, Ontario, New York	mnt-1f5d3b22f5f0	2003	mid
+Colon, St. Joseph, Michigan	mnt-7de9dc4250cd	5227	mid
+Buncombe, Walton, Georgia	mnt-6bc51b441e11	4321	mid
+HEDWORTH & J, SOUTH SHIELDS, DURHAM, DURHAM	mnt-287f3545d51a	1231	mid
+ST PETER, IPSWICH, Suffolk	mnt-1d433531be9e	3832	mid
+Precinct 1, Lamar, TX	mnt-3c7d94960a1d	4617	mid
+Ft. Kent, Maine	mnt-bcbfe16c8196	6093	mid
+Grow, Anoka, Minnesota	mnt-9c2c97fd8ad5	1621	mid
+Franklin Township, Putnam, Indiana	mnt-55e435eafb85	2483	mid
+Saline, Madison, IL	mnt-a2b39c4a42b6	1287	mid
+South Gibson, Gibson, TN	mnt-d8f17dbe84c0	1376	mid
+new mota	mnt-6b67fddc190b	1290	mid
+OWENSVILLE, CANNON, GASCONADE, Missouri	mnt-467506110f43	1439	mid
+Darvills Magisterial District, Dinwiddie, Virginia	mnt-6b670feb93b2	4741	mid
+Cut Off, Miller, AR	mnt-fba3a8af4bae	1297	mid
+Lee Magisterial District, Fairfax, Virginia	mnt-ebede5521d4b	13021	mid
+Ft. Myers, Florida	mnt-123eb484e6bd	1839	mid
+Civil District 4, Cocke, Tennessee	mnt-7087d1044cea	1129	mid
+Precinct 27 Vernon, Dallas, Alabama	mnt-f497d5e10d72	1146	mid
+Precincts 1-2 Pojoaque, Tesuque, Santa Fe, New Mexico Territory	mnt-8aacd59b6246	1142	mid
+Jefferson, Madison, OH	mnt-e4ba762c4c46	1295	mid
+ST COLUMB MAJOR, ST COLUMB, NULL, NULL, CORNWALL, CORNWALL	mnt-5e262147e467	1256	mid
+GLASGOW & LONDONDERRY	mnt-3e408f4c7af8	2214	mid
+Nordland, Aitkin, Minnesota	mnt-aa32e750fb5f	1561	mid
+ST GILES, CAMBRIDGE, CAMBRIDGESHIRE, CAMBRIDGESHIRE	mnt-45030e933c41	1300	mid
+MEDITERRANEAN PORTS, TRIESTE & PALERMO	mnt-c5305df3108b	1258	mid
+Grand Rapids, Kent, Michigan	mnt-6172a5f906ee	8647	mid
+Baltimore Town, Kent, Maryland	mnt-a5ea7dd4f1c8	2090	mid
+Ramsey, NJ	mnt-b11391d88208	1843	mid
+Lee, Florence, South Carolina	mnt-7306183a3ebc	2941	mid
+District 1459, Terrell, Georgia	mnt-2661f09f7fd0	1154	mid
+Kellytown, Darlington, South Carolina	mnt-083805900dfa	1741	mid
+St. Vincent Archabbey of the Order of St. Benedict, Westmoreland, Pennsylvania	mnt-d22d360372de	1081	mid
+Burlington, Chittenden, Vermont	mnt-6f18815bf287	1377	mid
+Penn, Allegheny, PA	mnt-53a9bd5ddc36	2962	mid
+Gaddistown, Union, Georgia	mnt-ffae248b73f8	1515	mid
+Pleasant Hills, PA	mnt-ff7b8d5740f8	1789	mid
+Francisco Magisterial District, Buckingham, Virginia	mnt-f483bb1ce052	1801	mid
+DODBROOKE, KINGSBRIDGE, DEVONSHIRE, DEVONSHIRE	mnt-bce4bebf8c64	1314	mid
+Precinct 3 Omaha city Ward 6, Douglas, Nebraska	mnt-18d6399ea06e	1951	mid
+Linville District (west part) Singersglen town, Rockingham, Virginia	mnt-4a0fd9655f1a	2152	mid
+Civil District 13, Greene, Tennessee	mnt-71f4167daaf7	1146	mid
+BOLTON (PART OF), BOLTON, BOLTON (PAR OF), LANCASHIRE BOLTON C B	mnt-55f714b64ba4	1316	mid
+Casco Township, Allegan, Michigan	mnt-c18367f04aa0	5286	mid
+KNARESBROUGH, KNARESBROUGH, Yorkshire	mnt-27dc49e18869	3938	mid
+MIDDLETON, HUNSLET, YORKSHIRE - WEST RIDING, YORKSHIRE - WEST RIDING	mnt-bd166a5ab340	1248	mid
+Precinct 3 Fruitvale town, Alameda, California	mnt-d191426d22b7	2700	mid
+Beat 5 Southeast Heidelberg village, Jasper, Mississippi	mnt-b0863656b6be	1640	mid
+Salt Lick, Braxton, WV	mnt-fcb782627dd7	1556	mid
+ST PETER THE GREAT, WORCESTER, WORCESTERSHIRE, WORCESTERSHIRE	mnt-65fb5e5a1aba	7536	mid
+ST PETER, BEDFORD, NULL, BEDFORD, BEDFORDSHIRE	mnt-4b9f631888ad	2271	mid
+TYLDESLEY WITH SHAKERLEY (PART OF), LEIGH, LEIGH, LANCASHIRE	mnt-feb45daafc78	3106	mid
+STOKE UPON TRENT, NULL, STOKE ON TRENT, STAFFORDSHIRE, STAFFORDSHIRE	mnt-57f7ab02407f	1274	mid
+ST AUGUSTINE, BRISTOL, GLOUCESTERSHIRE, GLOUCESTERSHIRE	mnt-b7688e962df9	7438	mid
+LPOOL, NULL, L POOL, LANCASHIRE, LANCASHIRE	mnt-a2438bab6538	2606	mid
+RUGBY (PART OF), RUGBY (PART OF), RUGBY, SOUTH EASTERN OR RUGBY DIVISION OF WARWICKSHIRE (PART OF), WARWICKSHIRE	mnt-424a70db40d0	3145	mid
+SEWARD CITY, Seward, NE	mnt-560b588b7ec5	1359	mid
+Beat 2 West Station town, Holmes, Mississippi	mnt-6aec8654c2da	2050	mid
+Koger, Dorchester, South Carolina	mnt-d7170c511ba0	4741	mid
+Batavia, Genesee, New York	mnt-472b79d8e056	1108	mid
+MESSINA & NAPLES	mnt-addaaf84cc08	1175	mid
+WALSALL FOREIGN (PART OF), WALSALL, STAFFORDSHIRE, STAFFORDSHIRE	mnt-3978c522f1d7	1315	mid
+HAMBURG, HAVANA, HAVRE & SANTANDER	mnt-ead61410e5b3	1316	mid
+MORRISON FIELD WEST PALM BEACH FLORIDA	mnt-5235179a318a	1106	mid
+Beat 5 (part) Shannon town, Lee, Mississippi	mnt-2bafc0c0a30a	2055	mid
+FreedomChelsea, Washtenaw, Michigan	mnt-24ced2a14dab	2341	mid
+Lake Placid, FL	mnt-faa566a0f4dc	1859	mid
+Chicago, Cook,� Illinois	mnt-a2cd1706db01	1047	mid
+Mt. Olive, Jefferson, Alabama	mnt-e346fdebb098	1621	mid
+Election Districts 3, 1-2 Newburgh city Ward 4, Orange, New York	mnt-0567a3d0919d	1999	mid
+teoia	mnt-8e2864b08ac2	1293	mid
+MCALLEN CITY, J P 3, HIDALGO, Texas	mnt-785718bc35f1	3683	mid
+Catawba Springs Township (north part) Denver vill., Lincoln, North Carolina	mnt-5d58de12d878	2005	mid
+South Orange, Essex, NEW JERSEY	mnt-82c745f456fa	2977	mid
+CARSHALTON, CARSHALTON, NULL, NULL, SURREY, SURREY	mnt-b34c6f20a489	2643	mid
+Douglas Precinct Spokane city Ward 4, Spokane, Washington	mnt-6e128ef0a8ce	2717	mid
+NULL, Wilson, North Carolina	mnt-4ef6e6366347	2954	mid
+Erie, Pa.	mnt-44a4a98f94e6	1850	mid
+Chattahoochee, White, Georgia	mnt-13a8f0ee0ce0	1201	mid
+Southern, Williamson, IL	mnt-feffdeb1bf30	1647	mid
+Central Magisterial District, Charlotte, Virginia	mnt-04773bad1ef8	3061	mid
+ONCHAN, DOUGLAS, NULL, NULL, ISLE OF MAN, ISLE OF MAN	mnt-1419fa4ef489	2526	mid
+Atlas, Lauderdale, Alabama	mnt-5ea503006a2c	1561	mid
+Williamsport city Ward 6, Lycoming, Pennsylvania	mnt-7d784739e2f2	2701	mid
+Ithaca city Ward 2, Tompkins, New York	mnt-cb9e0c089327	2270	mid
+kensky	mnt-9be24df68b12	1325	mid
+Gaskill Township, Jefferson, Pennsylvania	mnt-7b002ae9c5b3	1814	mid
+Militia Districts 55-56, 1266, Kite, Pullens, Smith Kite & Adrian (part) towns, Johnson, Georgia	mnt-f2961d1e6cb0	2706	mid
+AMORY, 12, MONROE, Mississippi	mnt-563e13aea2fb	1443	mid
+MIDDLESBRO, MBRO, NULL, MBRO, YORKSHIRE - NORTH RIDING, YORKSHIRE - NORTH RIDING	mnt-62055b414e68	1254	mid
+COMO TWP, NEW MADRID, Missouri	mnt-a6f37310d613	3701	mid
+Mt. Lebanon, PA	mnt-67fd76c541f3	1143	mid
+Garfield Heights, OH	mnt-31f8f249c8b3	1907	mid
+Lafayette Township, Ogle, Illinois	mnt-c80475674002	2055	mid
+PLEASLEY, MANSFIELD, NOTTINGHAMSHIRE, NOTTINGHAMSHIRE	mnt-c11e67b24838	1262	mid
+ESKDALESIDE CUM UGGLEBARNBY, WHITBY, YORKSHIRE - NORTH RIDING, YORKSHIRE - NORTH RIDING	mnt-9965d07edce2	1305	mid
+Upper Mahantango, Schuylkill, Pennsylvania	mnt-f979949fc0c2	1021	mid
+Logansport, Cass, Indiana	mnt-108637a7117d	1973	mid
+Precinct 2 City of St. Louis Ward 1, St. Louis, Missouri	mnt-8c2178c1f103	1134	mid
+Holland Store, Houston, Alabama	mnt-8feb36de6b54	2221	mid
+ST PETER, NULL, CARMARTHEN, CARMARTHENSHIRE	mnt-d7ceef13bd57	1031	mid
+Rock Lick Magisterial District, Buchanan, Virginia	mnt-7436b909f069	5281	mid
+Bonbrook Magisterial District, Franklin, Virginia	mnt-9f864f161485	3961	mid
+MCKINNEY CITY, J P 1, COLLIN, Texas	mnt-06de9983213c	3653	mid
+Palos Hills, IL	mnt-972ad1450dd4	1831	mid
+Spring Valley Township, Greene, Ohio	mnt-fb174fc0ed17	2207	mid
+ST NICHOLAS, GT YARMOUTH, NULL, GT YARMOUTH, NORFOLK	mnt-98ba90f69d31	9426	mid
+ELECTION DISTRIC {HASH} 29 LA VALE, ALLEGANY, Maryland	mnt-c5faa8c14c9b	1440	mid
+Rochester city Ward 5/6, Strafford, New Hampshire	mnt-29d8d42de426	2702	mid
+Fancy Gap Magisterial District, Carroll, Virginia	mnt-c69283027e40	8041	mid
+missaouri	mnt-2e881f58cc71	1295	mid
+Peoria Township, District 6 Peoria city (South Peoria village) Ward 7, Peoria, Illinois	mnt-befff2fccb6e	2703	mid
+PETERSTON SEY, CARDIFF, GLAMORGANSHIRE, GLAMORGANSHIRE	mnt-715badcd4086	1248	mid
+VALLEJO CITY, SOLANO, California	mnt-b1f755115fa9	3766	mid
+EARLS BARTON, EARLS BARTON, WELLINGBOROUGH, EAST NORTHANTS, NORTHAMPTONSHIRE	mnt-7b13dc68c098	2990	mid
+HARTHILL WITH WOODALL, WORKSOP, NOTTINGHAMSHIRE, NOTTINGHAMSHIRE	mnt-a231947bfecd	1309	mid
+Mt. Carmel, IL	mnt-178a2f5c15fb	1225	mid
+ST STEPHENS, NULL, NULL, CORNWALL	mnt-7570d925a4ef	3286	mid
+Justice Precinct 7, San Jacinto, Texas	mnt-3474a49e31dc	1161	mid
+Antoine Township, Clark, Arkansas	mnt-1acd5fc7baa4	1404	mid
+KREBS CITY, ALDERSON TOWNSHIP, PITTSBURG, Oklahoma	mnt-eb07442257ee	1435	mid
+Erick, Wheeler, Georgia	mnt-cbbda6c97781	1861	mid
+MORLEY (PART OF), MORLEY (PART OF), DEWSBURY, MORLEY YORKSHIRE (PART OF), YORKSHIRE	mnt-5bb0089945f8	1315	mid
+ST SAMPSONS, NULL, NULL, GUERNSEY	mnt-d4f8bdc654f0	2995	mid
+Patton Township, Ford, Illinois	mnt-647167a781f6	2658	mid
+Gravelly Springs, Lauderdale, Alabama	mnt-e1f07292df12	1141	mid
+Beat 1 Clinton town, Hinds, Mississippi	mnt-c8778b1fd349	1871	mid
+HORNSEA WITH BURTON, SKIRLAUGH, HOLDERNESS EAST YORKSHIRE, YORKSHIRE	mnt-ecca27bcc3df	1310	mid
+AMSTERDAM & BOLOGNE	mnt-db63b30d11d6	1539	mid
+ISERNIA	mnt-04ae0d7416cb	1388	mid
+Chesapeake Magisterial District outside North Hampton, Elizabeth City, Virginia	mnt-80e7366a99e3	30781	mid
+Sullivans Island, Charleston, South Carolina	mnt-06e6c3845a5b	3961	mid
+NETHERHALL, MARYPORT, COCKERMOUTH, COCKERMOUTH, CUMBERLAND	mnt-c6ec9ebf969b	3064	mid
+ST MARYS, NULL, FINSBURY, LONDON, LONDON	mnt-7d48283008bc	2519	mid
+LEOMINSTER, NULL, LEOMINSTER, HEREFORDSHIRE, HEREFORDSHIRE	mnt-0780c4fc3037	1250	mid
+Nance County, NE	mnt-1e4d1284d319	3135	mid
+CREWKERNE, NULL, Somerset	mnt-0204862a0a4c	4084	mid
+Precincts 17-18, Anthony, Martin & Precinct 20, Blitchton Anthony town, Marion, Florida	mnt-763fd12268fe	2003	mid
+Saulston, Wayne, NC	mnt-58302cdf03cb	1511	mid
+ST SAVIOUR, NULL, NULL, NORFOLK	mnt-3864ad730251	1512	mid
+Ft. Meade, FL	mnt-43bac2ccf14b	5397	mid
+Fairfield Township, Lycoming, Pennsylvania	mnt-7a05a23e8ccd	1792	mid
+Van Buren, Van Buren, IA	mnt-af84b5dbcb7c	1292	mid
+Precinct 1 Mud Creek, Cherokee, Alabama	mnt-6d433dc40c14	1132	mid
+HAMBURG & HAVRE	mnt-3f55e9ff6051	66361	mid
+Gold Hill, Storey, NV	mnt-34cfed79f835	4593	mid
+Moriah, Essex, NY	mnt-197ac4bd8031	1296	mid
+Kensington, Walker, Georgia	mnt-461e807ff2f0	2341	mid
+Civil District 6 (south part), Tipton, Tennessee	mnt-7170a525f4ac	1137	mid
+Malvern and Hallford, Geneva, Alabama	mnt-dc8c8d7f9e74	3061	mid
+HINDLEY, NULL, DIVISION OF SOUTH WEST LANCASHIRE, LANCASHIRE, LANCASHIRE	mnt-af0c9b8f4a3b	1265	mid
+Cincinnati Hamilton Ohio	mnt-6cae2f821dc4	1302	mid
+YATELEY, HARTLEY WINTNEY, HAMPSHIRE, HAMPSHIRE	mnt-ae4bf5061956	1238	mid
+LONGTON (PART OF), LONGTON, STOKE UPON TRENT, STOKE ON TRENT NORTH WESTERN DIVISION (PART OF), STAFFORDSHIRE	mnt-5e2722d63567	1313	mid
+McMurray, PA	mnt-6f38b52e1d78	1802	mid
+Logan, Blair, PA	mnt-e01c0c6b421f	4590	mid
+GILLINGHAM (PART OF), MEDWAY, BOROUGH OF CHATHAM (PART OF), KENT	mnt-09baafc89f7f	2950	mid
+Marvyn, Lee, Alabama	mnt-d971012e0f0c	1921	mid
+PRENDERGAST, HAVERFORDWEST, PEMBROKESHIRE, PEMBROKESHIRE	mnt-147cde5eb4d6	1300	mid
+DeWitt, MI	mnt-f80096aa0ca5	1799	mid
+Freedom Township, LaSalle, Illinois	mnt-bba24dee2bd6	3209	mid
+Walnut Cove, NC	mnt-958e10f51d5d	1725	mid
+District 882, Schley, Georgia	mnt-5fafbc063d6e	1175	mid
+NORTHWEST	mnt-638f1d0c45c8	815	low
+SOUTHWARK, HAMPSHIRE	mnt-c050f24f9db1	28	low
+BLETCHLEY, NEW PORT PAGNELL, BUCKINGHAMSHIRE, BUCKINGHAMSHIRE	mnt-3b5afc4991a5	442	low
+menninia	mnt-7c175fc4d8de	56	low
+Oxford, Isanti, Minnesota	mnt-c6e639d5b0fd	481	low
+TUFTON, WHITCHURCH & OVERTON, HAMPSHIRE	mnt-2d5bc3df095b	153	low
+Plymouth, North Carolina	mnt-110601ab8563	12	low
+FOSTON, LEICESTERSHIRE	mnt-d7285692b903	28	low
+RICHMOND MAG D, RODA VA, WISE, Virginia	mnt-55a60abf35c8	479	low
+new hamyptire	mnt-dc42d2441cce	57	low
+Worcester, Ma.	mnt-acf84b554917	12	low
+Of,Stonington,New London,Connecticut	mnt-421ee2b6475a	18	low
+SHAMONG TWP, BURLINGTON, New Jersey	mnt-16b8c4ee4d73	479	low
+North Valley Hospital, Columbia Falls	mnt-d177077b069d	303	low
+J·jome Alto, Cayey, Puerto Rico	mnt-108a90c4b7c9	35	low
+MILITIA DISTRICT 1214 MOUNTAIN, NEW SALEM, DADE, Georgia	mnt-baf145cde085	160	low
+Raleigh, Wake County, North Carolina, USA	mnt-3f8216c5c695	42	low
+enily	mnt-53d7af497939	697	low
+CROSS ANCHOR TWSP, SPARTANBURG, South Carolina	mnt-e67dac3a5bbe	479	low
+Chafee, Erie, New York	mnt-e0f9663259a4	15	low
+Arthurdale, WV	mnt-082afa226843	12	low
+eoma	mnt-5b2edb00b17b	707	low
+Point of the Mountain, Utah	mnt-d75b0fef0dca	23	low
+STURRY, NULL	mnt-67b027020c5a	28	low
+mennesia	mnt-76ea0e123254	63	low
+Spring Brook, Kittson, Minnesota	mnt-0256bff8ad37	481	low
+masschuseouri	mnt-febfb4ed82ac	130	low
+Mill Spring, Polk County, North Carolina, USA	mnt-fd78320603c8	42	low
+SLATE CREEK, JOSEPHINE, Oregon	mnt-ae3fde573c17	160	low
+J P {HASH} 2 JUSTICE PRECINT 2, CHEROKEE, Texas	mnt-228fd4fa7100	40	low
+teaka	mnt-61671d0d1e06	699	low
+North East street	mnt-02fcc82ccfdf	282	low
+Fairfield, Virginia	mnt-0d85bebd8886	12	low
+Ranier, MN	mnt-492b2b4c4feb	12	low
+SOWERBY, NULL	mnt-707d1ff7ca28	28	low
+MIDDLEBOURNE, ELLSWORTH MAGISTERIAL, TYLER, West Virginia	mnt-ae8b7628fd8b	40	low
+menliry	mnt-f1f19f038f1b	59	low
+BLACKAWTON, DERBYSHIRE	mnt-9aad461e9f0f	28	low
+SHEERNESS ( P O), SHEPPEY, NORTH EASTERN OR FAVERSHAM DIVISON (P O), KENT	mnt-2e027ab995e4	32	low
+ST GERMANS (PART OF), POLBATHIC, ST GERMANS, SOUTH EASTERN OR BODMIN DIVISION (PART OF), CORNWALL	mnt-f86b6e9c748e	32	low
+Islesboro, Waldo, Maine	mnt-633ffc08db1f	24	low
+ST MARYLEBONE (PT OF), MARYLEBONE, WEST DIVISION OF MARYLEBONE PARLIAMENTARY BOROUGH, LONDON	mnt-10c2001adfda	32	low
+WEST ORGANE TOWN, ESSEX, New Jersey	mnt-4f02f65b8cc3	40	low
+HATTON CITY, GARFIELD, TRAILL, North Dakota	mnt-2f9166324ea1	479	low
+OVENDEN HALIFAX, YORKSHIRE, YORKSHIRE	mnt-8755dc81d49f	434	low
+isonois	mnt-ea35abc4f79e	706	low
+Gwynedd Valley, PA	mnt-91ffafcd92f2	87	low
+misrnia	mnt-731fd4c3dfe0	704	low
+ROTHERBY, SOMERBY, LEICESTERSHIRE	mnt-2bb64444f857	142	low
+BIRLING, NORTHUMBERLAND	mnt-5efc8946f159	28	low
+massachuseipps	mnt-36c4f3bb5468	153	low
+massachsppi	mnt-58054e75820e	131	low
+pewraia	mnt-2973ad1d1ee4	616	low
+new hamporn	mnt-fb388da0bff5	42	low
+MIDDLETOWN TOWNSHIP, WOODLOURNE VILLAGE, BUCKS, Pennsylvania	mnt-b2d5545d3e39	160	low
+S Caro	mnt-99ac5164cb79	12	low
+CITY OF EVERETT, PRICINCT 47, SNOHOMISH, Washington	mnt-382918829290	146	low
+SOMERS TOWNSHIP, CHAMPAIGN, Illinois	mnt-81b98a5ea027	40	low
+SCHOOL DIST 37 ELBOW, CARBON, Montana	mnt-e0cec0786650	146	low
+POLICE JURY WARD 8, CRESCENT, IBERVILLE, Louisiana	mnt-d5b82360fa3d	160	low
+new hampstore	mnt-4b7c3b14d82b	73	low
+Of,Sinton,Selkirkshire,Scotland	mnt-c828ee6a75e0	18	low
+Heidelburg, Jasper, Mississippi	mnt-586c3121217b	15	low
+Great Burstead, Basildon District, Essex, England	mnt-fde5d226c761	42	low
+Ardenhurst, Itasca, Minnesota	mnt-b690d73444d5	601	low
+Harrison County, West Virginia, United States of America	mnt-98f4dfdabf57	42	low
+mensoka	mnt-fd5a05ee0b41	709	low
+DENBY DALE, YORKSHIRE, YORKSHIRE	mnt-4da98f5b85ea	431	low
+PEMBERTON (PART OF), WOESLEY MESNES, WIGAN, INCE DEVISION SOUTH WEST LANCASHIRE PART OF, LANCASHIRE	mnt-ce79e898bd0f	32	low
+4, WINSTON, Alabama	mnt-67db4f25aeac	479	low
+new hampslhire	mnt-bdc298ea4b02	86	low
+Ivan, Bossier, Louisiana	mnt-041be8b7ffc6	24	low
+HARWOOD TOWN, BACON, VERNON, Missouri	mnt-f7b1e42785ac	40	low
+ortdkota	mnt-d32b35bd0a26	390	low
+LLANIDLOES, NULL	mnt-b6021eef7ae0	28	low
+Mifflin, Allegheny, Pennsylvania	mnt-5ca2d56de896	89	low
+KNARESBRO, NULL	mnt-8ecfa992fb97	28	low
+new ymkota	mnt-8fe8ddc96a8c	703	low
+CITY OF NORWICH, TOWN OF NORWICH, NEW LONDON, Connecticut	mnt-cf0904c2941d	479	low
+CALEDONIA, CALEDONIA, TRAILL, North Dakota	mnt-a1863b51d4ba	40	low
+Norway, Kittson, Minnesota	mnt-548de9f24ea5	481	low
+ATTALLA, 17, ETOWAH, Alabama	mnt-26e8ec282e89	479	low
+viroin	mnt-2fb3a4915fcd	702	low
+Greenfield area	mnt-643ce08617a3	24	low
+WOOLVERTON, ROAD, SOMERSET	mnt-120ba1c07d0a	158	low
+Dansville, Michigan	mnt-392b1c7d5efc	37	low
+UP NATELY, BASINGSTOKE, HAMPSHIRE	mnt-499c8d70427a	137	low
+ELEC PRECINCT 20 NORTH WEST MCMINNVILLE, YAMHILL, Oregon	mnt-7409fc3c4c64	146	low
+Verona, Wis.	mnt-bc7222f753ab	12	low
+, Old Albemarle, Carolina	mnt-3e574b45a721	18	low
+NOTTINGHAM PART OF, NOTTINGHAM, SOUTHERN NOTTINGHAM PART OF, NOTTINGHAMSHIRE	mnt-3f56844367c8	32	low
+KINGTON ST MICHAEL, CHIPPENHAM, WILTSHIRE, WILTSHIRE	mnt-06885f8c9b6e	438	low
+SPITTAL, NULL	mnt-6d6ed038f4ee	28	low
+LODGEPOLE VILLAGE, CHEYENNE, Nebraska	mnt-06222d185eb3	479	low
+Damerham, Wiltshire, England	mnt-6713227be6c1	42	low
+new hampkirk	mnt-f0f63c7908fc	45	low
+FAYETTEVILLE DISTRICT, GATEWOOD SECTION ONE AND CUNARD, FAYETTE, West Virginia	mnt-ce9afef6333c	40	low
+District 4, Nacogdoches, Texas, USA	mnt-635060a17da6	42	low
+Shamokin; Pennsylvania	mnt-f911bb3dd32c	24	low
+MELTON MOWBRAY, WALTHAM, LEICESTERSHIRE	mnt-d3a565de3948	139	low
+SERVICE OF FARM, ST MARY, Louisiana	mnt-5310008e851c	40	low
+LOGAN DIST, BARNABUS, LOGAN, West Virginia	mnt-9d592f61619c	479	low
+WHITE STONE HILL T, GWINNER, SARGENT, North Dakota	mnt-c25c3936be88	146	low
+PRECT 12, WILCOX, Alabama	mnt-d505cdc2a739	479	low
+massahusstti	mnt-a7f166cda62e	146	low
+WINKFIELD, SUFFOLK	mnt-dcf2aade003c	29	low
+SLAB FORK DISTRICT, LILLY BROAK, RALEIGH, West Virginia	mnt-e637f9f05f81	146	low
+Ivy, Madison, North Carolina	mnt-688ef5dc76a5	24	low
+Of--,Tasburgh,Norfolk,England	mnt-d49847e653e1	18	low
+Northwest Community Healthcare	mnt-4ca0c6ccf169	315	low
+wishian	mnt-9e3be42bc309	703	low
+pew hsyania	mnt-49ebb62550f4	345	low
+penhcsylvania	mnt-5d154868bb13	271	low
+menhoka	mnt-d5af365590df	94	low
+WAVERTON, WIGTON, CUMBERLAND, CUMBERLAND	mnt-a4d878accb8d	439	low
+REIGATE (PART OF), SOUTH PARK, REIGATE, REIGATE (PART OF), SURREY	mnt-963ef8ccfb5e	32	low
+Sun set Heights	mnt-7ac6cb4b4e09	23	low
+Nuestra Senora de Guadalupe, Province of NM, New, Spain	mnt-784398d2dc7f	42	low
+SANTA CLARA TWP, BURBANK THAT PART IN MY E D, SANTA CLARA, California	mnt-ed4532e87730	146	low
+New Hamprie	mnt-63498f62b839	51	low
+TOWNSHIP 4 CENTER ELECTION PRECINCT, CENTER PRECINCT, WASATCH, Utah	mnt-041f1617f3d2	146	low
+<Of,York,Yorkshire,England>	mnt-22ede57d9e4d	18	low
+new hampsrsre	mnt-8956377a46b6	72	low
+WUERDLE & WARDLE, MANCHESTER, LANCASHIRE, LANCASHIRE	mnt-aa74a3a65482	437	low
+China, ME	mnt-f2fed435ae5f	88	low
+SILCHESTER, HAMPSHIRE, HAMPSHIRE	mnt-de6af3ef49c6	430	low
+northeast of Fairfield	mnt-e661c5fe3a02	23	low
+STRUMPSHAW, NORFOLK, NORFOLK	mnt-a7961f33f89d	430	low
+new hamprira	mnt-361c6ae3cea2	66	low
+mennesote	mnt-eb0718a89133	60	low
+Brooktondale, New York	mnt-a367e9b9807f	12	low
+Of Staveley,Westmorland,England	mnt-aaf903b9fff1	18	low
+new hampriry	mnt-1b17571ad215	53	low
+High Point N C	mnt-5522730e0e6f	24	low
+BROOMFIELD, NULL	mnt-bbd9697e2ca3	29	low
+LLANGUICKE PART OF, PONTARDAWE, WESTERN OR GOWER DIVISION, GLAMORGANSHIRE	mnt-8b5de13bc256	32	low
+massahstpi	mnt-34f4f353102f	159	low
+massats	mnt-b6913f50198c	151	low
+eras	mnt-ef174aef6caf	699	low
+Province of Brandenburg, Germany	mnt-49cb6a9b50c6	23	low
+SILKSTONE ( PART OF), SILKSTONE ( PART OF), MORTTEY, HOLMFIRTH (PART OF), YORKSHIRE	mnt-2fe814a1e7f4	32	low
+Colebrook, New Hampshire	mnt-c7ccb0fade8c	12	low
+new hamphorn	mnt-fd0bfb5e5c73	42	low
+JEFFERSON PRECINCT, POPE, Illinois	mnt-2ed2e03d261c	146	low
+MINNESOTA TOWNSHIP, JACKSON, Minnesota	mnt-c9033b435840	479	low
+Limrock, AL	mnt-7d98823defc4	12	low
+7 TH MAG DIST, ALLEN, Kentucky	mnt-124a9d4c3f3e	146	low
+Eveleth, Minn	mnt-30d768448ed1	12	low
+SMETHWICK PART OF, KINGS NORTON, HANDSWORTH, STAFFORDSHIRE	mnt-6b0c03e86ab4	32	low
+Jackson, Dakota, Nebraska	mnt-4e78c5cc0543	61	low
+.,Olney Parish,Buckinghamshire,England	mnt-bda102aab1ec	18	low
+Pensacola; Fla.	mnt-b94f167d9975	23	low
+new hamyptork	mnt-29b4bdab9da9	57	low
+<Of,Wigmore,Herefordshire,England>	mnt-3f5b7786cbe1	18	low
+New Hamphie	mnt-0dbac38f47a1	47	low
+ELECTION DISTRICT 2 ST PATERS, ORIOLE, SOMERSET, Maryland	mnt-5b05dd0f56c2	40	low
+New Paris RD	mnt-cacb99cf5296	318	low
+Delafield, Jackson, Minnesota	mnt-eef2dfc91341	901	low
+WEST HATCH, SOMERSETSHIRE, SOMERSETSHIRE	mnt-616cffca6dee	443	low
+SHILDON, WARWICKSHIRE	mnt-8f3a25a74a26	28	low
+BEXHILL, SURREY	mnt-92f3b8e1d3d4	28	low
+masiuni	mnt-90a74d219f5b	110	low
+Des Moines,Iowa	mnt-4d4c4c07377f	57	low
+E PRECINCT 12 PRITCHETT, BACA, Colorado	mnt-97d314d8cd40	479	low
+klnoas	mnt-622f8487f451	708	low
+massacheouri	mnt-94f3332f107f	157	low
+PRESCOTT CITY, SUP D {HASH}2, YAVAPAI, Arizona	mnt-6eacf98eae8f	479	low
+Shoreline, Wash.	mnt-96887b4d5926	12	low
+men scky	mnt-a6044ed774de	48	low
+Of,Warmincham,Cheshire,England	mnt-ecf3af2ccedf	18	low
+ONIDA CITY, ONIDA, SULLY, South Dakota	mnt-b9c858ac1ccb	479	low
+WHITLEY, LANCASHIRE	mnt-9fb16eb976c4	28	low
+Ivanhoe, Beaver, Oklahoma	mnt-806e9dc2d23f	41	low
+Saxonburg, Pennsylvania	mnt-9c62f3175c39	88	low
+Jackson Springs, Montgomery, North Carolina	mnt-83f0edced08b	24	low
+Leadington, Missouri	mnt-43e424b8022f	12	low
+Alameda, Calif	mnt-4b964716ae15	54	low
+GREAT BARTON (PART OF), THINGOE, SUFFOLK, SUFFOLK	mnt-c7227179eb9f	436	low
+PLYMOUTH TOWN, MASSOMET, PLYMOUTH, Massachusetts	mnt-f11efaed793d	40	low
+OROFINO E PRECINCT NO 1, CLEARWATER, Idaho	mnt-dda8909def6c	146	low
+, Oil City, Venango, Pennsylvania, USA	mnt-7322818a857a	18	low
+LEINTWARDINE (PART OF), KINTON, LUDLOW, NORTHERN OR LEOMINSTER DIVISION, HEREFORDSHIRE	mnt-7424343e0cdb	32	low
+BROMPTON ON SWALE, RICHMOND YORKSHIRE, YORKSHIRE - NORTH RIDING, YORKSHIRE - NORTH RIDING	mnt-00e44ebe811f	435	low
+New Jersey, Middlesex County, South Amboy	mnt-72929b27041e	42	low
+Fort Bayard, NM	mnt-b7783c351e48	88	low
+Buffalo Ward 4, Erie, New York, USA	mnt-4ce13a563009	42	low
+Southwick, Mass.	mnt-78980513bd1b	12	low
+<Of,Waddenhall,Kent,England>	mnt-1ce97578a69a	18	low
+mennesoee	mnt-c348fd9491d3	64	low
+Flint, Genesee County, Michigan, USA	mnt-75d1c41b55f4	42	low
+PELDON, LEXDEN, ESSEX, ESSEX	mnt-942587a3a3af	439	low
+massausoti	mnt-fa04dcd2a15b	132	low
+Greene County, Wisconsin	mnt-9eef600ea5a7	24	low
+new hampria	mnt-e1d7254906cd	37	low
+West Heron Lake, Jackson, Minnesota	mnt-5625906860f5	841	low
+Reager, Rappahannock, Virginia	mnt-fb8701325b41	15	low
+Ted.	mnt-7daf2a731a0a	23	low
+LESLIE VILLAGE, 15TH DISTRICT 756 G M, SUMTER, Georgia	mnt-792c34ba40c3	479	low
+CANTREFF, BRECKNOCK, BRECKNOCKSHIRE, BRECKNOCKSHIRE	mnt-a5175516e997	441	low
+Level Plains, AL	mnt-f7a209552d97	88	low
+massaetri	mnt-e79fc9cd12cd	123	low
+Missuri	mnt-2d8d0629bd3d	942	low
+CASTLEFORD (PART OF), CASTLEFORD, PONTEFRACT, OSGOLDCROSS PART OF, YORKSHIRE	mnt-0787ccb2d53c	32	low
+EDMONTON, MIDDLESEX LONDON	mnt-2476be532739	28	low
+ERDINGTON, SALOP	mnt-219866b6f4a4	28	low
+PRECINCT 1, LAKE WICHITA AND CALL FIELD, WICHITA, Texas	mnt-6be0552117dc	40	low
+Hazelton, Kittson, Minnesota	mnt-94e122620ae1	601	low
+Richland Center, Wis.	mnt-f00d854b4a8f	12	low
+SKAMANIA E PRECINCT, SKAMANIA, Washington	mnt-efb10ec4a1cd	146	low
+state of Oaxaca	mnt-6d247201d2b1	24	low
+norheoka	mnt-aa07a80e2b6f	706	low
+W S MARE, SOMERSETSHIRE, SOMERSETSHIRE	mnt-9e7c9c62adfe	433	low
+Jacksonville, Pulaski, Arkansas	mnt-00a65177e633	122	low
+ELECTION PRECINCT 32 ARLINGTON, FLORAL BLUFF, DUVAL, Florida	mnt-2a56d770029f	40	low
+men ork	mnt-bb108c00d596	83	low
+Ormond, Florida	mnt-328f37636655	12	low
+menhslina	mnt-4df47ce0886b	44	low
+new hamphote	mnt-eb648aa32186	59	low
+Monroe County, TN	mnt-fe34ee68cdcb	12	low
+mennsas	mnt-905bd97aa1d1	47	low
+Naples Community Hospital, Naples, Florida	mnt-30474f89d8a2	708	low
+I.a.	mnt-d53a02762e17	24	low
+new hamptorn	mnt-d621cc6b3452	78	low
+North Beckley	mnt-62ac734c2e20	288	low
+RUTHIN, NULL	mnt-0a579b493ef6	29	low
+Wawina, Itasca, Minnesota	mnt-bb0d99478cc7	481	low
+GARFIELD TWP, KOSSUTH, Iowa	mnt-6fe5e0d4e929	479	low
+Of,Weldon,Northamptonshire,England	mnt-ad3803629175	18	low
+MANCHESTER PART OF, MANCHESTER, MANCHESTER N E DIV, MANCHESTER	mnt-beb642726f05	32	low
+Port Pierce	mnt-ba066a333e2a	23	low
+North Amherst	mnt-fdf38b7122b9	336	low
+BLACK, BLACKMAN, JACKSON, Michigan	mnt-9ec7dce37ccc	40	low
+PENARTH, CUMBERLAND	mnt-9f9cef0a4b88	28	low
+NEW MARTINSVILLE TOWN, MAGNOLIA DISTRICT L R F A T, WETZEL, West Virginia	mnt-89f15a8da786	146	low
+Myrtle Beach, S C	mnt-1110f4c3c53d	319	low
+Wall, Tom Green, Texas	mnt-996094336613	15	low
+MARSTON MORETAINE PART OF, MARSTON (PART OF), AMPTHILL, NORTH BIGGLESWADE BEDS PART OF, BEDFORDSHIRE	mnt-33f3c9e85793	32	low
+T 24N R 4W BEAT 5, SUNFLOWER, Mississippi	mnt-aedff0688606	479	low
+La Prairie, Itasca, Minnesota	mnt-2a98f09ef79c	241	low
+massesoti	mnt-02c0fa4f32d4	146	low
+new hamptora	mnt-5c7d0d06af8b	95	low
+THOMPSON TWON, WINNEBAGO, Iowa	mnt-72561b8c10a4	40	low
+HARRISON, MCPHERSON, South Dakota	mnt-8baeb853dfe3	146	low
+mennesinia	mnt-53043a687b47	59	low
+STOUR PROVOST, STURMINSTER, DORSET	mnt-80af6dc706a0	138	low
+nowtlia	mnt-45e4e61be759	702	low
+North Pownal	mnt-236b6ea03562	359	low
+Dendron, VA	mnt-4d73138c3b88	87	low
+EXFORD, DULVERTON, SOMERSET, SOMERSET	mnt-ec33ba9cf52f	434	low
+Oak Park, NL	mnt-c7eeacb7af06	224	low
+new hamprginia	mnt-fd5706f7edbe	40	low
+DODDINGTON, SOUTH, LINCOLNSHIRE	mnt-ae5ee8369f4e	157	low
+Hubbard Ohio	mnt-b9d0fecdf7ed	25	low
+SAN DIEGO CITY, SAN DIEGO ASSEMBLY D79, SAN DIEGO, California	mnt-8ba63e8a453a	40	low
+BOTTESFORD, ?, LINCOLNSHIRE	mnt-c64fec69767c	153	low
+FIRST DISTRICT, CARROLL, Tennessee	mnt-156be10ceb8e	479	low
+Outside Littlefork, Koochiching, Minnesota	mnt-04cceb74bc1c	541	low
+E P 54, EL PASO, Colorado	mnt-e31500f425ce	146	low
+PRECINT 424, SYLVAN, MULTNOMAH, Oregon	mnt-4d5480656181	479	low
+Middle River, WI	mnt-cec84c757670	12	low
+Marlboro, Vermont	mnt-a2be9820f8bf	12	low
+Jacksonville, Duval, Fla	mnt-93e7c799dc1d	63	low
+CAPRON MAG DIST, SOUTHAMPTON, Virginia	mnt-983f3c9d91fb	479	low
+STOKE NEWINGTON (PART OF), ISLINGTON, HACKNEY NORTH DIVISION, LONDON	mnt-1ae10cb82d80	32	low
+eila	mnt-20e024f13c21	707	low
+TUL.	mnt-936718eb1eaf	23	low
+massacustps	mnt-db85598590d1	124	low
+Nix Hospital, San Antonio	mnt-8898eec510ac	340	low
+Munson Medical Center, Traverse City, Michigan	mnt-5b2ce29fcc70	835	low
+NEWNHAM REGIS, RUGBY, WARWICKSHIRE	mnt-4395ecc33aed	156	low
+BERECHURCH, FIRST WARD, ESSEX	mnt-4a58cbc3ec34	146	low
+PERRYVILLE TOWN, ELECTION DISTRICT {HASH} 7, CECIL, Maryland	mnt-44d98c1e0e98	160	low
+men hiky	mnt-7708b61a5a67	37	low
+Kasota Township, Le Sueur County, Minnesota	mnt-215ad5c00c38	42	low
+Del Rio Texas	mnt-be7404f7ed0c	26	low
+MILITIA DISTRICT 1589 HAPEVILLE, EGAN, FULTON, Georgia	mnt-773db77fce97	40	low
+Sewall's Point, FL	mnt-7870786f1698	89	low
+Raleigh, Raleigh, West Virginia, United States	mnt-52ef111c97fd	42	low
+Cost, TX	mnt-6e08108131d8	12	low
+St. Joseph, Kittson, Minnesota	mnt-42047b489541	361	low
+pewhsyvania	mnt-72a8c5778f62	447	low
+CHETTHAM, PRESTWICH, LANCASHIRE, LANCASHIRE	mnt-d8234a622d76	436	low
+Glade Hill, Va.	mnt-75bda45a6de7	88	low
+Elizabethtown Pennsylvania	mnt-d94246085e41	15	low
+Springfield, Oh.	mnt-80dd872e4f25	12	low
+LEEDS PART OF, LEEDS, PART OF LEEDS CENTRAL, YORKSHIRE	mnt-b55b3437f73b	32	low
+BARNSTONE, BINGHAM, NOTTINGHAMSHIRE	mnt-21ad44438556	136	low
+CONOCOHEAGUE, DIST 23, WASHINGTON, Maryland	mnt-f7891c260f62	40	low
+ELBOW LAKE TOWNSHIP, GRANT, Minnesota	mnt-c7ab200c6925	40	low
+massauseppi	mnt-2e5002e4608d	159	low
+menippi	mnt-9db8b8ddc802	55	low
+Fishdam, Sullivan, Tennessee	mnt-b67deaf6313d	15	low
+WITHERN, LINCOLNSHIRE, LINCOLNSHIRE	mnt-cfe7a64c96de	431	low
+LEVERTON, NULL	mnt-a1ff28612a59	28	low
+Jeannette Ward 2, Westmoreland, Pennsylvania, USA	mnt-31d838ae9ca5	42	low
+mennota	mnt-37b1e4228690	80	low
+GORMAN TWP, MCHENRY, North Dakota	mnt-ea1f6de40def	146	low
+WORCESTER, LANCASHIRE	mnt-1a3bc5a7e9ae	28	low
+orthdatota	mnt-3ea607ac5c8f	939	low
+EATINGTON, GLOUCESTERSHIRE	mnt-8d8a52760a1f	28	low
+STANHOPE PART OF, FAIRHILLS & SIDEFOOT, WEARDALE, BARNARD CASTLE, DURHAM	mnt-e444d6fc3550	32	low
+near Wilkes-Barre	mnt-e4354d08c44c	24	low
+Ann Lake, Kanabec, Minnesota	mnt-eb9bf887552f	541	low
+Jacksonville, Lonoke, Arkansas	mnt-b4fdf51bd563	24	low
+Massachetts	mnt-1c4c6f8061e7	756	low
+T 174 18 WARD 6, MADISON, Louisiana	mnt-14b58be912a7	40	low
+Banner, IL	mnt-d9d8414baf60	12	low
+MERTON (PART OF, CROYDON, WIMBLEDON DIVISON, SURREY	mnt-840ea7f305d5	32	low
+A D7, NEW YORK, New York	mnt-32ebee541ff0	40	low
+BEAT 5, MITCHELL DOM, CHILTON, Alabama	mnt-f7cc72c3ea97	40	low
+menlina	mnt-272d634adb0d	95	low
+Jacobsville, Houghton, Michigan	mnt-328c88ea0252	15	low
+E RETFORD, NOTTINGHAMSHIRE, NOTTINGHAMSHIRE	mnt-71ae7950eaa3	435	low
+HUNTINGTON, YORKSHIRE, YORKSHIRE	mnt-eee272b8f223	438	low
+Valparaiso; Porter County; Indiana	mnt-69511c38c749	23	low
+S HORNSEY, MIDDLESEX, MIDDLESEX	mnt-793b41b39fa6	429	low
+pewrsaia	mnt-3e20cd3bec26	414	low
+Jackson Center, Mercer, Pennsylvania	mnt-06782ed0e68a	116	low
+MAG DICT 3 TEMPLE HILL, TEMPLE HILL, BARREN, Kentucky	mnt-26488332d5a3	160	low
+orthdtate	mnt-c374f912b6b8	366	low
+SANDHURST, GLOUCESTER, GLOUCESTERSHIRE, GLOUCESTERSHIRE	mnt-6638892333f0	438	low
+LISBON MAG DIST, VILLAMONT, BEDFORD, Virginia	mnt-a046ff2724b7	40	low
+RUSTON TOWN, SEC 30 T 18 N 2 W, LINCOLN, Louisiana	mnt-275cfa735b41	40	low
+orthdkota	mnt-5d77fc40b3fa	371	low
+North Plains Hospital	mnt-2c6720c598d1	589	low
+Jacksonburg, Wetzel, West Virginia	mnt-944b71f90ac0	83	low
+Philadelphia, Penna	mnt-9808a115237c	11	low
+pengnyland	mnt-a29d701fe492	517	low
+Ivanhoe, Bladen, North Carolina	mnt-9af54c548140	24	low
+PLACE PHILIP, HAAKON, South Dakota	mnt-20625bd93bf6	40	low
+MAG DIST 7 KNOTTSVILLE, DAVIESS, Kentucky	mnt-4c5c3c2b53cc	160	low
+3RD CIVIL DISTRICT, PICKETT, Tennessee	mnt-09b46b3b0e70	479	low
+McGregor, IA	mnt-309e4d12600e	88	low
+ELMSETT, COSFORD, SUFFOLK, SUFFOLK	mnt-d51e037109be	441	low
+Jackson Alabama	mnt-8048ec9ee0dc	55	low
+ALCESTER, NULL	mnt-85354311c764	28	low
+ELECT PREC 4 MYNDUS, LUNA, New Mexico	mnt-2eb107e74564	146	low
+CEDAR PRECINCT, BOONE, Nebraska	mnt-5fc3498674dc	479	low
+Annex, Kandiyohi, Minnesota	mnt-13c3f0ecb65c	61	low
+NEWPORT CITY, PACIFIC ELECTION PRECINCT, LINCOLN, Oregon	mnt-d6e283d61343	160	low
+Trail, Oregon	mnt-a3cbdb3baeb4	12	low
+Gold Hill, Ore.	mnt-9c1a173a6dfb	87	low
+1ST MAGISTERIAL DISTRICT, BUTLER, Kentucky	mnt-3dda2568f4ed	479	low
+Munger, Reynolds, Missouri	mnt-ee3e27811a61	15	low
+<Of,Wiggenhall,Norfolk,England>	mnt-8e1980fc659f	18	low
+BECKINGTON, WILTSHIRE	mnt-a3b79b58d83e	28	low
+BAMPTON (PART OF), GRANGE, WEST WARD, NORTHERN OR APPLEBY, WESTMORLAND	mnt-dd2dca3a9daf	32	low
+ST MARY NEW PART OF, ST SAVIOUR SOUTHWARK, LONDON, LONDON	mnt-1c5bac8f157e	440	low
+SHORTS DISTRICT, SNOHOMISH, Washington	mnt-0a210b256e19	40	low
+SCHOOL DISTRICT 36 NORTH YANTIC, BLAINE, Montana	mnt-1239267caea9	146	low
+CHAPLIN TOWN, WINDHAM, Connecticut	mnt-27f3d19782f3	40	low
+kensvania	mnt-4c2c5ef86738	705	low
+pew hsania	mnt-25456e302771	384	low
+massaturi	mnt-1f0d298df7b4	123	low
+Lamont, Cook, Illinois	mnt-8636bb732ec7	15	low
+Old Mill Creek, IL	mnt-abc1866d7037	12	low
+Berkeley Lake, Georgia	mnt-6521cb590a0e	12	low
+Thorpe, Hubbard, Minnesota	mnt-6053300d29b4	241	low
+ROSEVELT PRECINCT, KLICKITAT, Washington	mnt-8115250ff2db	146	low
+MILITIA DISTRICT 1315 TDBMOCKLE, RURAL SECTION, WASHINGTON, Georgia	mnt-e23d3b3eb48c	160	low
+LEAVENING, YORKSHIRE, YORKSHIRE	mnt-4da305a056a5	441	low
+FOSDYKE, BOSTON, LINCOLNSHIRE, LINCOLNSHIRE	mnt-333df1b90c4c	435	low
+M D 822, BARROW, Georgia	mnt-698adb750867	160	low
+Danville Ward 7, Vermilion, Illinois, USA	mnt-3ad572a7c972	42	low
+Pitts. Pa.	mnt-c0c8194d7aa6	11	low
+Reeder, ND	mnt-6f85cf1625c6	12	low
+TURIN TOWN, COWETA, Georgia	mnt-b37170aa5bf5	146	low
+TOTTENHAM, NORFOLK	mnt-00da5a52de82	28	low
+Riesel, Texas	mnt-b1d5e6378438	87	low
+Of,Tockington,Gloucestershire,England	mnt-5a407705c00d	18	low
+FAYETTEVILLE DIS, FAYETTE, West Virginia	mnt-1f4cf88007bf	40	low
+TREFEIRIG, ABERYSTWYTH, CARDIGANSHIRE, CARDIGANSHIRE	mnt-37d519c2a554	434	low
+MD 1161 LOCKOUT MOUNTAIN, PITTSBURG DURHAM P O, WALKER, Georgia	mnt-0a5063c6efbf	160	low
+Ellsworth Kansas	mnt-d98c45c1521d	27	low
+orekota	mnt-810dc51400d3	381	low
+ROXBORO  TWN, PERSON, North Carolina	mnt-d09c8d4a971d	40	low
+Teien, Kittson, Minnesota	mnt-b10a825260ea	841	low
+Newman hospital	mnt-c20cface240b	813	low
+Brunswick County, VA	mnt-b320ce67dbf0	42	low
+Liberty, Itasca, Minnesota	mnt-b95094795aea	361	low
+Cruz, Rincon, Puerto Rico	mnt-c4c00a046015	15	low
+BUTLER BRORUGH, MORRIS, New Jersey	mnt-8d47c3904f8f	479	low
+UPPER CLATFORD, HAMPSHIRE, HAMPSHIRE	mnt-41911066d20c	427	low
+BIRCHAM TOFTS, DOCKING, NORFOLK	mnt-a0bac2d853f0	142	low
+Georgi	mnt-833fa9facda9	706	low
+SMETHWICK, WORCESTERSHIRE	mnt-50e23f2ccd3c	28	low
+FRANCES TOWN, HILLSBOROUGH, New Hampshire	mnt-83ef5eef31c9	160	low
+Jacksonville, Randolph, Missouri	mnt-fcc9d8561177	80	low
+massachseippi	mnt-0f656c270f69	125	low
+mennsina	mnt-5d73169bddb7	107	low
+MATOACA MAG DIST, CHESTERFIELD, Virginia	mnt-1fbbbae18033	160	low
+oklainois	mnt-d273edfaba20	706	low
+south carolota	mnt-37e315c92271	709	low
+CAIRO TOWNSHIP, EAST FAIRFOX, RENVILLE, Minnesota	mnt-a3fecf081cd0	40	low
+Of Stow,Middlesex,Massachusetts	mnt-9525554e89c0	18	low
+North Arundel Hospital	mnt-2c2d7c7474b5	363	low
+RAPIDAN MAGISTERIAL DIST, MADISON, Virginia	mnt-257fc1b7b326	160	low
+BRACEBY, COLSTERWORTH, LINCOLNSHIRE	mnt-1dca3f964600	155	low
+COLN ROGERS, BIBURY & CHEDWORTH, GLOUCESTERSHIRE	mnt-cd6214820b01	137	low
+New York State, New York	mnt-d6b5e8a404c2	625	low
+Oppeby	mnt-f66fdedb2823	18	low
+penhpsoaka	mnt-0f4ac9bb903f	701	low
+McCook, TX	mnt-e525306f0fbf	12	low
+NEVINS TOWNSHIP, BURNETT, VIGO, Indiana	mnt-79e2d7dbeacc	40	low
+massachcusetts	mnt-b892018eb3b0	116	low
+Jackson, Aiken, South Carolina	mnt-5a784c063561	66	low
+Barnsdall, Oklahoma	mnt-ffb378d55e03	88	low
+PERRIS JUDICIAL TWP, MARCH FEILD-U.S AIR BASE, RIVERSIDE, California	mnt-11f5196e3b11	40	low
+Indiana; Ohio	mnt-a84bb6ab1671	24	low
+Woodlawn Maryland	mnt-92aaedc881ca	10	low
+Cipres, Hidalgo, Texas	mnt-fadb88e77088	15	low
+Natal, BC	mnt-d7ebe351bb94	359	low
+Reedsville, Wisconsin	mnt-bfe5a0b6c720	12	low
+FORK DISTRICT, FORK UNION, WARREN, Virginia	mnt-ff440101a632	40	low
+eltuida	mnt-7faad76ff27f	702	low
+new hamypkore	mnt-66a7e751535a	42	low
+Cusseta, AL	mnt-6b72e2b816d5	88	low
+New Brunswick	mnt-454b4c413414	927	low
+mengania	mnt-45b2ddeb78ae	76	low
+SAUGUS TOWN, SAUGUS TOWN, CLIFTONDALE PLEASANT HILLS SAUGUS, ESSEX, Massachusetts	mnt-2bfcd09c9a1c	479	low
+of Waterton, Yorkshire, England	mnt-735d11c934e1	18	low
+Shelbyville Illinois	mnt-9ea867f50d54	19	low
+Galesville, MD	mnt-2dd6b86dd0f3	88	low
+OLDTOWN BEAT 7, HEIBERGER VILLAGE, PERRY, Alabama	mnt-67f366840968	40	low
+CLAYTON TOWNSHIP, BURKE, North Dakota	mnt-441863002f3c	40	low
+EATINGTON, LANCASHIRE	mnt-5453c96295b6	28	low
+HERMAN TWP, SARGENT, North Dakota	mnt-3c04a0fc0e68	146	low
+of Stanstead, Abbott's, Hertford, England	mnt-402626eeb60c	18	low
+New York Supreme Court, New York	mnt-3085cfdd4855	368	low
+mennoaka	mnt-c0b60351e9bc	38	low
+Newport, Cocke, Tenn	mnt-18b5a0e689eb	15	low
+FLANIGAN, NEBRASKA TOWNSHIP, LIVINGSTON, Illinois	mnt-12dcc9ed032a	40	low
+J P CT {HASH} 5, EL PASO, Texas	mnt-e452bbb184ab	40	low
+MARYLEBONE, LANCASHIRE	mnt-d711cb150d6a	28	low
+Of,Shalbourne,Wiltshire,England	mnt-c2f800e25cd2	18	low
+MONA TOWN, TOWNSHIP II S, JUAB, Utah	mnt-cd6ce7bc542e	40	low
+pew ania	mnt-2c65119bb762	345	low
+M D 1398 REDAN, DEKALB, Georgia	mnt-ea6b809cf395	160	low
+TREDINGTON, DEERHURST, GLOUCESTERSHIRE	mnt-8184cbd724d8	163	low
+mennsee	mnt-d987a69f50e2	104	low
+WINCHFIELD, HARTLEY WINTNEY, HAMPSHIRE, HAMPSHIRE	mnt-884799c6b0bf	438	low
+MAGISTRIAL DISTRICT 2, JEFFERSON, Kentucky	mnt-e3e4bf086554	479	low
+Scio, NY	mnt-94daf297a871	87	low
+orth rtate	mnt-4c8a501f72c0	549	low
+Bay City, Mich	mnt-8280ad82b339	35	low
+North Plains Hospital, Borger	mnt-f8bbdac622f7	290	low
+MANSFIELD PART OF, MANSFIELD, MANSFIELD PT OF, NOTTINGHAMSHIRE	mnt-d5173c662c12	32	low
+mennsginia	mnt-f724447de676	74	low
+Franklin Springs, NY	mnt-61d04c7d3226	12	low
+Herpel, Stone, Arkansas	mnt-f6e2823f10a6	15	low
+massachuetri	mnt-35b502a3be48	122	low
+near Union City	mnt-e3b72b8fadcb	23	low
+oretata	mnt-2c98f4a3a349	343	low
+VENN OTTERY, OTTERY ST MARY & SIDMOUTH, DEVON	mnt-c7f85a1b60de	134	low
+mennsaia	mnt-a9e6f52a8575	91	low
+Murray hospital	mnt-b2941181ed90	649	low
+LEEDS (PART OF), LEEDS, LEEDS, LEEDS (PART OF), YORKSHIRE	mnt-1702178a2c65	32	low
+BIRCHANGER, ESSEX, ESSEX	mnt-70e8a66fe645	444	low
+ilnsis	mnt-16270f5c788b	700	low
+tetxcas	mnt-6192eea988d7	707	low
+Ellerton, Frederick County, Maryland, United States of America	mnt-1cea4785b4dd	42	low
+BROWN CREEK MAG D, ECKMAN, MCDOWELL, West Virginia	mnt-c8f760b5a9c6	40	low
+oreh retate	mnt-856727fb5ce3	581	low
+Of Cowdray Park By, Easebourne, Sussex, England	mnt-43872c6d16c5	42	low
+COLKIRK, MITFORD, NORFOLK, NORFOLK	mnt-5383e3a299dc	439	low
+WINCHESTER, HUNTINGDONSHIRE	mnt-3911b4b618d6	28	low
+massasusetts	mnt-a2da3e09c174	115	low
+HYANNIS PRECINET, GRANT, Nebraska	mnt-84d2b0a84d48	40	low
+pewrsana	mnt-6c595983ed12	374	low
+Hart, Michigan	mnt-2ce730c6fc99	88	low
+menire	mnt-268b32f84e4d	94	low
+MORRIS TOWNSHIP, SEWARD, Kansas	mnt-fc7d60711e9e	146	low
+Of,Welles,Lincolnshire,England	mnt-264f8eca2027	18	low
+KEWSTOKE, SOMERSETSHIRE, SOMERSETSHIRE	mnt-e10b921b0f7f	432	low
+Burbank, Kandiyohi, Minnesota	mnt-7d2c39194e5d	841	low
+Yellowstone National Park, WY	mnt-ee2d1a5483b9	12	low
+KING STANLEY (PART OF), KING STANLEY, STROUD, MID OR STROUD GLOSTER, GLOUCESTERSHIRE	mnt-5db1c12c9e64	32	low
+J P PREC 4, LYONS, BURLESON, Texas	mnt-1b158420a277	40	low
+New Shrewsbury	mnt-6791d2483bbf	405	low
+Alpha, Jackson, Minnesota	mnt-56b4bd537808	545	low
+SKELTON PART OF, SKELTON, GUISBROUGH, CLEVELAND DIVISION N R YORK PART OF, YORKSHIRE NORTH RIDING	mnt-a0cdab14c32a	32	low
+Jacksonville, Duval,† Florida	mnt-e84fd5a07818	45	low
+new hampesrsey	mnt-0523a3ece401	37	low
+J P 7, DALBY SPRING, BOWIE, Texas	mnt-3c56567ce9f2	160	low
+Franklin Texas	mnt-3fc0b69beeaa	20	low
+JimÈnez, Rio Grande, Puerto Rico	mnt-bd3351d7f4ac	87	low
+Dürrenzimmern, Brackenheim, Neckarkreis, Württemberg, Germany	mnt-21bc9208c940	42	low
+Of Waltham,Kent,England	mnt-324d0e88ad07	18	low
+Plains, Kansas	mnt-d6be3f5a3ab3	21	low
+KINGSTON PRECINCT, KINGSTON, KITSAP, Washington	mnt-8f3d34dcb3eb	160	low
+BARLINGS, LINCOLN, LINCOLNSHIRE, LINCOLNSHIRE	mnt-d67f1632ca6d	437	low
+ROBY, LANCASHIRE, LANCASHIRE	mnt-bb030dbb6316	425	low
+Lake Jessie, Itasca, Minnesota	mnt-ed689b82e88e	721	low
+BRINKLEY VILLE TOWNSHIIP, HALIFAX, North Carolina	mnt-2676c856a2dc	40	low
+Shoal Creek, AL	mnt-57d9e5859eaf	12	low
+Cambridge; Middlesex; Massachusetts	mnt-41430e9363af	24	low
+issppi	mnt-34d8c914f4aa	706	low
+HEADINGTON QUARRY, OXON, OXON	mnt-bb0677bd46b7	434	low
+Middleburg, Logan, Ohio	mnt-c661caaaed2c	15	low
+Elephant Butte, New Mexico	mnt-5e5e583c84c1	12	low
+Naples Community Hospital	mnt-50ea4317a21f	985	low
+Fraser, CO	mnt-4acc1b45a030	12	low
+ADKIN M D, ALPHEUS, MCDOWELL, West Virginia	mnt-bbbc014a6a9a	479	low
+SCHOOL DIST 2, MCCONE CITY, MCCONE, Montana	mnt-342f4e20d5f3	146	low
+LLANWRIN, MERIONETHSHIRE	mnt-68ac00d9ac04	28	low
+RIDGEWAY, DERBYSHIRE, DERBYSHIRE	mnt-59203748d863	429	low
+Cooley, Itasca, Minnesota	mnt-f353873bce38	301	low
+Belle Glade, Florida	mnt-8c0d2da20aa4	88	low
+NORTHLEW PART OF, NORTHLEW, OKEHAMPTON, WESTERN OR TAVISTOCK, DEVONSHIRE	mnt-a80bd0f43a89	32	low
+Munson Hospital, Traverse City	mnt-3292ab591059	623	low
+Kalispell; Flathead County; Montana	mnt-e785c9c682df	23	low
+Lynn, Essex County, Massachusetts, USA	mnt-552e56f21ab1	85	low
+Of Swansea,Bristle,Mass	mnt-252a5c7f52a7	18	low
+STOWFORD, DEVONSHIRE, DEVONSHIRE	mnt-571156f609c3	438	low
+North Vernon, Ind	mnt-007f7abeede6	311	low
+N MIDELTON, CUMBERLAND, Pennsylvania	mnt-e13852f46f51	160	low
+Marion County, Arkansas, United States of America	mnt-2edee1408b55	42	low
+Pennock, Kandiyohi, Minnesota	mnt-e14020a5751a	541	low
+Mesa Cemetery, Mesa, Maricopa, Arizona, United States	mnt-691f47d90c93	42	low
+menhsoka	mnt-801d1e59d145	65	low
+Mardela Springs, Maryland	mnt-ae62c8a30f28	12	low
+Herrin Illinois	mnt-79ff112faa49	77	low
+Of,Stobhill,,Scotland	mnt-88704601c4f7	18	low
+BICKLEY, BROMLEY, KENT, KENT	mnt-ab897da919cc	439	low
+<Of Shelvingbourne,Bishopsbourne,Kent,England>	mnt-595c7f20379a	18	low
+PARISH OF HALIFAX, YORKSHIRE, YORKSHIRE	mnt-cefc9373df12	427	low
+Toronto RD 2	mnt-9d4ad18f9be3	23	low
+COMMISSIONERS PRECINCT {HASH}2, DEAF SMITH, Texas	mnt-0ed875661bf3	160	low
+BRANDESBURTON PART OF, BRANDESBURTON, SKIRLAUGH, HOLDERNESS, YORKSHIRE	mnt-ef827eb7e02a	32	low
+new hampinia	mnt-80bb73f36459	55	low
+Ivydale, Clay, West Virginia	mnt-94f2ccd47d48	31	low
+Nahant, Mass	mnt-47e7ad653952	310	low
+CHISLEHAMPTON, NUNEHAM COURTENAY, OXFORDSHIRE	mnt-ec1b60d6533f	153	low
+WELBSTER, WORCESTER, Massachusetts	mnt-62103dc2481d	160	low
+Rockwood, Hubbard, Minnesota	mnt-86893d053c76	781	low
+LIVERMORE  TOWN, ANDROSCOGGIN, Maine	mnt-8f95f2e3a8fd	146	low
+AMERICUS CITY, AMERICUS, LYON, Kansas	mnt-1e576634ecbd	40	low
+Le Tilleul, 76290	mnt-339b085b159a	42	low
+Myers Community Hospital, Sodus	mnt-76898a4420be	381	low
+pennyany	mnt-8c49b8c9aaae	352	low
+SCHOOL DISTRICT 24 BENCHLAND, BENCHLAND, JUDITH BASIN, Montana	mnt-5f30efce2598	40	low
+Cartersville, Ga.	mnt-152488a0a316	88	low
+STITHIANS (PART OF), REDRUTH, TRURO (PART OF), CORNWALL	mnt-a3a6d0663fbe	32	low
+BALDOCK (PART OF), HITCHIN, HITCHIN PT OF, HERTFORDSHIRE	mnt-01ecb8ccf97d	32	low
+JUSTICE PRECINCT 3, MAGNOLIA, MONTGOMERY, Texas	mnt-68167be08d21	160	low
+JENNING TOWNSHIIP, JENNING TOWNSHIP, SCOTT, Indiana	mnt-e8b24eb6b8a4	160	low
+outhd dakota	mnt-ba47ea0f579e	418	low
+Civil D No 2, Shelby, Tennessee, USA	mnt-ba76b9c5117b	42	low
+District 3, Shelby, Tennessee, USA	mnt-069e50d8c322	42	low
+IRSTEAD, SMALLBURGH, NORFOLK	mnt-25edb30a0c04	166	low
+TORRINGTON CITY, TORRINGTON TOWNSHIP, LITCHFIELD, Connecticut	mnt-c7787217965d	479	low
+Llantarnum Abbey, Monmouthshire, Wales	mnt-69c102ded5a3	42	low
+Of,,Suffolk,Eng	mnt-59817b2c658e	18	low
+MOSSLEY, NULL	mnt-1ca696c30255	28	low
+new haypore	mnt-676a6c952585	42	low
+Of,Wapenham,Northampton,England	mnt-eb521e021430	18	low
+Godolphin Manor, Helstan, Cornwall, England	mnt-0d042727c8ab	42	low
+ABDON, MUNSLOW, SHROPSHIRE	mnt-8408004a4580	155	low
+MORTON, ST FAITH, NORFOLK	mnt-a516398ddb35	165	low
+new hamphite	mnt-1e2904048801	74	low
+Newkirk	mnt-53ce73c9da73	420	low
+ST MARYLEBONE (PT OF), MARYLEBONE, WEST DIVISION OF S MARYLEBONE, LONDON	mnt-4e0df981e92f	32	low
+men hita	mnt-59eeecc11d55	38	low
+BRIGHTON, DORSETSHIRE	mnt-a99e255a7024	28	low
+Stoneham, Massachusetts	mnt-1b2e4713733d	88	low
+WALTON ON TRENT, BURTON ON TRENT, STAFFORDSHIRE, STAFFORDSHIRE	mnt-5f44be3fc354	435	low
+White Oak, Hubbard, Minnesota	mnt-b58f73c0253b	661	low
+West Blocton, Alabama	mnt-eb3064cb51e3	88	low
+SARGENT T, SARGENT, North Dakota	mnt-8b8f8fb25d31	40	low
+Hawthorne, California	mnt-0f06bd2cab6e	88	low
+LEYLAND, YORKSHIRE	mnt-b6140e3abc97	28	low
+T 3 PREC 11, ROGERS, ROOSEVELT, New Mexico	mnt-45cc228cb459	40	low
+GRAHAM, HUGHES TOWNSHIP, GRAHAM IOWA, NODAWAY, Missouri	mnt-80663ec1380a	40	low
+C D 2, Lauderdale, Tennessee, USA	mnt-7afc184a6939	42	low
+Of Witney,,Oxford,England	mnt-1ac79ccb1c9b	18	low
+new miota	mnt-5b6b35354250	709	low
+WARDINGTON, NORTHAMPTONSHIRE	mnt-b8dbaa31e20e	29	low
+North Syracuse, North Syracuse, NY	mnt-eb88571e32a4	448	low
+SEVENOAKS, SURREY	mnt-e0934ac8f150	28	low
+SPRING GARDEN TOWNSHIP, GREEN HILL, YORK, Pennsylvania	mnt-9a6ef3fed14c	146	low
+E PRECINCT 15, MOGALLON 1-40, CATRON, New Mexico	mnt-3a96f4bdf2d5	160	low
+CIVIL DISTRICT NO 2, CONDON, UNION, Tennessee	mnt-efe278a01874	479	low
+orthdtat	mnt-dd76bd814200	365	low
+<Of,Taunton,Somersetshire,England>	mnt-ea8466ccd3e2	18	low
+men oa	mnt-fd377570f380	39	low
+YUCAIPA J TWP, SAN BERNARDINO, California	mnt-db9510aaef19	40	low
+men oiky	mnt-73fb46fcbe9d	93	low
+new hmptore	mnt-d2574e573f29	703	low
+of Newgate, London, England	mnt-10038562b718	42	low
+ARCADE TOWNSHIP, PHILLIPS, Kansas	mnt-12916c012e4d	146	low
+Freeport, TX	mnt-85e26d883088	88	low
+WINDSOE, WINDSOR, HARTFORD, Connecticut	mnt-05d07408ecd7	40	low
+Gobleville	mnt-29f0c4001c44	23	low
+SPILSBY, NULL	mnt-ffe5623223a0	29	low
+WHITE CITY VILLAGE, MT OLIVE TOWNSHIP, MACOUPIN, Illinois	mnt-7b487bb5aea5	40	low
+KNAY, JEFFERSON, Pennsylvania	mnt-cbaf7c3f1852	40	low
+COLEMORE, MEON, EAST, HAMPSHIRE	mnt-0267d43ee0bd	144	low
+new hamprse	mnt-6134c5774834	44	low
+North Syracuse, Syracuse area	mnt-4a192f4a968c	408	low
+<,,Onslow Co.,North Carolina>	mnt-78f8b5eab9a1	18	low
+Valkaria, Florida	mnt-b65facfd686a	8	tail
+5443	mnt-81ea8be1af26	7	tail
+AMLWCH, N WALES, N WALES	mnt-dca09913aa09	4	tail
+Musso	mnt-3b761fb1b36e	4	tail
+Avondale, AL	mnt-ef853073d467	1	tail
+FRANCE DINAN	mnt-c3703dbe47f7	5	tail
+Black Pond Moore Townships, Oregon, Missouri	mnt-4135f165da45	1	tail
+IRELAND CANNAUGHT	mnt-75be6a60631f	5	tail
+Troki	mnt-590f4da0b413	4	tail
+3119	mnt-306a6d387ca4	6	tail
+Chalk Mountain, Erath, Texas	mnt-50591a8b5da7	9	tail
+Tompojevci	mnt-326da806e43a	4	tail
+Nobleton, Fla.	mnt-5268da776d17	2	tail
+Huntington, Ga.	mnt-611cc99f1078	2	tail
+SOUTH, WORCESTERSHIRE, WORCESTERSHIRE	mnt-cebb51f8f390	4	tail
+GEDNEY, LONDON, LONDON	mnt-f4b2571fdded	5	tail
+Florence, Michigan	mnt-f4139c4ae51e	1	tail
+1860	mnt-a3e5f3c62891	5	tail
+Bauske	mnt-11c93774b35d	4	tail
+Ruth, CA	mnt-6e9bfdba5cf9	8	tail
+Marion Township Ridgeway city (part), Harrison, Missouri	mnt-b1c4cf3b784e	1	tail
+Miraleste, CA	mnt-502dab241074	1	tail
+Allison, CO	mnt-3620061a4a0e	8	tail
+Glenoma, Washington	mnt-daff9ffd96a8	2	tail
+DOLTON, MONTGOMERYSHIRE, MONTGOMERYSHIRE	mnt-a6dedf7bfa31	4	tail
+Taylorstown, Va.	mnt-ddf7912ef360	4	tail
+IRELAND  ARCUAGH	mnt-0534cf9dc5ed	3	tail
+HOWE INDIANA	mnt-7b9b1cde77cd	7	tail
+Sand Hill Township, NC	mnt-a783f5a2c72b	2	tail
+Blackstone, Mass.	mnt-42650ea17c08	2	tail
+JAMAICA WEST INDIES B S	mnt-5c986b8c0538	5	tail
+Silverton, NJ	mnt-24baeb3f2584	8	tail
+Stuebenville, Ohio	mnt-f312fcb3dd08	2	tail
+SILVERSTONE, NORTHUMBERLAND, NORTHUMBERLAND	mnt-c1e8dc99a840	5	tail
+FRANCIE	mnt-3d0cf4e138d4	3	tail
+1891	mnt-c747a57bf440	3	tail
+TAISMANIA	mnt-477f5fad9fcc	3	tail
+Bloxom, Va.	mnt-46a04b9ae227	4	tail
+Edgewater, WI	mnt-4d2af9d24fce	2	tail
+Birta	mnt-e135f8bc4bce	4	tail
+Cobh	mnt-08cac0ff7a84	4	tail
+LIVERPOOL, LANCD, LANCD	mnt-00ba51b76023	5	tail
+Mi	mnt-9c51ad8660ea	6	tail
+Larchmont Village, CA	mnt-b88ec0cd7073	2	tail
+3022	mnt-8dfb87a847ff	7	tail
+Winthrop, Ar.	mnt-687d89ec7dc0	1	tail
+Herman	mnt-c3d7983e47b1	4	tail
+Pontesbury	mnt-aa84f371fd10	4	tail
+Pierce, FL	mnt-83c22345e417	8	tail
+HACKNEY PARISH	mnt-e9449876c5c2	5	tail
+Gorodok	mnt-e97f00132210	4	tail
+Green Hill, IN	mnt-0c1575fd780c	2	tail
+Hammond, TX	mnt-2e15ea56253d	2	tail
+District 478, Gwinnett County, Georgia	mnt-04d78068034b	2	tail
+Lakeview, AK	mnt-6b1c86439d0a	1	tail
+Escambia Farms, FL	mnt-bd3cf450df0b	8	tail
+Millington, Maryland	mnt-817bba197053	8	tail
+Catheys Valley, Calif.	mnt-5e7c2d5f8482	1	tail
+Lepton	mnt-98fe55dd9d3c	4	tail
+LONGFORD, NORFOLK, NORFOLK	mnt-3c444c5fb298	4	tail
+Remmington, Fauquier, Virginia	mnt-9ff1d5adb67b	9	tail
+AMERICA U S TYEARS IRELAND	mnt-594bd6c0fcd1	5	tail
+4096	mnt-6124cb94c33d	7	tail
+McCamey	mnt-af0040331e70	5	tail
+McVay, AZ	mnt-e68dd8dbacc1	1	tail
+Richmond, Wise, Virginia	mnt-a501c667932c	2	tail
+Potter, KS	mnt-f4259fd47b53	4	tail
+BEDALE, YORK, YORK	mnt-dc51e32ad27d	4	tail
+HOHENEMS VORALBERG AUSTRIA	mnt-468e80aedaaa	5	tail
+Keene	mnt-51a5469332db	5	tail
+Klada	mnt-654b99120778	4	tail
+Pittsburg, Camp, TX	mnt-01705295f5d7	9	tail
+Echola, Alabama	mnt-473b39de3754	8	tail
+Turnerville, GA	mnt-fad7dc41e341	2	tail
+Kutaisi	mnt-9d9da03908e2	4	tail
+Salt Lake City Ward 18, Salt Lake, Utah Territory, United States	mnt-5fdbe01381d1	2	tail
+Terrill, Madison, Kentucky	mnt-8afc712af263	9	tail
+Sartinville, Miss.	mnt-633eed587fec	2	tail
+PARIS FRANCE BRIT SUBJECT	mnt-8db135f08bd1	3	tail
+Hk	mnt-4fe0d24231b6	1	tail
+BROOKE, LANCASHIRE, LANCASHIRE	mnt-1c0283509f3d	5	tail
+NEWTON ABBOT, SUSSEX, SUSSEX	mnt-09b15d199300	4	tail
+CY MYOS	mnt-68d27752aa06	3	tail
+IRELAND COUNTY OF CARNAVAN	mnt-2c4bf3cdca47	5	tail
+Durkee, OR	mnt-99b8e31bca29	1	tail
+9372	mnt-f52f26099bc6	7	tail
+Pollard, AR	mnt-e2b68f96025e	2	tail
+Skulsk	mnt-88c41ec43929	4	tail
+DEARHAM, YORKSHIRE, YORKSHIRE	mnt-5f8f7add6a17	4	tail
+IRELAND CASTLE BARR MAYE	mnt-b6612f9cdb4a	3	tail
+7072	mnt-4a1ad6ffbe25	7	tail
+Clarinda, Ia.	mnt-cd54fc443f37	2	tail
+Driver, VA	mnt-1e2610f6c81a	2	tail
+Gonzalez, Florida	mnt-439ec61e008f	8	tail
+WELSHPOOL, WORCESTERSHIRE, WORCESTERSHIRE	mnt-510b002f5c05	4	tail
+Montgomery County, Georgia	mnt-046db8ad4700	2	tail
+Frankston, Henderson, Texas	mnt-e500787c9ff4	9	tail
+New Smyrna, Fla.	mnt-9da89df09719	4	tail
+5049	mnt-669125eb7cb6	6	tail
+Washington, D. C., USA	mnt-d26df1af9b9a	9	tail
+4348	mnt-c7f88ec81eff	6	tail
+AUSTRALIA VICTORIA B S	mnt-077070a3ebd6	5	tail
+MARABAR IRELAND	mnt-2fae691c908e	5	tail
+ELY TOWNSHIP, MI	mnt-a3eaed3df03d	8	tail
+Jamaica Queens, N.Y.	mnt-2cc7810b9779	2	tail
+Bishopville, Ohio	mnt-553fe7be7afb	1	tail
+FRANCE VERDUN	mnt-0b67f13f94d9	3	tail
+OCKHAM, HANTS, HANTS	mnt-e8c5135ce208	5	tail
+Stanhope, New Jersey	mnt-20dcab9116eb	8	tail
+SCOTLAND EDINBH	mnt-36f701d7b139	5	tail
+Coalport, Pennsylvania	mnt-b670ec264389	8	tail
+GLOSTERSHIRE BITTON	mnt-1e92550aaa20	3	tail
+West Linn	mnt-e6edd97b968b	5	tail
+Witowo	mnt-d6e5329e3467	4	tail
+Tanroggen	mnt-493b03bc4efc	4	tail
+Newport, Tenn	mnt-944cd483fb04	2	tail
+Breese	mnt-6b759294a5d5	5	tail
+Fisherville, Ky.	mnt-dd71244f2764	1	tail
+Rifle, Colo	mnt-1f769ff88158	1	tail
+MYTHOLMROYD, LINCOLNSHIRE, LINCOLNSHIRE	mnt-67a2b35384ba	5	tail
+Rifle	mnt-efade50ee398	5	tail
+FRANCE VALENCIENES	mnt-002d0c9d6fe2	3	tail
+SL	mnt-2b002dcf5eba	2	tail
+Morganza, Washington, Pennsylvania	mnt-5c962b28b418	9	tail
+SCOTLAND SIFESHIRE	mnt-6a7098e7952d	3	tail
+Sp, Maricopa, Arizona	mnt-d81ecafdb020	2	tail
+Wykagyl, NY	mnt-8f9a3f0bcd5d	1	tail
+Mamou, La.	mnt-2de61a0b6983	4	tail
+WORCESTER, NETHERTON, NETHERTON	mnt-9854c0c89676	4	tail
+CHATTERIS, LONDON, LONDON	mnt-43d85a2664c3	5	tail
+WOMBWELL, NORFOLK, NORFOLK	mnt-0edbe5d5ee02	4	tail
+Rudyard, Mont	mnt-e60ef6d07196	1	tail
+HAREFIELD, MIDDLE, MIDDLE	mnt-257f9ce98f0a	4	tail
+Lake Arrowhead, Georgia	mnt-6bb673d86a01	1	tail
+Altheimer	mnt-0b9c86f29f88	5	tail
+Brzozowa	mnt-de3e546ac054	4	tail
+Cascais	mnt-05639b6c482f	4	tail
+SOUTHPORT, MIDDLESEX, MIDDLESEX	mnt-48578cccccb0	4	tail
+West Bowdoin, ME	mnt-f5a25741f910	2	tail
+GLIMNSTER	mnt-500b9d736854	3	tail
+New Lebanon, New York	mnt-cf1f9fb525ed	8	tail
+Trim	mnt-7ab4b0a80acc	4	tail
+Lake City, South Dakota	mnt-3019c0ed0b6c	1	tail
+Braddock Park, Allegheny, Pennsylvania	mnt-cce81f52241d	9	tail
+Homewood, Ill	mnt-c6acdcb0e38d	1	tail
+Pomeroy, Meigo, Ohio	mnt-37f059c746a7	9	tail
+Idaho Springs	mnt-256532c49eb7	4	tail
+WHITECHAPEL, HERTFORDSHIRE, HERTFORDSHIRE	mnt-796f3b7f73a0	5	tail
+ENFIELD, MIDDLEXES, MIDDLEXES	mnt-131426a83089	4	tail
+Lyster	mnt-b185a0ea9a04	4	tail
+CALCUTTA INDIA BRITISH SUBJECT	mnt-c7f975afe0a8	3	tail
+STEVENTON, WILTSHIRE, WILTSHIRE	mnt-aedf75c30fb7	4	tail
+Cavedine	mnt-49f1bf7873e5	4	tail
+Christian, Augusta, Virginia	mnt-d89818fb1bae	9	tail
+Washington, Daviess,† Indiana	mnt-490ee067ac9c	9	tail
+Cannondale, CT	mnt-4fd803918312	2	tail
+Soules Chapel, TX	mnt-d4cc9b3b51bd	1	tail
+Uppsala, Stockholm, Sweden	mnt-31f15afc7288	2	tail
+Ford, KS	mnt-3dc06e20e8b3	4	tail
+Frackville, Pa.	mnt-1034239417c8	8	tail
+FYLINGDALES, YORK, YORK	mnt-7c4cd08cbb29	4	tail
+Catherine, Kan	mnt-df36fb3a4717	2	tail
+BENDIX NEW JERSEY	mnt-a94044cfba12	6	tail
+HEYWOOD, HERE, HERE	mnt-ad43529e2cd9	5	tail
+GALWAY KILBERNET	mnt-fe74d71048cc	5	tail
+Turner, Me.	mnt-88dced6c2d0c	1	tail
+Polermo	mnt-e8421ffb3eb0	4	tail
+Giulianova	mnt-ccb193a3c6dc	4	tail
+Piscataway Township, NJ	mnt-f02b6e658b3f	4	tail
+Petty, TX	mnt-f6d6c0e93769	8	tail
+Sandyland, California	mnt-ec4429360c64	1	tail
+Menard, Randolph, Illinois	mnt-a3a89aa091c8	9	tail
+AYRSHIRE SCOLTAND	mnt-d02c71f32187	5	tail
+Almond, N.C.	mnt-877ee659923a	1	tail
+212	mnt-e2154fea5da2	3	tail
+Tonica	mnt-fd25ae90d694	4	tail
+Lytton, IA	mnt-4360036e6969	4	tail
+SCOTLAND BELFAST	mnt-4503a20646b8	5	tail
+TILLINGTON, HERTFORDSHIRE, HERTFORDSHIRE	mnt-eed1b14c8c72	5	tail
+7889	mnt-108465dc626d	7	tail
+KYO, NORTHUMBERLAND, NORTHUMBERLAND	mnt-3c3f9a22d95e	5	tail
+Sanchez, NM	mnt-efcb3a0e30cd	1	tail
+Port Orford, Ore	mnt-8685cd3760da	1	tail
+San Luis Obispo County	mnt-15f072d968e5	5	tail
+Fontainebleau	mnt-020bbf6e4c05	5	tail
+Sidney, Ind.	mnt-2b46bc4d3b3e	4	tail
+STEVENTON, NORTHAMPTONSHIRE, NORTHAMPTONSHIRE	mnt-bc66438c731c	5	tail
+na	mnt-5efb4ac2212f	6	tail
+Force, Pa.	mnt-89dee558c9c6	1	tail
+Roza	mnt-22b4ee93568e	4	tail
+Hickman County	mnt-169891b5ec8e	5	tail
+Winthrop, Me.	mnt-e35cf88806ae	2	tail
+Springfield, Ky.	mnt-0c8a1d5f01d2	8	tail
+Malyczo	mnt-ff7342d18e89	4	tail
+1892	mnt-f312b677e35e	4	tail
+Mattapan, Mass.	mnt-c9d51ee8a5ad	8	tail
+1732	mnt-2ef94c5be640	7	tail
+IRELAND DENEGAL	mnt-aef855b2c7d6	3	tail
+IRELAND COUNTY WYFORD	mnt-da0eb4eddd96	3	tail
+NORTHAMPTON, HOLLOWELL, HOLLOWELL	mnt-e4ec7cf5ba86	5	tail
+IRELAND TULLA C CLARE	mnt-52f2cbc86194	3	tail
+IRELAND  TYRONE	mnt-89b5240fd157	3	tail
+Cobleskill, N.Y.	mnt-d50feed107f6	8	tail
+Great Bend, New York	mnt-397f202c0227	1	tail
+IRELAND KILLA???	mnt-778818df821c	3	tail
+MT VICTORY, KY	mnt-e3445932cc3b	4	tail
+East Lebanon, ME	mnt-17cef47a5bc1	4	tail
+Ashland City	mnt-7383c9784114	5	tail
+BALA, MONTGOMERYSHIRE, MONTGOMERYSHIRE	mnt-4765bb6f5766	4	tail
+DARLINGTON, YORK, YORK	mnt-78e319984aae	4	tail
+NESTON, LINCOLNSHIRE, LINCOLNSHIRE	mnt-95b9e68d8df1	5	tail
+NWIN CARNARVONSHIRE N W	mnt-a052eb7b407c	3	tail
+Ellis County	mnt-9629e0677c3e	5	tail
+Bolsa Chica State Beach, California	mnt-bf3f3da65bcf	2	tail
+Chokoloskee, Florida	mnt-05c5a5f2cf3b	4	tail
+Rushville, N.Y.	mnt-378fbfa9bd15	1	tail
+POOLE, Ky.	mnt-c11eaf9a905e	8	tail
+Alston, SC	mnt-ae4ba8e937c0	1	tail
+Fenton, Iowa	mnt-8ff0c4bce9b1	8	tail
+Vessie, Phelps, Missouri	mnt-7de83300d3b7	9	tail
+EDINBURGH, N K, N K	mnt-7950816e4256	4	tail
+Eastville	mnt-f907c1184316	5	tail
+Clark Range, Fentress, Tennessee	mnt-49f2166654ab	9	tail
+Cassella, Oh.	mnt-80f4d01fc990	1	tail
+7075	mnt-4eb2d0bff2a5	7	tail
+Island Of Corfu	mnt-4fa14e93d73c	7	tail
+HITCHCOCK TEXAS	mnt-f4096d14de93	7	tail
+WORTHINGTON, LINCOLNSHIRE, LINCOLNSHIRE	mnt-da637e78952f	5	tail
+IRELAND COUNTY GALLWEY	mnt-22ff60bc7db7	3	tail
+IRLENAD DUBLIN	mnt-724b03ad538f	3	tail
+TOLDEN BRITISH SUBJECT	mnt-99c741521454	5	tail
+Cleghorn, IA	mnt-dc376821c991	4	tail
+RUSSIA KATWAILN BRITISH SUBJECT	mnt-34f05d5bd5e4	3	tail
+Mt Airy, GA	mnt-b46b5949dfcf	1	tail
+LINTED STATES	mnt-3871e492c7df	5	tail
+Manor Hill, Huntingdon, Pennsylvania	mnt-f99761a6675a	9	tail
+Same	mnt-ff3390557335	3	tail
+WEST INDIA AMTIGNA	mnt-1ed262430e1b	5	tail
+HANHAM, NORTHUMBERLAND, NORTHUMBERLAND	mnt-e189ef20d644	5	tail
+Gas, KS	mnt-5b910867be02	4	tail
+Manito, Ill.	mnt-1b75d61ce66a	8	tail
+Gansville, LA	mnt-287ca403304c	2	tail
+Medford, Mass	mnt-235828ff18eb	8	tail
+Loogootee, Daviess, Indiana	mnt-83f8fb1eac62	9	tail
+BROCKLEY, YORKSHIRE, YORKSHIRE	mnt-5996d3fd1d24	4	tail
+Eldorendo, Decatur, Georgia	mnt-99e289eec86d	9	tail
+RR	mnt-843cbacc61c8	1	tail
+Graham, California	mnt-f0ade657c422	1	tail
+Douglasville, Berks, Pennsylvania	mnt-e44d3fcafd73	9	tail
+GRANTHAM, LINES, LINES	mnt-c5c7eaab28fa	5	tail
+ASHLEY, HERTFORDSHIRE, HERTFORDSHIRE	mnt-1d5e1485ba9f	5	tail
+Lake Como, Wis.	mnt-fc89cf784f2b	2	tail
+Harriman	mnt-ee96f10d1ac0	5	tail
+Henry, SC	mnt-fd129a152df3	4	tail
+Custer City, Oklahoma	mnt-64efa1408772	4	tail
+Cedar Grove Township, Orange County, North Carolina	mnt-d4cbff723701	2	tail
+Laurel, Ore	mnt-1132b1947be2	1	tail
+Oshtemo Twp, MI	mnt-40fc9dc2e92d	8	tail
+9371	mnt-82517e6de979	6	tail
+Heflin	mnt-8366a0d0fb61	5	tail
+FARCET, HANTS, HANTS	mnt-a71e63c5f50f	5	tail
+Brixey, MO	mnt-d6378e6c1ff8	4	tail
+Polk County, TX	mnt-6db6d0665b58	4	tail
+Podilsk	mnt-23c8886947e6	4	tail
+DERBY, HAMPSHIRE, HAMPSHIRE	mnt-ef021504a2e7	5	tail
+Florham Park	mnt-09b66ec6c9ba	5	tail
+SOUTHPORT, LEICESTERSHIRE, LEICESTERSHIRE	mnt-90cd8a0f8b6b	5	tail
+LIETH SCOTLAND	mnt-52ae634fa102	5	tail
+Laurel Point, WV	mnt-a07604ce4f8c	1	tail
+Santiago, PA	mnt-5835aff2980e	1	tail
+Terre Haut, Vigo, Indiana	mnt-8a9c8c84f1b9	9	tail
+Osbernville, IL	mnt-c92074ab7cbb	1	tail
+Polonka	mnt-fecb11e1f2ea	4	tail
+Altona, Ind.	mnt-c53a571cda72	2	tail
+Shelby Township	mnt-4b7064fba94d	5	tail
+681 5th Ave, Brooklyn, Kings County New York	mnt-3c42aa8c43f7	2	tail
+Kongen	mnt-31bcc914ab58	4	tail
+Silver Creek, Chaut, New York	mnt-c24e0c928028	9	tail
+Bendena, Kansas	mnt-945f730ca8bc	4	tail
+Avery, Monroe, Iowa	mnt-1ee52ec7fe2d	1	tail
+MARKET DEEPING, LINCS, LINCS	mnt-559c0ca9d39f	5	tail
+Sv Jana	mnt-955a5a6ce76a	4	tail
+Ludz	mnt-5b0907cd475c	4	tail
+Louellen, KY	mnt-70c4debce998	4	tail
+4825	mnt-780ecfceee78	6	tail
+Borden Springs, Alabama	mnt-5b8b9e639aa0	2	tail
+Escalon	mnt-1c88fa81ac34	5	tail
+Romulus, N.Y.	mnt-d336a4721c4c	8	tail
+Colombia, Richland, South Carolina	mnt-5dbf9cd04344	9	tail
+TOTTENHAM, MIDD, MIDD	mnt-e9c2ca2faa68	4	tail
+EDINGBOROGH SCOTLAND	mnt-77efa97294ee	5	tail
+Towamensing Trails, PA	mnt-231c4a72151d	1	tail
+Wheeling, Il.	mnt-4a5d0492ae2d	1	tail
+IRLAND MAYR	mnt-03a6b1b98f1a	3	tail
+Forest Hills, California	mnt-0fbcc98f8d86	4	tail
+3050	mnt-653d2c04df0c	7	tail
+FT CONSTITUTION NEW CASTLE NEW HAMPSHIRE	mnt-33afd45000d6	7	tail
+BOMBAY (BRITISH SUBJECT)	mnt-ad8c5e111931	5	tail
+IRELAND KINROSE	mnt-a9753240a09c	3	tail
+Rostock	mnt-1c6bdeb1dd68	5	tail
+Maastricht	mnt-abd6bc48a695	4	tail
+Strzyzow	mnt-1a9f8c146743	4	tail
+WELPORT IRELAND	mnt-91b95e1b08d0	5	tail
+PREUSSON GERMAN	mnt-4c1f2f879d96	5	tail
+Eastland, Texas, USA	mnt-d007c50aa3d2	2	tail
+2 1 2002	mnt-6ae705015864	9	tail
+KENSINGTON, MIDSEX, MIDSEX	mnt-a90e67797079	4	tail
+Re	mnt-c387c982a132	9	tail
+Peterstown, West Virginia	mnt-a163ae558dae	8	tail
+SCOTLAND EDINBURGE	mnt-dd6e6f5b344d	5	tail
+Marvyn, AL	mnt-d08387170212	8	tail
+6098	mnt-a5cd3c11d6ee	6	tail
+Precinct 1, Baylor County, Texas, USA	mnt-9b94ebb1d164	2	tail
+ALDERBURY, NORFOLK, NORFOLK	mnt-9d14df4fbd8c	4	tail
+Taylor County, Texas, United States of America	mnt-f53089f4c2a4	2	tail
+BRITISH AMERICA BRITISH SUBJECT	mnt-3e545b0f7b7f	5	tail
+218 Wood Ave, Salt Lake City, Salt Lake, Utah, USA	mnt-d9276d08d184	2	tail
+1852	mnt-4ffba05e2923	3	tail
+5210	mnt-ecacae52b5fb	6	tail
+Adamsville, MI	mnt-58f6ac6f1d35	2	tail
+Marietta, AL	mnt-8e2331bf6f43	4	tail
+Peyla, St Louis, Minnesota	mnt-56b27bf61fa2	9	tail
+Lake Winola, Pennsylvania	mnt-2effe902305e	4	tail
+Pinkocz	mnt-8f3abacf016c	4	tail
+IRELAND MIDDLETON CORK	mnt-1a39d34b8952	5	tail
+Trotwood	mnt-5f037fa66854	5	tail
+Monroe, Florida, United States	mnt-c70b22338ce0	2	tail
+Hudson, WV	mnt-60c9164c968f	1	tail
+Shippenville, Pa.	mnt-e38733e40769	8	tail
+Patterson, Waller, Texas	mnt-ae82005c73f2	9	tail
+IRELAND DRUGHEDA	mnt-c87f8b634b6b	3	tail
+WHITWELL, LANCASHIRE, LANCASHIRE	mnt-5b221f110eec	5	tail
+Farmers, Kentucky	mnt-df5fd0093b3f	4	tail
+WHITECHAPEL, LONDON CITY OF, LONDON CITY OF	mnt-529cbe15841c	4	tail
+LEICESTER, NORTHAMPTON, NORTHAMPTON	mnt-65f67d3ef80e	4	tail
+New Geneva, PA	mnt-9c33a9e47524	4	tail
+Yukon, Missouri	mnt-8c0991ceb30b	4	tail
+KNOBNOSTER MISSOURI	mnt-ec8df4cdebcd	7	tail
+MENTROSE SCOTLAND	mnt-a294003205fc	3	tail
+BLISWORTH, NORFOLK, NORFOLK	mnt-3207b7733f7e	4	tail
+Grove Park, FL	mnt-c90f971ee331	8	tail
+DUNDEE SCOTLAND COUNTY OF FARFOR	mnt-580655aa1c85	5	tail
+Wadsworth, TX	mnt-3fa2cde62533	4	tail
+Sixes, GA	mnt-f640444dc5aa	1	tail
+Shingletown, CA	mnt-c5aac022aa1c	2	tail
+Pateros, Wash.	mnt-b37c97f9d893	2	tail
+Roscoe Township, IL	mnt-7e94d2fba53d	2	tail
+Laurelton, PA	mnt-227ee6f9a176	4	tail
+Norton, Wise, VA	mnt-affcd6991fda	9	tail
+Lewis County	mnt-c0b7ad913c1e	5	tail
+Brooklyn Center	mnt-60c1e001602d	4	tail
+Crockett, Virginia	mnt-69cfbcd7726d	8	tail
+1883	mnt-de3944e4c911	5	tail
+Eureka, Kan	mnt-268d8a26cd4d	1	tail
+Chimney Corner, WV	mnt-3ec5accc0c25	2	tail
+New Canaan, Fairfield, Conneticut	mnt-4d4d43697d09	9	tail
+Eureka, WA	mnt-289a40b36450	1	tail
+Millersburg, IA	mnt-12e67da04cc2	2	tail
+London and Westminster, England	mnt-69c551f64322	2	tail
+FERNDALE, YORKSHIRE, YORKSHIRE	mnt-8623a384a99f	4	tail
+MH	mnt-990441913301	4	tail
+WOOLWICH ENGLAND	mnt-6a011c078809	5	tail
+Anderson County, South Carolina, United States	mnt-3b07119f897b	2	tail
+MARGATE, SUSSEX, SUSSEX	mnt-8bdc7e4f0865	4	tail
+Smithton	mnt-513f5192cf16	5	tail
+URMSTON, LANS, LANS	mnt-927a8c9a43f0	5	tail
+CUNTY MAYO	mnt-622961f5b145	3	tail
+Duncombe, Iowa	mnt-da85abd1420d	2	tail
+Elizabeth City, Pasquotank, NC	mnt-65f0cf0751ea	9	tail
+ST CLEMENTS PARISH	mnt-73a11cc52265	3	tail
+Broadus, Mont.	mnt-a908ee4ede75	8	tail
+SURBITON, LINCOLNSHIRE, LINCOLNSHIRE	mnt-3a46ee1f5b4e	5	tail
+Lakeside, Ariz	mnt-b66b37dd8aeb	2	tail
+MEO IRELAND	mnt-60a34c7341fa	3	tail
+BLACKAWTON, MONMOUTHSHIRE, MONMOUTHSHIRE	mnt-d42e1009a89e	4	tail
+Burroughs, Chatham, Georgia	mnt-d67f6ceacf9e	9	tail
+6969	mnt-38828e996b76	7	tail
+Llanidloes	mnt-525799f178f8	4	tail
+DARLINGTON, WORCESTER, WORCESTER	mnt-d2b14810c9fd	4	tail
+Ashley County, Arkansas	mnt-bde7d703dd28	2	tail
+LINDBERG FLD SAN DIEGO CALIFORNIA	mnt-cdd5301d7628	7	tail
+IRELAND LONNARYBET	mnt-52a06d3b4bf7	3	tail
+no	mnt-fd1286353570	4	tail
+, Middlesex, , England	mnt-06170a870bc5	2	tail
+BRAMFIELD, NORFOLK, NORFOLK	mnt-9b87a80b3ecf	4	tail
+IRELAND CORK EALING	mnt-1d68e9f09bf8	3	tail
+Hasting, Jefferson, Oklahoma	mnt-5328be647bf7	9	tail
+3930	mnt-6c276b9c09e9	7	tail
+CORNHILL, NORTHAMPTONSHIRE, NORTHAMPTONSHIRE	mnt-51d530f07d9f	5	tail
+STOURBRIDGE, LYC, LYC	mnt-444f80a7c760	4	tail
+Romulus, Pottawatomie, Oklahoma	mnt-e312e2555c10	9	tail
+DUMFRIESHIRE ST MANGO	mnt-3c2533b78de6	5	tail
+Throop, Lack, Pennsylvania	mnt-6e249b911146	9	tail
+Busbach	mnt-d29e683b02b6	4	tail
+Washta, IA	mnt-33cef0bdf28d	1	tail
+Nowytarg	mnt-e78d56a3a18f	4	tail
+Albemarle Parish, Surrey County, VA	mnt-571bede1eae6	2	tail
+Marcellus, Mich.	mnt-dca2a2bc0e16	4	tail
+St. Clair, St Clair, Michigan	mnt-2b54dc12a6c6	9	tail
+REDDITCH, WORCESTER'S, WORCESTER'S	mnt-4b4b8f0b7bd8	4	tail

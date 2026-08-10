@@ -1,0 +1,42 @@
+{
+  "seed": 42,
+  "source": "MNT",
+  "bands": {
+    "head": {
+      "strings": 10159,
+      "records": 6768439159,
+      "mean_total": 666250.5,
+      "sampled": 2943,
+      "records_estimated": true
+    },
+    "mid": {
+      "strings": 158187,
+      "records": 518656944,
+      "mean_total": 3278.8,
+      "sampled": 3000,
+      "records_estimated": true
+    },
+    "low": {
+      "strings": 838894,
+      "records": 162395897,
+      "mean_total": 193.6,
+      "sampled": 2400,
+      "records_estimated": true
+    },
+    "tail": {
+      "strings": 250550,
+      "records": 1070162,
+      "mean_total": 4.3,
+      "sampled": 1600,
+      "records_estimated": true
+    }
+  },
+  "pool_rows": 9943,
+  "usable_rows": 9509,
+  "dropped_from_pool": {
+    "no_pa_record": 287,
+    "not_verified": 33,
+    "no_authority_id": 2,
+    "seen_in_development": 112
+  }
+}
