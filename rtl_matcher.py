@@ -2140,7 +2140,8 @@ def _prune_jurisdictions(group, auth_cache):
 
 
 def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None,
-                    helper_term=None, correction_uuids=None, term=None):
+                    helper_term=None, correction_uuids=None, term=None,
+                    container_slot=False):
     """Rank candidates by evidence strength, helper-term match, level gap,
     then population.
 
@@ -2149,6 +2150,17 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
     better on all axes.  is_weak is 1 for a spelling-correction UUID and for
     an exact hit on a record the authority marks Historical, 0 otherwise, so
     a live exact match always ranks above both.
+    container_slot suppresses the preferred-jurisdiction prune. That prune
+    encodes "a record naming Springfield usually means the city", which holds
+    for a leaf but inverts for a term sitting between another place and a
+    state: nothing can live inside a city that the string also names to its
+    left, so the county reading is the only coherent one. Measured over the
+    dev half, 87 rows lost a county this way, and in 54 of them the surviving
+    city was in a different county entirely — "NULL, Cameron, Texas" resolved
+    to Cameron in Milam County. Suppressing the prune is enough on its own,
+    since level_gap already scores the county one below the state and the
+    city two.
+
     When parent_level is None (single_term case), level_gap is always 0.
     When helper_term is provided, candidates whose parent chain reaches the
     helper term's UUID get helper_miss=0; others get a penalty that scales
@@ -2157,7 +2169,7 @@ def rank_candidates(candidates, auth_cache, parent_level, jurisdiction_hint=None
     if not candidates:
         return []
 
-    if jurisdiction_hint is None:
+    if jurisdiction_hint is None and not container_slot:
         # The preferred-jurisdiction prune is a hard delete, and it runs before
         # any scoring, so it can silently remove a candidate the is_correction
         # axis would have ranked first. Applying it separately to the exact and
@@ -2612,16 +2624,22 @@ def match_entry(terms, name_cache, auth_cache, original, jurisdiction_hints=None
 
     if depth > 1:
         # Find the leftmost term that actually verified (not skipped)
-        leftmost_key = right_to_left[len(right_to_left) - 1].lower()
+        leftmost_idx = len(right_to_left) - 1
+        leftmost_key = right_to_left[leftmost_idx].lower()
         for i in range(len(right_to_left) - 1, 0, -1):
             if right_to_left[i] not in skipped:
-                leftmost_key = right_to_left[i].lower()
+                leftmost_idx, leftmost_key = i, right_to_left[i].lower()
                 break
+        # A container slot: terms the string names further left were all
+        # skipped, and what confirmed to the right is a state or broader.
+        container_slot = (leftmost_idx < len(right_to_left) - 1
+                          and (parent_level_for_ranking or 0) >= 6)
         hint = (jurisdiction_hints or {}).get(leftmost_key)
         ranked = rank_candidates(list(confirmed), auth_cache, parent_level_for_ranking,
                                  jurisdiction_hint=hint,
                                  correction_uuids=_corr.get(leftmost_key),
-                                 term=leftmost_key)
+                                 term=leftmost_key,
+                                 container_slot=container_slot)
         winner, tied = detect_tie(ranked)
 
         skip_count = len(skipped)

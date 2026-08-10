@@ -345,11 +345,23 @@ rows go to 99.1% once the stop-list is loaded, against 91.1% without it.
 |---|---|---|---|---|
 | baseline | `mnt_dev_03` | 67.4% | 58.3% | 75.5% |
 | name-fragment demotion | `mnt_dev_08` | 67.7% | 59.6% | 74.7% |
-| same, held-out half | `mnt_heldout_01` | 68.5% | — | — |
+| container-slot county preference | `mnt_dev_09` | 67.9% | 60.6% | 75.6% |
 
-Held-out ran once at the fragment change, aggregates only. It lands 0.8 points
-above dev with every band within about two, so nothing measured on dev is
-fitted to it.
+Held-out tracks dev at both steps, aggregates only:
+
+| run | record accuracy | recall | precision |
+|---|---|---|---|
+| `mnt_heldout_01`, at the fragment change | 68.5% | 59.2% | 75.2% |
+| `mnt_heldout_02`, at the container slot | 68.7% | 60.1% | 76.0% |
+
+Held-out sits 0.8 points above dev and moves with it, band for band, so
+nothing measured on dev is fitted to the half being read.
+
+The container-slot rule is the only change so far to raise precision and
+recall together, because it rewrites an existing commit rather than creating
+one. Its gains are mid and low band; head is untouched. On snowball2 it is
+flat — 2,390 matched rows against 2,395 — since `X, County, State` is a census
+shape that newspaper prose rarely takes.
 
 The fragment change fixed 33 rows and broke 4, two of which are rows where
 abstaining was the correct answer. Gains sit outside head — head +1, mid +18,

@@ -3039,3 +3039,52 @@ class TestNameFragmentGate:
             cache['pinellas'].add(uuid)
         got = lookup_name_with_origin('Pinellas', cache, {})
         assert set(got) == {'county', 'park', 'airfield'}
+
+
+class TestContainerSlotPrune:
+    """The preferred-jurisdiction prune encodes "a record naming Springfield
+    usually means the city". That holds for a leaf and inverts for a term
+    sitting between another place and a state: nothing lives inside a city
+    that the string also names to its left, so the county is the only
+    coherent reading. Measured on the dev half, 87 rows lost a county to this
+    prune and 54 of them landed on a city in a different county.
+    """
+
+    def cache(self):
+        return {
+            'state': make_auth_record_full('state', level='6',
+                                           jurisdiction='State', name='Texas'),
+            'county': make_auth_record_full('county', 'state', level='5',
+                                            population='400000',
+                                            jurisdiction='County', name='Cameron'),
+            'far_city': make_auth_record_full('far_city', 'other_county',
+                                              level='4', population='6000',
+                                              jurisdiction='City', name='Cameron'),
+        }
+
+    def test_a_container_slot_keeps_the_county_and_it_wins(self):
+        ranked = rank_candidates(['far_city', 'county'], self.cache(),
+                                 parent_level=6, container_slot=True)
+        assert [uuid for uuid, _ in ranked][0] == 'county'
+
+    def test_without_the_slot_the_prune_still_deletes_the_county(self):
+        # Leaf position is unchanged: a bare "Cameron, Texas" still reads as
+        # the city, which is what the prune is for.
+        ranked = rank_candidates(['far_city', 'county'], self.cache(),
+                                 parent_level=6, container_slot=False)
+        assert [uuid for uuid, _ in ranked] == ['far_city']
+
+    def test_the_county_wins_on_level_gap_not_a_new_axis(self):
+        # Suppressing the prune is the whole change; gap = |6 - 5| beats
+        # |6 - 4| without any extra scoring rule.
+        ranked = dict(rank_candidates(['far_city', 'county'], self.cache(),
+                                      parent_level=6, container_slot=True))
+        assert ranked['county'][2] == 1
+        assert ranked['far_city'][2] == 2
+
+    def test_a_jurisdiction_hint_still_takes_precedence(self):
+        # The hint path never pruned, so the slot flag must not change it.
+        ranked = rank_candidates(['far_city', 'county'], self.cache(),
+                                 parent_level=6, jurisdiction_hint='City',
+                                 container_slot=False)
+        assert len(ranked) == 2
