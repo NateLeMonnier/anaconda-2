@@ -1,0 +1,2 @@
+symspellpy==6.9.0
+pytest==7.4.4
