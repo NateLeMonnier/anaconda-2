@@ -233,3 +233,14 @@ eval/data/mnt_dev_detail.tsv
 
 # macOS
 .DS_Store
+
+# snowball2 eval data: regenerable from the ground truth via
+# eval/build_sb2_eval.py and eval/build_sb2_sample.py. The holdouts exceed
+# GitHub's 100 MB limit. The hand-adjudicated verdict sheets are NOT here —
+# those are committed, since nobody can regenerate 400 human judgments.
+eval/data/mnt_holdout_sb2*.tsv
+eval/data/dict_holdout_sb2*/
+eval/data/sb2_input*.tsv
+eval/data/sb2_labels.tsv
+eval/data/sb2_sample_*.tsv
+eval/data/mnt_dev_original*.tsv

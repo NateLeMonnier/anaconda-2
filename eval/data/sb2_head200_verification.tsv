@@ -1,0 +1,204 @@
+# head verification sheet from eval/runs/08-12/sb2_head200_input_01.tsv
+# 200 strings, 2,081,389 records, 45.5% of the corpus
+# fill verdict: y=right  n=wrong  a=declined and that was right  ?=unsure
+rank	frequency	pct_corpus	cum_pct_corpus	cum_pct_stratum	place	matcher_answer	matcher_chain	match_type	authority_id	candidates	verdict	true_uuid	notes
+1	784558	17.166%	17.2%	37.7%	Middletown, Ohio, United States of America	Middletown	Middletown, Butler, Ohio, USA	chain_verified	B33B487E-0FE8-45B9-B6A9-03173B9A9DA9				
+2	380098	8.317%	25.5%	56.0%	Rock Island, Illinois, United States of America	Rock Island	Rock Island, Rock Island, Illinois, USA	chain_verified	9310D33F-7E32-4F54-A77C-41262E494210				
+3	169474	3.708%	29.2%	64.1%	Biloxi, Mississippi, United States of America	Biloxi	Biloxi, Harrison, Mississippi, USA	chain_verified	DBE7FAED-CBD6-44C1-9F9F-CC0865EB2F0D				
+4	135392	2.962%	32.2%	70.6%	Portland, Maine, United States of America	Portland	Portland, Cumberland, Maine, USA	chain_verified	8B8E01A7-A596-410B-B476-CEE6ADFF1F8C				
+5	110749	2.423%	34.6%	75.9%	Oklahoma City, Oklahoma, United States of America	Oklahoma City	Oklahoma City, Oklahoma, Oklahoma, USA	chain_verified	9BCF79F6-7D8A-4DAF-928B-EF44C4B91B1A				
+6	71976	1.575%	36.2%	79.4%	Honey Grove, Texas, United States of America	Honey Grove	Honey Grove, Fannin, Texas, USA	chain_verified	5207C0CE-65CE-474F-8BF2-AA506CCE4122				
+7	63649	1.393%	37.5%	82.4%	Tacoma, Washington, United States of America	Tacoma	Tacoma, Pierce, Washington, USA	chain_verified	99A12951-C7C9-49B3-B1A8-CFB6B4BA2116				
+8	38268	0.837%	38.4%	84.3%	Vallejo, California, United States of America	Vallejo	Vallejo, Solano, California, USA	chain_verified	6AFEF29E-5D2B-48CA-9FC7-C44DF4845BBF				
+9	31083	0.680%	39.1%	85.8%	Hamilton, Texas, United States of America	Hamilton	Hamilton, Hamilton, Texas, USA	chain_verified	3E7A1B30-8A08-48DD-BD80-300801A9A15C				
+10	30549	0.668%	39.7%	87.2%	Spencer, Iowa, United States of America	Spencer	Spencer, Clay, Iowa, USA	chain_verified	192F822C-DE28-4045-80FE-5330C8F08446				
+11	24779	0.542%	40.3%	88.4%	Fairmont, West Virginia, United States of America	Fairmont	Fairmont, Marion, West Virginia, USA	chain_verified	1CB4C3EF-D7E7-4C37-8530-C740C9377A18				
+12	24708	0.541%	40.8%	89.6%	Cumming, Georgia, United States of America	Cumming	Cumming, Forsyth, Georgia, USA	chain_verified	70803956-6339-4F06-AF35-778BCD3E7691				
+13	24363	0.533%	41.3%	90.8%	The Dalles, Oregon, United States of America	The Dalles	The Dalles, Wasco, Oregon, USA	chain_verified	5C7D2DFD-32EF-4F0A-86F7-E36825C962F5				
+14	18498	0.405%	41.8%	91.7%	Port Charlotte, Florida, United States of America	Port Charlotte	Port Charlotte, Charlotte, Florida, USA	chain_verified	024E6660-CE3C-40B5-AD6B-B8611875B887				
+15	16314	0.357%	42.1%	92.5%	Elko, Nevada, United States of America	Elko	Elko, Elko, Nevada, USA	chain_verified	5EA00B21-4A57-4BEC-8F43-80FD9BFD464E				
+16	11601	0.254%	42.4%	93.0%	Chariton, Iowa, United States of America	Chariton	Chariton, Lucas, Iowa, USA	chain_verified	7385D2AE-D6B6-459C-9DC4-EFCB8E7893B9				
+17	10967	0.240%	42.6%	93.5%	Napoleon, Ohio, United States of America	Napoleon	Napoleon, Henry, Ohio, USA	chain_verified	9FE9D0F0-DCDF-4900-8122-B42008D22AAD				
+18	9243	0.202%	42.8%	94.0%	Newark, Delaware, United States of America	Newark	Newark, New Castle, Delaware, USA	chain_verified	08102767-7317-4187-993F-E5D799A55EED				
+19	8309	0.182%	43.0%	94.4%	Corvallis, Oregon, United States of America	Corvallis	Corvallis, Benton, Oregon, USA	chain_verified	018E3223-C74E-497F-8817-6BD607395135				
+20	5993	0.131%	43.1%	94.7%	Cape Girardeau, Missouri, United States of America	Cape Girardeau	Cape Girardeau, Cape Girardeau, Missouri, USA	chain_verified	B847C27D-1F96-4AF5-82DB-385DE81702C9				
+21	5666	0.124%	43.2%	94.9%	Sheridan, Wyoming, United States of America	Sheridan	Sheridan, Sheridan, Wyoming, USA	chain_verified	9DE2C27A-81CA-4330-A444-B1A6208F5098				
+22	4846	0.106%	43.3%	95.2%	Vernal, Utah, United States of America	Vernal	Vernal, Uintah, Utah, USA	chain_verified	28366DC8-691C-43AB-894E-2FE83DCA5BBC				
+23	4479	0.098%	43.4%	95.4%	St. James Hospital and Health Centers, Chicago Heights	Chicago Heights	Chicago Heights, Cook, Illinois, USA	chain_verified_proximity	A1026C99-5D81-422B-A26D-B7AE90A5B901				
+24	4015	0.088%	43.5%	95.6%	Scranton, Pennsylvania, United States of America	Scranton	Scranton, Lackawanna, Pennsylvania, USA	chain_verified	0A6BC3C6-8FFC-4F5F-9749-265761FF6631				
+25	3634	0.080%	43.6%	95.8%	Mccook, Nebraska, United States of America	McCook	McCook, Red Willow, Nebraska, USA	chain_verified	1E9CD294-9041-48D5-89CF-F8C18704C6E7				
+26	3144	0.069%	43.7%	95.9%	Ventura, California, United States of America	Ventura	Ventura (San Buenaventura), Ventura, California, USA	chain_verified	FAB712C0-2648-4BFF-85C3-40A470DB40E8				
+27	3100	0.068%	43.7%	96.1%	Alliance, Nebraska, United States of America	Alliance	Alliance, Box Butte, Nebraska, USA	chain_verified	AA600EBA-487B-4921-AFB8-50E366E3B853				
+28	3075	0.067%	43.8%	96.2%	Swan River Valley Hospital, Manitoba	Manitoba	Manitoba, Canada	freq_resolved	B03A3134-E075-472E-A0A4-B58F4A886982				
+29	2852	0.062%	43.9%	96.3%	Spanish Fork, Utah, United States of America	Spanish Fork	Spanish Fork, Utah, Utah, USA	chain_verified	158D577E-50D3-464C-AFD0-059F1FEE41F0				
+30	2817	0.062%	43.9%	96.5%	Swan River, Swan River	(declined)		parent_amb		Perth, City of Perth, Western Australia, Australia|Swan River, Parkland, Manitoba, Canada|Swan River, Itasca, Minnesota, USA|Swan River Reserve, Big Lakes County, Alberta, Canada|Swan Valley West (Swan River), Parkland, Manitoba, Canada			
+31	1824	0.040%	44.0%	96.6%	Fair Oaks, California, United States of America	Fair Oaks	Fair Oaks, Sacramento, California, USA	chain_verified	29A52384-A59F-4833-9B6B-5D23BC60C97E				
+32	1632	0.036%	44.0%	96.6%	Mast hospital	(declined)		no_auth_match					
+33	1500	0.033%	44.0%	96.7%	Kalispell, Kalispell, Montana	Kalispell	Kalispell, Flathead, Montana, USA	chain_verified_proximity	B5AEEA7C-3405-437D-A299-72B8E372001E				
+34	1374	0.030%	44.1%	96.8%	Otter Tail County	Otter Tail	Otter Tail County, Minnesota, USA	single_term	4FDD0772-4B7E-487A-99FD-9DDC31E033C9				
+35	1260	0.028%	44.1%	96.8%	El Rio	(declined)		single_amb		El Río, Las Piedras, Puerto Rico, USA|El Rio, Pima, Arizona, USA|El Rio, Ventura, California, USA|Del Rio, Val Verde, Texas, USA|Del Rio (Big Creek), Cocke, Tennessee, USA			
+36	1175	0.026%	44.1%	96.9%	St. Marys Hospital, Rogers	(declined)		parent_amb		Rogers, Benton, Arkansas, USA|Rogers, Hennepin, Minnesota, USA|Rogersville, Webster, Missouri, USA|Rogers, Bell, Texas, USA|Rogers, Columbiana, Ohio, USA			
+37	1150	0.025%	44.2%	97.0%	CorbyGermany Hospital	(declined)		no_auth_match					
+38	1130	0.025%	44.2%	97.0%	Decatur County Memorial Hospital, Greensburg, Indiana	Greensburg	Greensburg, Decatur, Indiana, USA	chain_verified_proximity	A7250A9C-73A4-46F9-B63E-31403B7AAE91				
+39	1013	0.022%	44.2%	97.1%	Harlan, Iowa, United States of America	Harlan	Harlan, Shelby, Iowa, USA	chain_verified	13891530-FD51-4FD8-AC43-025E3E3185DF				
+40	928	0.020%	44.2%	97.1%	A. Barton Hepburn hospital	(declined)		no_auth_match					
+41	907	0.020%	44.2%	97.2%	Fenelon Falls	Fenelon Falls	Fenelon Falls, Kawartha Lakes, Ontario, Canada	single_term	D6F158FB-C07C-40E3-B5BF-2E5F5BD44C15				
+42	853	0.019%	44.3%	97.2%	Aastad Township	Aastad	Aastad Township, Otter Tail, Minnesota, USA	single_term	2202476D-FDF7-4239-8F42-6ADF7143F038				
+43	853	0.019%	44.3%	97.2%	Town of Ulysses, Tompkins County, New York	Ulysses	Ulysses, Tompkins, New York, USA	chain_verified	E4231470-8EDC-4767-9A0B-0C6FFD36D423				
+44	849	0.019%	44.3%	97.3%	St. Luke's Hospital, Fargo	(declined)		parent_rejected		Fargo, Cass, North Dakota, USA			
+45	783	0.017%	44.3%	97.3%	Minitonas, Minitonas	Minitonas	Minitonas, Minitonas-Bowsman, Parkland, Manitoba, Canada	chain_verified	532A2758-44A4-467F-8C7A-7026BF7A65B0				
+46	746	0.016%	44.3%	97.3%	Barstow, Barstow	(declined)		parent_amb		Barstow, San Bernardino, California, USA|Barstow, Ward, Texas, USA|Barstow, Fresno, California, USA|Barstow, Ferry, Washington, USA|Barstow, Rock Island, Illinois, USA			
+47	733	0.016%	44.3%	97.4%	Satanta District Hospital, Kansas	Kansas	Kansas, USA	freq_resolved	7413CF0A-6B37-4DFC-8BDA-FA8D2E45F575				
+48	732	0.016%	44.4%	97.4%	Brookfield Hospital	(declined)		no_auth_match					
+49	731	0.016%	44.4%	97.5%	Jackson County Schneck Memorial Hospital, Jackson County	(declined)		parent_amb		Jackson County, Mississippi, USA|Jackson County, Illinois, USA|Jackson County, Kansas, USA|Jackson County, Florida, USA|Jackson County, Tennessee, USA			
+50	710	0.016%	44.4%	97.5%	Illini Community Hospital, Pittsfield	(declined)		parent_amb		Pittsfield, Berkshire, Massachusetts, USA|Pittsfield, Pike, Illinois, USA|Pittsfield, Merrimack, New Hampshire, USA|Pittsfield (Warsaw), Somerset, Maine, USA|Pittsfield, Brown, Wisconsin, USA			
+51	699	0.015%	44.4%	97.5%	Denali Center, Fairbanks, Alaska	Fairbanks	Fairbanks, Fairbanks North Star, Alaska, USA	chain_verified	21E3B956-6213-4CEF-AF72-51D2B94BB1E8				
+52	696	0.015%	44.4%	97.6%	Sverdrup Township	(declined)		single_amb		Sverdrup Township, Otter Tail, Minnesota, USA|Sverdrup Township, Griggs, North Dakota, USA|Sverdrup Township, Minnehaha, South Dakota, USA			
+53	693	0.015%	44.4%	97.6%	Clinton, Indiana, United States of America	Clinton	Clinton, Clinton, Vermillion, Indiana, USA	chain_verified	EEE8E1E9-0812-4799-B47D-22894B0BB6E2				
+54	686	0.015%	44.5%	97.6%	Clayton, New Mexico, United States of America	Clayton	Clayton, Union, New Mexico, USA	chain_verified	BB181858-A51C-4873-9463-6B29BE4A2418				
+55	682	0.015%	44.5%	97.7%	Aiken Regional Medical Centers, Aiken	Aiken	Aiken, Aiken, South Carolina, USA	chain_verified	15660AC9-14F6-40E2-89BA-8A746DEB0AB2				
+56	682	0.015%	44.5%	97.7%	Idaho Falls nursing home, Idaho	Idaho	Idaho, USA	freq_resolved	F322272E-2E8C-4EC8-BDD3-D6D2B202F1B9				
+57	668	0.015%	44.5%	97.7%	St. Walburga Church, St. Walburga Church	(declined)		parent_rejected		St Walburga Church, Titusville, Crawford, Pennsylvania, USA			
+58	660	0.014%	44.5%	97.7%	Jackson County Courthouse, Independence	(declined)		parent_amb		Independence, Jackson, Missouri, USA|Independence, Kenton, Kentucky, USA|Independence, Polk, Oregon, USA|Independence (Colfax), Montgomery, Kansas, USA|Independence (Center), Cuyahoga, Ohio, USA			
+59	611	0.013%	44.5%	97.8%	Norwegian Grove Township	(declined)		no_auth_match					
+60	597	0.013%	44.5%	97.8%	Marysville, Yuba Sutter	Marysville	Marysville, Yuba, California, USA	chain_verified	AE5222A3-2152-433B-BF76-5D9FCECB82EE				
+61	588	0.013%	44.6%	97.8%	Beausejour hospital, Beausejour	(declined)		parent_rejected		Beausejour, Eastman, Manitoba, Canada			
+62	587	0.013%	44.6%	97.9%	Southeast	Southeast	Southeast, Putnam, New York, USA	freq_resolved	5E1A6BB0-F3EF-4284-9F95-36D19F3BE5B7				
+63	576	0.013%	44.6%	97.9%	Speer	(declined)		single_amb		Speer, Laramie, Wyoming, USA|Speer, Choctaw, Oklahoma, USA|Speer, Stark, Illinois, USA|Speyer (Spires), Rheinland-Pfalz, Germany|Peer, Maaseik, Limburg, Belgium			
+64	563	0.012%	44.6%	97.9%	Oxnard hospital, Oxnard	Oxnard	Oxnard, Ventura, California, USA	parent_resolved	5BD3AC1E-3520-453B-9478-4D7C09342F2C				
+65	558	0.012%	44.6%	97.9%	Walker Nursing Home, Virginia	Virginia	Virginia, USA	freq_resolved	86BF0DD9-8840-4063-A130-A1C611BD73E1				
+66	529	0.012%	44.6%	98.0%	Bristol, Town of Bristol	Bristol All Saints	Bristol All Saints, Bristol, England, United Kingdom	chain_verified	02DB5538-BC32-5B4F-BD31-001BC27305A4				
+67	527	0.012%	44.6%	98.0%	Beaumont, Texas, United States of America	Beaumont	Beaumont, Jefferson, Texas, USA	chain_verified	AEA94AD5-65C3-49B6-A1FD-8D8B272DC179				
+68	527	0.012%	44.6%	98.0%	Sandoval, Sandoval	(declined)		parent_rejected		Sandoval, Marion, Illinois, USA			
+69	517	0.011%	44.7%	98.0%	St. Wendelin	(declined)		no_auth_match					
+70	516	0.011%	44.7%	98.1%	Heathergreene II Nursing Home, Jamestown	(declined)		parent_amb		Jamestown, Chautauqua, New York, USA|Jamestown, Stutsman, North Dakota, USA|Jamestown, Newport, Rhode Island, USA|Jamestown, Guilford, North Carolina, USA|Jamestown, Greene, Ohio, USA			
+71	495	0.011%	44.7%	98.1%	Towanda Memorial Hospital, Towanda	Towanda	Towanda, Bradford, Pennsylvania, USA	chain_verified_proximity	05AEE887-78CA-4998-BCB3-88E3BCD7D44D				
+72	485	0.011%	44.7%	98.1%	Van Buren County Memorial Hospital, Van Buren County, Iowa	Van Buren	Van Buren, Jackson, Iowa, USA	chain_verified	076AC572-888C-4424-BF90-54A9ECF5BB8F				
+73	480	0.011%	44.7%	98.1%	N. Clark St. Unit, Guernsey Memorial Hospital	Cambridge	Cambridge, Guernsey, Ohio, USA	parent_resolved	E38848B1-368B-48AB-BB32-315ACE10FF59				
+74	477	0.010%	44.7%	98.2%	Campbell Hill, Campbell Hill	(declined)		parent_rejected		Campbell Hill, Jackson, Illinois, USA			
+75	465	0.010%	44.7%	98.2%	Cherry Fork	Cherry Fork	Cherry Fork, Wayne, Adams, Ohio, USA	single_term	E5746817-D09A-42B3-BA0B-01A36A785007				
+76	452	0.010%	44.7%	98.2%	Dudleytown, Dudleytown	Dudleytown	Dudleytown, Jackson, Indiana, USA	chain_verified_proximity	744081F3-7B3C-43AA-A046-4925B92681BB				
+77	449	0.010%	44.7%	98.2%	Dallas Lamb Foundation Home, Payne	(declined)		parent_amb		Payne, Paulding, Ohio, USA|Payne, Graves, Kentucky, USA|Payne, Union, Arkansas, USA|Payne, Bonneville, Idaho, USA|Payne, Fremont, Iowa, USA			
+78	441	0.010%	44.7%	98.3%	Bobcaygeon	Bobcaygeon	Bobcaygeon, Kawartha Lakes, Ontario, Canada	single_term	8FAFF41D-C9B6-C846-B129-779B0EE0C418				
+79	441	0.010%	44.8%	98.3%	Broad Top Township	Broad Top	Broad Top Township, Bedford, Pennsylvania, USA	single_term	F9724C31-32F1-4524-8AB7-EF8339957E70				
+80	430	0.009%	44.8%	98.3%	YUBA COUNTY	Yuba	Yuba County, California, USA	single_term	4F2B5324-7CC5-45B1-A2DE-9831ECFFDCF7				
+81	426	0.009%	44.8%	98.3%	Lamar, Colorado, United States of America	Lamar	Lamar, Prowers, Colorado, USA	chain_verified	49BAC933-BE68-4CDF-9E13-3087DB6777E3				
+82	418	0.009%	44.8%	98.3%	St. Ann Hospital, Abilene, Texas	Abilene	Abilene, Taylor, Texas, USA	chain_verified	6867724B-5F6B-4B08-9A06-50E0BC5D9A2C				
+83	414	0.009%	44.8%	98.4%	Jay County Hospital, Jay County, Indiana	Jay	Jay County, Indiana, USA	chain_verified	9BF33FCD-35A2-40C4-8C17-BCBA726F59FC				
+84	413	0.009%	44.8%	98.4%	Sweet Grass Community Hospital	(declined)		no_auth_match					
+85	413	0.009%	44.8%	98.4%	Godfrey Township	Godfrey	Godfrey Township, Polk, Minnesota, USA	single_term	A827273B-2557-451F-B8B8-39D797668D51				
+86	411	0.009%	44.8%	98.4%	Frenchtown, Frenchtown	(declined)		parent_amb		Frenchtown, Hunterdon, New Jersey, USA|Frenchtown, Harrison, Indiana, USA|Frenchtown, Cecil, Maryland, USA|Frenchtown, Darke, Ohio, USA|Frenchtown, Jefferson, Alabama, USA			
+87	410	0.009%	44.8%	98.4%	Lac du Bonnet Personal Care Home, Lac du Bonnet, Manitoba	Lac du Bonnet	Lac du Bonnet, Eastman, Manitoba, Canada	chain_verified	9E645EB8-E0BB-435D-A95E-39F46CDB3851				
+88	400	0.009%	44.8%	98.5%	SACRED HEART HOSPITAL, TOMAHAWK	(declined)		parent_amb		Tomahawk, Lincoln, Wisconsin, USA|Tomahawk, Dorset Council, Tasmania, Australia|Tomahawk, Parkland County, Alberta, Canada|Tomahawk, Cherokee, Georgia, USA|Tomahawk, Berkeley, West Virginia, USA			
+89	394	0.009%	44.8%	98.5%	Robert Packer Hospital, Athens	Athens	Athens, Bradford, Pennsylvania, USA	chain_verified_proximity	283ED852-767E-8940-897A-A54DB41EEDEE				
+90	394	0.009%	44.9%	98.5%	Cabbarrus Memorial Hospital	(declined)		no_auth_match					
+91	391	0.009%	44.9%	98.5%	Robert Packer Hospital in Sayre, Sayre	(declined)		parent_amb		Sayre, Bradford, Pennsylvania, USA|Sayre, Beckham, Oklahoma, USA|Sayre, Jefferson, Alabama, USA|Sayre, Ford, Kansas, USA|Sayre, Perry, Ohio, USA			
+92	390	0.009%	44.9%	98.5%	Byesville, R. D. 1	Byesville	Byesville, Guernsey, Ohio, USA	single_term	7E8F2E4E-88CC-4966-8B0B-56ACFB674ED3				
+93	387	0.008%	44.9%	98.5%	St. Josephs Hospital, Logansport	(declined)		parent_amb		Logansport, Cass, Indiana, USA|Logansport, DeSoto, Louisiana, USA|Logansport, Bethel, Armstrong, Pennsylvania, USA|Logansport, Boone, Iowa, USA|Logansport, Butler, Kentucky, USA			
+94	385	0.008%	44.9%	98.6%	Pierceville, Pierceville	(declined)		parent_amb		Pierceville, Finney, Kansas, USA|Pierceville, York, Pennsylvania, USA|Pierceville, Ripley, Indiana, USA|Pierceville, Camden, North Carolina, USA|Pierceville, Van Buren, Iowa, USA			
+95	384	0.008%	44.9%	98.6%	Lenswood	Lenswood	Lenswood, Adelaide Hills Council, South Australia, Australia	single_term	DF2E5317-C1A8-4B71-81D5-3A77EFE9F8EB				
+96	382	0.008%	44.9%	98.6%	Elm Street Hospital Clinic	(declined)		no_auth_match					
+97	381	0.008%	44.9%	98.6%	Plains Regional Medical Center in Clovis, Clovis, New Mexico	Clovis	Clovis, Curry, New Mexico, USA	chain_verified_proximity	495C5124-6581-4830-9597-5932824FF622				
+98	380	0.008%	44.9%	98.6%	Satanta Long Term Care Unit	(declined)		no_auth_match					
+99	377	0.008%	44.9%	98.7%	Klahr	Klahr	Klahr, Blair, Pennsylvania, USA	single_term	DD1834AA-1987-47CB-955D-700568ADE00C				
+100	376	0.008%	44.9%	98.7%	Loosdrecht	Loosdrecht	Loosdrecht, Wijdemeren, Noord-Holland, Netherlands, Kingdom of the Netherlands	single_term	C7EBA08C-A30D-42AD-A8A0-602DF77A0E9B				
+101	372	0.008%	44.9%	98.7%	Circleville township	Circleville	Circleville Township, Pickaway, Ohio, USA	single_term	816F8C16-2195-5146-A8CA-C73B65499AEA				
+102	371	0.008%	45.0%	98.7%	Gooding Memorial hospital, Gooding	Gooding	Gooding (Toponis), Gooding, Idaho, USA	freq_resolved	A5145254-4177-4057-86DE-9799832D6335				
+103	371	0.008%	45.0%	98.7%	County Court House, Sarasota County, Florida	Sarasota	Sarasota County, Florida, USA	chain_verified	16BCCE55-FD3C-45D2-9564-4255E692450E				
+104	367	0.008%	45.0%	98.7%	K+¦pavogur, H+¦fu+¦borgarsv+ª+¦i, Iceland	Iceland	Iceland	freq_resolved	3F066AE0-1FCB-4255-9DC2-61EA9B2EC166				
+105	365	0.008%	45.0%	98.8%	Johnson Memorial	(declined)		no_auth_match					
+106	361	0.008%	45.0%	98.8%	Battle Lake Nursing Home	(declined)		no_auth_match					
+107	358	0.008%	45.0%	98.8%	Manatee Memorial Hospital, Manatee County, Florida	Manatee	Manatee County, Florida, USA	chain_verified	1FB94236-127F-4ED5-BE44-3D46A4357246				
+108	347	0.008%	45.0%	98.8%	District court, Lawrence	(declined)		parent_amb		Manhattan, New York City, New York, USA|Lawrence, Douglas, Kansas, USA|Lawrence, Essex, Massachusetts, USA|Lawrence, Lawrence, Marion, Indiana, USA|Laurens, Laurens, South Carolina, USA			
+109	346	0.008%	45.0%	98.8%	HILLSDALE COMMUNITY HEALTH CENTER	(declined)		no_auth_match					
+110	332	0.007%	45.0%	98.8%	Cullman, Cullman	Cullman	Cullman, Cullman, Alabama, USA	chain_verified	C1CB7516-85EA-4583-90C8-A9FF7148FCB7				
+111	330	0.007%	45.0%	98.9%	Washington street unit, High Point Memorial hospital	High Point	High Point, Guilford, North Carolina, USA	parent_resolved	FC0AFDE6-E66A-40F1-98DF-A041A8B38BFA				
+112	329	0.007%	45.0%	98.9%	near Paintersville	(declined)		single_amb		Paintersville, Greene, Ohio, USA|Paintersville, Sacramento, California, USA|Paintersville, Decatur, Mifflin, Pennsylvania, USA			
+113	329	0.007%	45.0%	98.9%	Camden, Carroll County, Indiana	Camden	Camden, Carroll, Indiana, USA	chain_verified	2CFB1A82-89B7-4375-ABB7-60FF5B3AA9AD				
+114	326	0.007%	45.0%	98.9%	Byrd, Byrd	(declined)		parent_amb		Byrd, Ellis, Texas, USA|Byrd, Greene, Mississippi, USA|Byrd, St Johns, Florida, USA|Byrd, Dorchester, South Carolina, USA|Byrd, Marion, Alabama, USA			
+115	325	0.007%	45.1%	98.9%	Tymochtee township	Tymochtee	Tymochtee Township, Wyandot, Ohio, USA	single_term	30404D0C-837A-416F-AC4E-9A0C1639E249				
+116	320	0.007%	45.1%	98.9%	Patoka township	(declined)		single_amb		Patoka Township, Gibson, Indiana, USA|Patoka Township, Dubois, Indiana, USA|Patoka Township, Pike, Indiana, USA|Patoka Township, Crawford, Indiana, USA|Patoka Township, Marion, Illinois, USA			
+117	319	0.007%	45.1%	99.0%	China Grove, Rt. 3	(declined)		single_amb		China Grove, Rowan, North Carolina, USA|China Grove, Bexar, Texas, USA|China Grove, Walthall, Mississippi, USA|China Grove, Gibson, Tennessee, USA|China Grove, Pike, Alabama, USA			
+118	315	0.007%	45.1%	99.0%	Bonneville County Clerk's Office, Bonneville County	Bonneville	Bonneville County, Idaho, USA	parent_resolved	C7A456E1-940F-4609-B936-317BC2028F3A				
+119	313	0.007%	45.1%	99.0%	Shrine of the Sacred Heart	(declined)		no_auth_match					
+120	311	0.007%	45.1%	99.0%	Western Maryland Regional Medical Center, Maryland	Maryland	Maryland, USA	freq_resolved	9EB6B4DA-1B18-43D9-97E3-31FE8303ACD2				
+121	311	0.007%	45.1%	99.0%	Caldwell Memorial Hospital, Nampa	Nampa	Nampa, Canyon, Idaho, USA	chain_verified_proximity	7C69B133-C805-47D5-91D4-73ACC7F1415A				
+122	308	0.007%	45.1%	99.0%	Assiniboine Centre, Manitoba	Brandon	Brandon, Westman, Manitoba, Canada	chain_verified	F3C34E0A-397B-4EEE-8DE7-240E4EC3D64E				
+123	308	0.007%	45.1%	99.0%	St. John Medical Center, Westlake, Ohio	Westlake	Westlake (Dover Village), Cuyahoga, Ohio, USA	chain_verified_proximity	FEBB8590-5160-41BD-83D2-04D00B093F2D				
+124	306	0.007%	45.1%	99.1%	Ironton General hospital	(declined)		no_auth_match					
+125	304	0.007%	45.1%	99.1%	Grandview Extendicare, Franklin	(declined)		parent_amb		Franklin, Williamson, Tennessee, USA|Franklin, Milwaukee, Wisconsin, USA|Franklin, Johnson, Indiana, USA|Murrysville (Franklin), Westmoreland, Pennsylvania, USA|Franklin, Warren, Ohio, USA			
+126	301	0.007%	45.1%	99.1%	Memorial Division of the Charleston Area Medical Center	(declined)		no_auth_match					
+127	298	0.007%	45.1%	99.1%	Fairlea nursing home	(declined)		no_auth_match					
+128	297	0.006%	45.1%	99.1%	Maybrook Hills Rehabilitation and Healthcare Center, Altoona	Altoona	Altoona, Blair, Pennsylvania, USA	freq_resolved	B1C3E2C5-7B8D-4D77-8EFA-582202AFF058				
+129	297	0.006%	45.1%	99.1%	Colonial Manor nursing home, Corning	(declined)		parent_amb		Corning, Steuben, New York, USA|Corning, Tehama, California, USA|Corning, Clay, Arkansas, USA|Corning, Adams, Iowa, USA|Corning, Lincoln, Wisconsin, USA			
+130	297	0.006%	45.2%	99.1%	Eastern Township	(declined)		single_amb		Eastern Township, Franklin, Illinois, USA|Eastern Township, Knox, Nebraska, USA|Eastern Township, Otter Tail, Minnesota, USA|Easter, Castro, Texas, USA|Easter Township, Roberts, South Dakota, USA			
+131	297	0.006%	45.2%	99.2%	Hillsdale County Clerks office, Hillsdale County	Hillsdale	Hillsdale County, Michigan, USA	parent_resolved	E5157CFB-9569-4B46-AED7-1B3379E9EC10				
+132	294	0.006%	45.2%	99.2%	Russell District Hospital, Russell	(declined)		parent_amb		Russell, Russell, Kansas, USA|Russell, Greenup, Kentucky, USA|Russell, Hampden, Massachusetts, USA|Russell, St Lawrence, New York, USA|Russell, Bayfield, Wisconsin, USA			
+133	293	0.006%	45.2%	99.2%	Rest Haven Nursing Home, Steinbach	(declined)		parent_amb		Steinbach, Eastman, Manitoba, Canada|Steinbach, Haut-Rhin, Grand Est, France|Steinbach, Hochtaunuskreis, Hessen, Germany|Steinach, Ortenaukreis, Baden-Württemberg, Germany|Steinach, Kanton St Gallen, Switzerland			
+134	293	0.006%	45.2%	99.2%	Total Care Nursing Home, Paulding	(declined)		parent_amb		Paulding, Paulding, Ohio, USA|Paulding, Jasper, Mississippi, USA|Paulding, Salem, New Jersey, USA|Paulding, Dunklin, Missouri, USA|Paulding, Ontonagon, Michigan, USA			
+135	292	0.006%	45.2%	99.2%	Grand Saline hospital, Grand Saline, Texas	Grand Saline	Grand Saline, Van Zandt, Texas, USA	chain_verified_proximity	40B1EE51-7104-4A59-87A3-B34D35C1A585				
+136	291	0.006%	45.2%	99.2%	River Hills Village, Keokuk, Iowa	Keokuk	Keokuk, Lee, Iowa, USA	chain_verified	649AD554-9FEC-4EA7-9DA3-82FB990D6CFD				
+137	289	0.006%	45.2%	99.2%	Cedar Crest, Mount Union	(declined)		chain_amb		Janesville, Rock, Wisconsin, USA|Cedar Crest, Pueblo, Colorado, USA|Cedar Crest, Mayes, Oklahoma, USA|Cedar Crest, Bernalillo, New Mexico, USA|Cedar Crest, Plymouth, Massachusetts, USA			
+138	289	0.006%	45.2%	99.3%	St. Anthony General hospital, St. Anthony	(declined)		parent_amb		Oklahoma City, Oklahoma, Oklahoma, USA|St Anthony (St Anthony Village), Hennepin, Minnesota, USA|St Anthony, Fremont, Idaho, USA|St Anthony, Marshall, Iowa, USA|St Anthony, Stearns, Minnesota, USA			
+139	287	0.006%	45.2%	99.3%	Sentara RMH Medical Center, Harrisonburg, VA	Harrisonburg	Harrisonburg, Virginia, USA	chain_verified	C3864F53-33BC-483A-B445-9914457341B5				
+140	286	0.006%	45.2%	99.3%	Memorial Hospital, Arkansas City, Kansas	Arkansas City	Arkansas City, Cowley, Kansas, USA	chain_verified	DF084213-C5BE-47E0-8227-DBCD3D37DBF5				
+141	285	0.006%	45.2%	99.3%	Mead Nursing Home, Meadville	(declined)		parent_amb		Meadville, Crawford, Pennsylvania, USA|Meadville, Linn, Missouri, USA|Meadville, Franklin, Mississippi, USA|Meadville, Tyler, West Virginia, USA|Meadville, Halifax, Virginia, USA			
+142	284	0.006%	45.2%	99.3%	Pungo District Hospital	(declined)		no_auth_match					
+143	284	0.006%	45.2%	99.3%	Algansee	Algansee	Algansee Township, Branch, Michigan, USA	single_term	1CB18A87-063B-4A9C-BF75-D00C2856ACBF				
+144	281	0.006%	45.2%	99.3%	South Wilmington	(declined)		single_amb		South Wilmington, Grundy, Illinois, USA|South Wilmington, Middlesex, Massachusetts, USA|South Wilmington, New Castle, Delaware, USA|South Willington, Tolland, Connecticut, USA			
+145	280	0.006%	45.2%	99.4%	Circuit Court No. 2, Baltimore City, Maryland	Baltimore	Baltimore, Maryland, USA	chain_verified	4B4C9F83-A6F1-4371-892D-2EE47616F425				
+146	278	0.006%	45.3%	99.4%	Otter Tail County Nursing Home, Otter Tail County	Otter Tail	Otter Tail County, Minnesota, USA	parent_resolved	4FDD0772-4B7E-487A-99FD-9DDC31E033C9				
+147	273	0.006%	45.3%	99.4%	Fort Yuma Indian Reservation	Ft Yuma Indian Reservation	Ft Yuma Indian Reservation Indian Reservation, Imperial, California, USA	single_term	0098579C-36D6-A541-9DF8-C733FC772229				
+148	273	0.006%	45.3%	99.4%	Minnedosa District Hospital, Manitoba	Manitoba	Manitoba, Canada	freq_resolved	B03A3134-E075-472E-A0A4-B58F4A886982				
+149	272	0.006%	45.3%	99.4%	Davilla	Davilla	Davilla, Milam, Texas, USA	single_term	E53EBB77-728C-448A-8B15-72CEBA608009				
+150	267	0.006%	45.3%	99.4%	Dickinson County Memorial Hospital, Iowa	Spirit Lake	Spirit Lake, Dickinson, Iowa, USA	chain_verified	1E94CBD8-4B56-462D-8057-684A9EFAC130				
+151	265	0.006%	45.3%	99.4%	Towanda Memorial Hospital, Towanda, Pennsylvania	Towanda	Towanda, Bradford, Pennsylvania, USA	chain_verified_proximity	05AEE887-78CA-4998-BCB3-88E3BCD7D44D				
+152	263	0.006%	45.3%	99.4%	Hafnarfj+¦r+¦ur	(declined)		no_auth_match					
+153	263	0.006%	45.3%	99.5%	Amboy Township, Hillsdale County	Amboy	Amboy Township, Hillsdale, Michigan, USA	chain_verified	CCA775A7-CB6D-4B4E-B0CA-EF7C85A18691				
+154	262	0.006%	45.3%	99.5%	Fowle Memorial Hospital	(declined)		no_auth_match					
+155	261	0.006%	45.3%	99.5%	St. Peter hospital, Helena	(declined)		parent_amb		Helena, Lewis and Clark, Montana, USA|Helena, Shelby, Alabama, USA|Helena, Helena-West Helena, Phillips, Arkansas, USA|Helena, Alfalfa, Oklahoma, USA|Helena, Sandusky, Ohio, USA			
+156	260	0.006%	45.3%	99.5%	Christ Church, Selkirk	Felkirk	Felkirk, City of Wakefield, West Yorkshire, England, United Kingdom	chain_verified	3E42970F-BD74-41E3-8F24-750145979BE7				
+157	260	0.006%	45.3%	99.5%	ST. JOSEPHS	(declined)		single_amb		St Joseph, Buchanan, Missouri, USA|St Joseph, Greenfield, La Crosse, Wisconsin, USA|Saint-Joseph, Rivière-des-Prairies-Pointe-aux-Trembles, Montréal, Montréal, Quebec, Canada|Saint-Joseph, Madawaska, New Brunswick, Canada			
+158	260	0.006%	45.3%	99.5%	Fergus Falls Route 5	Fergus Falls	Fergus Falls, Otter Tail, Minnesota, USA	single_term	917DDABF-DE08-4BDA-9D7E-E81887F26C74				
+159	259	0.006%	45.3%	99.5%	MMM Hospital	(declined)		no_auth_match					
+160	258	0.006%	45.3%	99.5%	RD 2, Beach City	(declined)		single_amb		Beach City, Chambers, Texas, USA|Beach City, Stark, Ohio, USA			
+161	256	0.006%	45.3%	99.6%	Lower Chichester	Lower Chichester	Lower Chichester Township, Delaware, Pennsylvania, USA	single_term	0B0C192B-1019-4E14-9482-64C3C6DB933F				
+162	256	0.006%	45.3%	99.6%	near Shreve	(declined)		single_amb		Shreve, Wayne, Ohio, USA|Shreve, Conecuh, Alabama, USA|Shreve, Stoddard, Missouri, USA|Shreve, Ohio, Kentucky, USA			
+163	253	0.006%	45.4%	99.6%	Rapid City, Saskatchewan	(declined)		parent_rejected		Saskatchewan, Canada			
+164	253	0.006%	45.4%	99.6%	Pelican Lake Township	Pelican Lake	Pelican Lake Township, Grant, Minnesota, USA	single_term	C2754C05-33D5-4FA1-BD9C-015FD2045793				
+165	253	0.006%	45.4%	99.6%	Makanda, Makanda	Makhanda	Makhanda (Grahamstown), Makana, Sarah Baartman, Eastern Cape, South Africa	chain_verified	79A8EDD5-D00A-CE4F-B4AE-2C98FE1B233F				
+166	253	0.006%	45.4%	99.6%	Hilversum, Hilversum	Hilversum	Hilversum, Hilversum, Noord-Holland, Netherlands, Kingdom of the Netherlands	chain_verified	ACCA1C5A-034E-4EA2-9289-2C5414FCDC71				
+167	252	0.006%	45.4%	99.6%	Boorowa District Hospital	(declined)		no_auth_match					
+168	252	0.006%	45.4%	99.6%	Richmond County hospital, Georgia	Georgia	Georgia, USA	freq_resolved	06D9B1BB-0224-4C28-AB0D-78860AE3D1D5				
+169	252	0.006%	45.4%	99.7%	Cistern	Cistern	Cistern, Fayette, Texas, USA	single_term	3F5940A2-3B61-4965-960D-3DE7DF3A00C9				
+170	251	0.005%	45.4%	99.7%	Guernsey Memorial, Cambridge	(declined)		parent_amb		Cambridge, Waterloo, Ontario, Canada|Cambridge, Cambridge, Cambridgeshire, England, United Kingdom|Cambridge, Middlesex, Massachusetts, USA|Cambridge (Kemureti), Waipa, Waikato, New Zealand|Cambridge, Dorchester, Maryland, USA			
+171	250	0.005%	45.4%	99.7%	Grandview Health Care Center, Oil City	Oil City	Oil City, Venango, Pennsylvania, USA	freq_resolved	C719C8D6-58AE-431F-BBA3-798858CFAFB0				
+172	248	0.005%	45.4%	99.7%	Powell County Memorial Hospital	(declined)		no_auth_match					
+173	248	0.005%	45.4%	99.7%	Aiken Hospital, Aiken	Aiken	Aiken, Aiken, South Carolina, USA	freq_resolved	15660AC9-14F6-40E2-89BA-8A746DEB0AB2				
+174	247	0.005%	45.4%	99.7%	Illini Hospital, Pittsfield, Illinois	Pittsfield	Pittsfield, Pike, Illinois, USA	chain_verified	1DD986C3-EAE3-4D45-934D-FB30E20461F6				
+175	246	0.005%	45.4%	99.7%	Souris Health Centre, Souris, Manitoba	Souris	Souris, Souris-Glenwood, Westman, Manitoba, Canada	chain_verified	EE62A6C4-6505-4D4E-8D47-AD8B82F5C183				
+176	241	0.005%	45.4%	99.7%	Route 3, China Grove, China Grove	(declined)		parent_amb		China Grove, Rowan, North Carolina, USA|China Grove, Bexar, Texas, USA|China Grove, Walthall, Mississippi, USA|China Grove, Gibson, Tennessee, USA|China Grove, Pike, Alabama, USA			
+177	239	0.005%	45.4%	99.7%	Weyant	Weyant	Weyant, Bedford, Pennsylvania, USA	single_term	DF07FFC8-B2A2-4008-B38F-B26B9288C163				
+178	239	0.005%	45.4%	99.8%	Myrtle Worth Medical Center	(declined)		no_auth_match					
+179	238	0.005%	45.4%	99.8%	Marysville, Yuba Sutter area	Marysville	Marysville, Yuba, California, USA	chain_verified	AE5222A3-2152-433B-BF76-5D9FCECB82EE				
+180	238	0.005%	45.4%	99.8%	Redfield Community Memorial Hospital	(declined)		no_auth_match					
+181	238	0.005%	45.4%	99.8%	Montalvo	(declined)		single_amb		Montalvo, Los Ríos, Ecuador|Montalvo, Santiago-Pontones, Jaén, Andalucía, Spain|Montalvo, Ventura, California, USA|Moncalvo, Asti, Piemonte, Italy|Montalva, Guánica, Puerto Rico, USA			
+182	234	0.005%	45.5%	99.8%	Trondhjem township	Trondhjem	Trondhjem Township, Otter Tail, Minnesota, USA	single_term	B40E99EA-E00B-4163-8153-DBBDAF874EC5				
+183	232	0.005%	45.5%	99.8%	Laren, N.H.	(declined)		parent_rejected		New Hampshire, USA			
+184	231	0.005%	45.5%	99.8%	La trobe	(declined)		single_amb		Latrobe, Westmoreland, Pennsylvania, USA|Latrobe, Latrobe Council, Tasmania, Australia|Latrobe, Logan, West Virginia, USA|Latrobe, El Dorado, California, USA|La Troje (Los Nogales), Lagos de Moreno, Jalisco, México			
+185	231	0.005%	45.5%	99.8%	Truman Medical Center East	(declined)		no_auth_match					
+186	228	0.005%	45.5%	99.9%	Fulton County Courthouse, Fulton County	(declined)		parent_amb		Fulton County, Illinois, USA|Fulton County, Indiana, USA|Fulton County, Kentucky, USA|Fulton County, Ohio, USA|Fulton County, Arkansas, USA			
+187	227	0.005%	45.5%	99.9%	Route 1, Paulding	(declined)		single_amb		Paulding, Paulding, Ohio, USA|Paulding, Jasper, Mississippi, USA|Paulding, Salem, New Jersey, USA|Paulding, Dunklin, Missouri, USA|Paulding, Ontonagon, Michigan, USA			
+188	226	0.005%	45.5%	99.9%	J. C. Blair Memorial Hospital, Saxton	(declined)		parent_amb		Saxton, Bedford, Pennsylvania, USA|Saxton, Whitley, Kentucky, USA|Saxton, Buchanan, Missouri, USA|Saxton, Delta, Colorado, USA|Saxton, North Yorkshire, North Yorkshire, England, United Kingdom			
+189	226	0.005%	45.5%	99.9%	Wright Patterson	(declined)		no_auth_match					
+190	226	0.005%	45.5%	99.9%	Knobsville, Fulton County	Knobsville	Knobsville, Fulton, Pennsylvania, USA	chain_verified	9E280345-C781-427A-9AFF-FDB10B3ACED2				
+191	225	0.005%	45.5%	99.9%	Charleston, Lee County, Iowa	Charleston	Charleston, Lee, Iowa, USA	chain_verified	AC3A380C-28ED-4E5C-9F92-30572AF69115				
+192	224	0.005%	45.5%	99.9%	Pomme de Terre Township	Pomme de Terre	Pomme de Terre Township, Grant, Minnesota, USA	single_term	111C1BF2-34A5-4C85-9073-C69A878EEF7C				
+193	224	0.005%	45.5%	99.9%	Monroe, Monroe, WI	(declined)		chain_amb		Monroe, Green, Wisconsin, USA|Monroe, Adams, Wisconsin, USA			
+194	221	0.005%	45.5%	99.9%	St. Ritas, Delphos	Delphos	Delphos, Allen, Ohio, USA	chain_verified_proximity	05CDBBB1-9B71-4285-9EAE-BB2A9BA9D1D6				
+195	220	0.005%	45.5%	99.9%	Laurel Ridge Healthcare, Clovis	(declined)		parent_amb		Clovis, Fresno, California, USA|Clovis, Curry, New Mexico, USA|Clovis Cemetery, Clovis, Fresno, California, USA			
+196	219	0.005%	45.5%	100.0%	home in Kalispell	Kalispell	Kalispell, Flathead, Montana, USA	single_term	B5AEEA7C-3405-437D-A299-72B8E372001E				
+197	219	0.005%	45.5%	100.0%	Rideau Park Personal Care Home	(declined)		no_auth_match					
+198	219	0.005%	45.5%	100.0%	Mason District Hospital, Havana	(declined)		parent_amb		La Habana (Havana), Cuba|Havana, Mason, Illinois, USA|Havana, Gadsden, Florida, USA|Havana, Steele, Minnesota, USA|Havana, Yell, Arkansas, USA			
+199	218	0.005%	45.5%	100.0%	Milford Center, Union County, Ohio	Milford Center	Milford Center, Union, Ohio, USA	chain_verified	4C598029-C705-4234-9B4A-58CE4D332C3C				
+200	218	0.005%	45.5%	100.0%	Orthodox Jewish Home	(declined)		no_auth_match					

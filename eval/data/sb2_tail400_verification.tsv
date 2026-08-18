@@ -1,0 +1,404 @@
+# head verification sheet from eval/runs/08-12/sb2_tail400_input_01.tsv
+# 400 strings, 1,768 records, 0.1% of the corpus
+# fill verdict: y=right  n=wrong  a=declined and that was right  ?=unsure
+rank	frequency	pct_corpus	cum_pct_corpus	cum_pct_stratum	place	matcher_answer	matcher_chain	match_type	authority_id	candidates	verdict	true_uuid	notes
+1	97	0.004%	0.0%	5.5%	Winona, Wis.	(declined)		parent_rejected		Wisconsin, USA			
+2	30	0.001%	0.0%	7.2%	Maplewood Manor, MB	Manitoba	Manitoba, Canada	parent_resolved	B03A3134-E075-472E-A0A4-B58F4A886982				
+3	25	0.001%	0.0%	8.6%	Bader Cemetery Browning	(declined)		no_auth_match					
+4	25	0.001%	0.0%	10.0%	Kahoka, Kahoka; Missouri	Kahoka	Kahoka, Clark, Missouri, USA	chain_verified_proximity	A4534E48-9B54-4BE5-89D1-A1B4F4E1E036				
+5	22	0.001%	0.0%	11.3%	915 Mulberry avenue	(declined)		no_auth_match					
+6	18	0.001%	0.0%	12.3%	home of Howard W. Anderson, Blackfoot, Idaho	Blackfoot	Blackfoot, Bingham, Idaho, USA	chain_verified	88F44BCD-4206-4A37-BEB7-F40C65221534				
+7	17	0.001%	0.0%	13.2%	Walnut Hills, Cincinnati, Walnut Hills, Cincinnati	Walnut Hills	Walnut Hills, Cincinnati, Hamilton, Ohio, USA	chain_verified	236D54C0-6175-5E43-ACF8-D2442B95B940				
+8	16	0.001%	0.0%	14.1%	Holgate Quality Care Nursing Home, Holgate, Henry County, Ohio	Holgate	Holgate, Henry, Ohio, USA	chain_verified	F446D9B3-A031-4649-B84F-39CF6F509771				
+9	16	0.001%	0.0%	15.0%	665 Kennedy St., Xenia, Xenia	(declined)		parent_amb		Xenia, Greene, Ohio, USA|Xenia, Clay, Illinois, USA|Xenia, Washington, Colorado, USA|Xenia, Bourbon, Kansas, USA|Xenia, Dallas, Iowa, USA			
+10	15	0.001%	0.0%	15.9%	Griswold Heights, Troy, Troy	(declined)		parent_amb		Fall River (Troy), Bristol, Massachusetts, USA|Troy, Oakland, Michigan, USA|Troy, Rensselaer, New York, USA|Troy, Miami, Ohio, USA|Troy, Pike, Alabama, USA			
+11	15	0.001%	0.0%	16.7%	Town of Watertown, Jefferson County, Wisconsin	Jefferson	Jefferson County, Wisconsin, USA	chain_verified	CD93D857-CCDB-4536-8F46-DE51CB9C59FE				
+12	15	0.001%	0.0%	17.6%	Estacado, Texas, Texas	Estacado	Estacado, Crosby, Texas, USA	chain_verified	62AD5656-1B76-4FCD-AA50-91D430CF8BAA				
+13	15	0.001%	0.0%	18.4%	1129 Aycock Ave., Burlington	(declined)		parent_amb		Burlington, Alamance, North Carolina, USA|Burlington, Chittenden, Vermont, USA|Burlington, Middlesex, Massachusetts, USA|Burlington, Des Moines, Iowa, USA|Burlington, Racine, Wisconsin, USA			
+14	14	0.001%	0.0%	19.2%	2030 Sergeant Avenue, Joplin, Missouri	Joplin	Joplin, Jasper, Missouri, USA	chain_verified	2078A2BD-6F10-4A41-AFE4-3322AC3CCE39				
+15	14	0.001%	0.0%	20.0%	1300 S. H St., Elwood, Indiana	Elwood	Elwood (Duck Creek), Madison, Indiana, USA	chain_verified	ACA73637-CB47-452B-A806-81EE502BE165				
+16	14	0.001%	0.0%	20.8%	426 W. Cherry	(declined)		no_auth_match					
+17	13	0.001%	0.0%	21.5%	Wilson-Slaton area	(declined)		no_auth_match					
+18	13	0.001%	0.0%	22.3%	717 Pierce St., Toledo	(declined)		parent_amb		Toledo, Lucas, Ohio, USA|Toledo, Cebu, Central Visayas, Philippines|Toledo, Toledo, Castilla-La Mancha, Spain|Toledo, Lincoln, Oregon, USA|Toledo, Tama, Iowa, USA			
+19	13	0.001%	0.0%	23.0%	Franklin Hospital, Benton, Ark.	Benton	Benton County, Arkansas, USA	chain_verified	A7B48C0E-AB8C-4308-9EF3-882BA228CF7E				
+20	12	0.000%	0.0%	23.7%	Adams township near St. Michaels Ridge, Adams township	(declined)		parent_amb		Adams Township, Allen, Indiana, USA|Adams Township, Butler, Pennsylvania, USA|Adams Township, Parke, Indiana, USA|Adams Township, Cambria, Pennsylvania, USA|Adams Township, Hamilton, Indiana, USA			
+21	12	0.000%	0.0%	24.4%	Catbalogan, Samar	Catbalogan	Catbalogan, Samar, Eastern Visayas, Philippines	chain_verified	E60E08A0-FD1B-4BA6-A843-EEE094497450				
+22	12	0.000%	0.0%	25.1%	residence, Grant County (near Cutler)	(declined)		no_auth_match					
+23	12	0.000%	0.0%	25.7%	Jefferson county near Packwood	(declined)		single_amb		Packwood, Jefferson, Iowa, USA|Packwood, Hillsborough, Florida, USA|Packwood, Lewis, Washington, USA|Lapworth, Warwick, Warwickshire, England, United Kingdom|Packwood, Warwickshire, England, United Kingdom			
+24	12	0.000%	0.0%	26.4%	Sudbury Memorial Hospital, Ontario	Ontario	Ontario, Canada	freq_resolved	359B5A5A-6F67-4C21-8958-FAF128501DA6				
+25	12	0.000%	0.0%	27.1%	Keene, Michigan	Keene	Keene Township, Ionia, Michigan, USA	chain_verified	E46A3F89-E7EF-44C6-A402-C42E0FCC840A				
+26	12	0.000%	0.0%	27.8%	727 South Third, Washington	Washington	Washington, USA	freq_resolved	DDE42B02-CD03-4F99-B084-92645BA71E4C				
+27	12	0.000%	0.0%	28.5%	Grays Lane, Bastrop, La.	Bastrop	Bastrop, Morehouse, Louisiana, USA	chain_verified	3E6D8CC7-4601-4242-B006-35372C20218A				
+28	12	0.000%	0.0%	29.1%	St. Marys hospital, Paysale, N. J.	(declined)		parent_rejected		New Jersey, USA			
+29	11	0.000%	0.0%	29.8%	County Home in Hopewell	(declined)		single_amb		Hopewell, Virginia, USA|Hopewell, Ontario, New York, USA|Hopewell, Mercer, New Jersey, USA|Hopewell, Marshall, Illinois, USA|Hopewell, Bedford, Pennsylvania, USA			
+30	11	0.000%	0.0%	30.4%	basement of the Ramsey family home, Boulder, Colo.	Boulder	Boulder, Boulder, Colorado, USA	chain_verified	6306AB0D-DF36-4CA5-8FB8-AA788D865007				
+31	11	0.000%	0.0%	31.0%	Star Church community of Decatur County, Decatur County	(declined)		parent_amb		Decatur County, Georgia, USA|Decatur County, Iowa, USA|Decatur County, Tennessee, USA|Decatur County, Indiana, USA|Decatur County, Kansas, USA			
+32	11	0.000%	0.0%	31.6%	Southeast Personal Care Home	(declined)		no_auth_match					
+33	11	0.000%	0.0%	32.2%	Dekall, Il	DeKalb	DeKalb, DeKalb, Illinois, USA	chain_verified	8EDABBFD-B60C-4C9A-A706-39CB65F9576E				
+34	10	0.000%	0.0%	32.8%	736 NW 92, Oklahoma City	Oklahoma City	Oklahoma City, Oklahoma, Oklahoma, USA	parent_resolved	9BCF79F6-7D8A-4DAF-928B-EF44C4B91B1A				
+35	10	0.000%	0.0%	33.4%	Plymton, Ontario	(declined)		parent_rejected		Ontario, Canada			
+36	10	0.000%	0.0%	33.9%	Fremont, Elkhorn and Missouri Valley Railroad, Omaha, Neb.	(declined)		chain_amb		Omaha, Douglas, Nebraska, USA|Omaha Township, Thurston, Nebraska, USA			
+37	10	0.000%	0.0%	34.5%	San Nicolas, Nueva Ecija, Philippines	Nueva Ecija	Nueva Ecija, Central Luzon, Philippines	chain_verified	52B10E17-C4F5-4489-B496-004F16D1C3A8				
+38	10	0.000%	0.0%	35.1%	7 W. Eighth St., Oswego, New York	(declined)		chain_amb		Oswego, Oswego, New York, USA|Owego, Tioga, New York, USA			
+39	10	0.000%	0.0%	35.6%	Near West Lafayette	(declined)		single_amb		West Lafayette, Tippecanoe, Indiana, USA|West Lafayette, Coshocton, Ohio, USA			
+40	10	0.000%	0.0%	36.2%	Sasten	(declined)		single_amb		Asten, Noord-Brabant, Netherlands, Kingdom of the Netherlands|Masten, Lycoming, Pennsylvania, USA			
+41	10	0.000%	0.0%	36.8%	1839 Nash drive	(declined)		no_auth_match					
+42	9	0.000%	0.0%	37.3%	105 East Center, Providence	Providence	Providence, Providence, Rhode Island, USA	freq_resolved	6D38CF6C-258A-4BF9-AB40-2A9F4267F00E				
+43	9	0.000%	0.0%	37.8%	Krantz home, Edgington township	Edgington	Edgington Township, Rock Island, Illinois, USA	parent_resolved	3BCC36C5-9C11-A449-BF49-DABA3A1B39E4				
+44	9	0.000%	0.0%	38.3%	Marion, Tud.	(declined)		no_auth_match					
+45	9	0.000%	0.0%	38.8%	home of her daughter Mrs. Clara Swaney in Williamsburg, Williamsburg	(declined)		parent_amb		Williamsburg, Brooklyn, New York City, New York, USA|Williamsburg (Middle Plantation), Virginia, USA|Williamsburg, Whitley, Kentucky, USA|Williamsburg, Iowa, Iowa, USA|Williamsburg (Williamsburgh), Clermont, Ohio, USA			
+46	9	0.000%	0.0%	39.3%	Post, TX, Texas	Post	Post, Garza, Texas, USA	chain_verified	7519B401-EB0F-41FB-B0FE-9982FF578BBA				
+47	9	0.000%	0.0%	39.8%	Los Angeles area, CA	(declined)		chain_amb		Los Angeles, Los Angeles, California, USA|Los Angeles State Historic Park, Los Angeles, California, USA			
+48	9	0.000%	0.0%	40.3%	home near York Springs, York Springs, Adams County	York Springs	York Springs, Adams, Pennsylvania, USA	chain_verified_proximity	9B9CF930-E2B4-40A2-9687-E724731D079E				
+49	9	0.000%	0.0%	40.8%	902 Maple Ave., Yuma, Yuma	(declined)		parent_amb		Yuma, Yuma, Arizona, USA|Yuma, Yuma, Colorado, USA|Yuma, Cloud, Kansas, USA|Yuma, Carroll, Tennessee, USA|Yuma, Wexford, Michigan, USA			
+50	9	0.000%	0.0%	41.3%	Mt. Tablazo, Colombia	Colombia	Colombia	freq_resolved	EA5689CB-42A9-4208-8B27-0CFCA341A966				
+51	9	0.000%	0.0%	41.9%	Slavens Chapel neighborhood, just west of Troy	(declined)		parent_amb		Fall River (Troy), Bristol, Massachusetts, USA|Troy, Oakland, Michigan, USA|Troy, Rensselaer, New York, USA|Troy, Miami, Ohio, USA|Troy, Pike, Alabama, USA			
+52	9	0.000%	0.0%	42.4%	White county, Mo., Missouri	Missouri	Missouri Township, Boone, Missouri, USA	chain_verified	5F193777-0CBE-45AC-9300-08BA7D20CD9A				
+53	9	0.000%	0.0%	42.9%	apartment of Mrs. Ida Fenton, Avondale	(declined)		parent_amb		Avondale (Coldwater), Maricopa, Arizona, USA|Avondale, Cincinnati, Hamilton, Ohio, USA|Avondale, Jefferson, Louisiana, USA|Avondale, Chester, Pennsylvania, USA|Avondale, Clay, Missouri, USA			
+54	8	0.000%	0.0%	43.3%	home; 1 Bayou Shore Drive, Galveston	(declined)		parent_rejected		Galveston, Galveston, Texas, USA			
+55	8	0.000%	0.0%	43.8%	home of her parents in Davenport	(declined)		single_amb		Davenport, Scott, Iowa, USA|Davenport, Polk, Florida, USA|Davenport, Delaware, New York, USA|Davenport, Lincoln, Washington, USA|Davenport, Lincoln, Oklahoma, USA			
+56	8	0.000%	0.0%	44.2%	101 SW 23, Oklahoma City	Oklahoma City	Oklahoma City, Oklahoma, Oklahoma, USA	parent_resolved	9BCF79F6-7D8A-4DAF-928B-EF44C4B91B1A				
+57	8	0.000%	0.0%	44.7%	Rt. 1, Elena, Eau Claire County, Wisconsin	Eau Claire	Eau Claire, Eau Claire, Wisconsin, USA	chain_verified	CD751E9E-111B-406F-8521-D81A099CB4E7				
+58	8	0.000%	0.0%	45.1%	1286 Beech St., Fairborn, Ohio	Fairborn	Fairborn (Osborn), Greene, Ohio, USA	chain_verified	C3B6ACE9-0BD4-4A66-845D-CFDBF67DA76C				
+59	8	0.000%	0.0%	45.6%	2024 Mount Vernon avenue SE, Des Moines, Iowa	Des Moines	Des Moines (Ft Des Moines), Polk, Iowa, USA	chain_verified	243D2A36-CF46-4F8D-88E5-B653BE8D7572				
+60	8	0.000%	0.0%	46.0%	public beach area of Lake Darling, near Brighton	(declined)		parent_amb		Brighton and Hove, East Sussex, England, United Kingdom|Brighton, Boston, Suffolk, Massachusetts, USA|Brighton, Adams, Colorado, USA|Brighton, Monroe, New York, USA|Brighton, City of Bayside, Victoria, Australia			
+61	8	0.000%	0.0%	46.5%	Rocky Strings Baptist Church	(declined)		no_auth_match					
+62	8	0.000%	0.0%	46.9%	New Beigle	(declined)		no_auth_match					
+63	7	0.000%	0.0%	47.3%	523 Mooney Road, Fort Walton Beach	Ft Walton Beach	Ft Walton Beach, Okaloosa, Florida, USA	parent_resolved	05F1419D-1E88-4D6B-B8FC-3515C75CDF7A				
+64	7	0.000%	0.0%	47.7%	St. Patrick Catholic Church, Bascom	(declined)		parent_amb		Bascom, Jackson, Florida, USA|Bascom, Smith, Texas, USA|Bascom, Elliott, Kentucky, USA|Bascom, Rosebud, Montana, USA|Bascom, Screven, Georgia, USA			
+65	7	0.000%	0.0%	48.1%	Heath Convalescent Center	(declined)		no_auth_match					
+66	7	0.000%	0.0%	48.5%	142 N. Central	(declined)		no_auth_match					
+67	7	0.000%	0.0%	48.9%	5623 35th Ave.	(declined)		no_auth_match					
+68	7	0.000%	0.0%	49.3%	233 Depot Road, Hollis	(declined)		parent_amb		Hollis, Queens, New York City, New York, USA|Hollis, Hillsborough, New Hampshire, USA|Hollis, York, Maine, USA|Hollis, Harmon, Oklahoma, USA|Hollis, Peoria, Illinois, USA			
+69	7	0.000%	0.0%	49.7%	38235 Washington Street	(declined)		no_auth_match					
+70	7	0.000%	0.0%	50.1%	family home, Stambaugh	(declined)		parent_amb		Stambaugh Township, Iron, Michigan, USA|Stambaugh, Johnson, Kentucky, USA|Shambaugh, Page, Iowa, USA			
+71	7	0.000%	0.0%	50.5%	home two miles north of Campbell, Hunt County, Texas	Campbell	Campbell, Hunt, Texas, USA	chain_verified	D51C7407-D947-43A3-A0D2-D20AE86903CE				
+72	7	0.000%	0.0%	50.9%	Shermerville, Cook Co., Illinois	Shermerville	Shermerville, Cook, Illinois, USA	chain_verified	876C11BE-DC44-47FC-8D8C-5C1ECF3B0029				
+73	7	0.000%	0.0%	51.3%	Bridge Haven Omas House, Lawrence	(declined)		parent_amb		Manhattan, New York City, New York, USA|Lawrence, Douglas, Kansas, USA|Lawrence, Essex, Massachusetts, USA|Lawrence, Lawrence, Marion, Indiana, USA|Laurens, Laurens, South Carolina, USA			
+74	7	0.000%	0.0%	51.7%	hallway just inside the back door, Mountain Home, Idaho	Mountain Home	Mountain Home, Elmore, Idaho, USA	chain_verified	25A22E46-F88B-4995-975A-D98C609D3974				
+75	7	0.000%	0.0%	52.1%	1029 Crockett	(declined)		no_auth_match					
+76	7	0.000%	0.0%	52.5%	Worces England	(declined)		no_auth_match					
+77	7	0.000%	0.0%	52.9%	Osaka, Kan.	(declined)		parent_amb		Kansas, USA|Kansas, Edgar, Illinois, USA|Kansas, Delaware, Oklahoma, USA|Kansas, Walker, Alabama, USA|Kansas, Bennington, Vermont, USA			
+78	6	0.000%	0.0%	53.2%	rectory in Philadelphia	(declined)		single_amb		Philadelphia, Philadelphia, Pennsylvania, USA|New Philadelphia, Tuscarawas, Ohio, USA|Philadelphia, Neshoba, Mississippi, USA|Filadelfia, Vibo Valentia, Calabria, Italy|Philadelphia, Jefferson, New York, USA			
+79	6	0.000%	0.0%	53.6%	East Second street, Washington, North Carolina	Washington	Washington County, North Carolina, USA	chain_verified	2ED03BAC-57FA-4DCA-857F-E1CF3680E18E				
+80	6	0.000%	0.0%	53.9%	near Haskell, Haskell County	Haskell	Haskell, Haskell, Texas, USA	chain_verified	EC2AB38F-FE1B-43A9-BDD5-2324010E962F				
+81	6	0.000%	0.0%	54.2%	Elneo ta, Minn.	Minnesota	Minnesota, USA	freq_resolved	BD3143BB-7DA5-498B-B529-73E79587E8D8				
+82	6	0.000%	0.0%	54.6%	236 Richmond avenue	(declined)		no_auth_match					
+83	6	0.000%	0.0%	54.9%	Westonia, Westonia, W.A.	(declined)		parent_rejected		Washington, USA			
+84	6	0.000%	0.0%	55.3%	Mineral county jail, Mineral County	(declined)		parent_amb		Mineral County, Colorado, USA|Mineral County, Montana, USA|Mineral County, Nevada, USA|Mineral County, West Virginia, USA|Minera, Wrexham, Wales, United Kingdom			
+85	6	0.000%	0.0%	55.6%	Ochsner Medical Hospital, Louisiana, New Orleans	(declined)		parent_rejected		New Orleans, Orleans, Louisiana, USA			
+86	6	0.000%	0.0%	55.9%	202 Humphrey street	(declined)		no_auth_match					
+87	6	0.000%	0.0%	56.3%	Interstate @ in California, California	(declined)		chain_amb		California City, Kern, California, USA|California Indian Heritage Center State Park, Yolo, California, USA|California Heights, Los Angeles, California, USA|California State Capitol Museum, Sacramento, California, USA|California Pines, Modoc, California, USA			
+88	6	0.000%	0.0%	56.6%	home at 120 North Webb Street, Webb City, Missouri	Webb City	Webb City, Jasper, Missouri, USA	chain_verified	1ED0AA9C-C299-4760-A817-912DD9E8FD45				
+89	6	0.000%	0.0%	57.0%	Morocco, northwestern Africa	(declined)		no_auth_match					
+90	6	0.000%	0.0%	57.3%	home of his parents, Wilson County	(declined)		parent_amb		Wilson County, Tennessee, USA|Wilson County, North Carolina, USA|Wilson County, Texas, USA|Wilson County, Kansas, USA|Wilton, Fairfield, Connecticut, USA			
+91	6	0.000%	0.0%	57.6%	Gulf World, Bay County	(declined)		parent_amb		Bay County, Florida, USA|Bay County, Michigan, USA|Bay Country, Anne Arundel, Maryland, USA			
+92	6	0.000%	0.0%	58.0%	Arbela, Arbela, Mo	Arbela	Arbela, Scotland, Missouri, USA	chain_verified_proximity	457EF57C-B440-463F-806C-7604F0C00AEC				
+93	6	0.000%	0.0%	58.3%	Capital Rock, near Alzada	Alzada	Alzada, Carter, Montana, USA	parent_resolved	92A3FFD4-6BD0-4E8D-81D4-5DDEFF6F9C7C				
+94	6	0.000%	0.0%	58.7%	hay loft of his barn, Miami County, Indiana	Miami	Miami County, Indiana, USA	chain_verified	33AE9A68-9044-43DB-8C96-7EFB2A0E8350				
+95	6	0.000%	0.0%	59.0%	Rossendale cemetery	(declined)		no_auth_match					
+96	5	0.000%	0.0%	59.3%	Ballintogher, Sligo	(declined)		parent_amb		Sligo, Clarion, Pennsylvania, USA|Sligo, Dent, Missouri, USA|Sligo, Clinton, Ohio, USA|Sligo, Currituck, North Carolina, USA|Sligo, Yoakum, Texas, USA			
+97	5	0.000%	0.0%	59.6%	Berryman township, Daviess County	Berreman	Berreman Township, Jo Daviess, Illinois, USA	chain_verified	A94327CD-12AB-43CD-B033-16ECCF0634BA				
+98	5	0.000%	0.0%	59.8%	Russellville United Presbyterian Church, Russellville	(declined)		parent_amb		Russellville, Pope, Arkansas, USA|Russellville, Franklin, Alabama, USA|Russellville, Logan, Kentucky, USA|Russellville, Cole, Missouri, USA|Russellville, Brown, Ohio, USA			
+99	5	0.000%	0.0%	60.1%	Mar met Nazareng parsonage	(declined)		no_auth_match					
+100	5	0.000%	0.0%	60.4%	Mazon, Grundy county, Il	Mazon	Mazon, Grundy, Illinois, USA	chain_verified	3FC9FF1B-F028-48B4-A2CB-1E90DC25F49C				
+101	5	0.000%	0.0%	60.7%	51 North Church Street, Concord	(declined)		parent_amb		Manhattan, New York City, New York, USA|Concord, Contra Costa, California, USA|Concord, Cabarrus, North Carolina, USA|Concord, Merrimack, New Hampshire, USA|Concord, Middlesex, Massachusetts, USA			
+102	5	0.000%	0.0%	61.0%	home of her daughter Mrs. Ed Gerard	(declined)		no_auth_match					
+103	5	0.000%	0.0%	61.3%	Bath Hog Buying Station, Richland	(declined)		parent_amb		Richland, Benton, Washington, USA|Richland, Holmes, Mississippi, USA|Richland, Rankin, Mississippi, USA|Richland, Oswego, New York, USA|Richlands, Tazewell, Virginia, USA			
+104	5	0.000%	0.0%	61.5%	garage on the William Knoebber property, Jo Daviess County, Illinois	Jo Daviess	Jo Daviess County, Illinois, USA	chain_verified	7FE2880A-5A0A-452F-A183-7DB4F24A2A24				
+105	5	0.000%	0.0%	61.8%	South Blvd., Oak Park, Oak Park	(declined)		parent_amb		Oak Park, Cook, Illinois, USA|Oak Park, Oakland, Michigan, USA|Oak Park, City of Moreland, Victoria, Australia|Oak Park, Des Moines, Polk, Iowa, USA|Oak Park, Emanuel, Georgia, USA			
+106	5	0.000%	0.0%	62.1%	2163 N. 74th St., Wauwatosa	Wauwatosa	Wauwatosa, Milwaukee, Wisconsin, USA	parent_resolved	E642398B-69B2-4ABB-8319-23783242B802				
+107	5	0.000%	0.0%	62.4%	Valley Way address, Mt. View	(declined)		parent_amb		Mountain View, Santa Clara, California, USA|Mountain View, Hawaii, Hawaii, USA|Mountain View, Kiowa, Oklahoma, USA|Mt View, Comanche, Oklahoma, USA|Mt View, Cullman, Alabama, USA			
+108	5	0.000%	0.0%	62.7%	Kazahstan, former Soviet Union	(declined)		no_auth_match					
+109	5	0.000%	0.0%	63.0%	722 Vernal street NW, Cedar Rapids	Cedar Rapids	Cedar Rapids, Linn, Iowa, USA	freq_resolved	F2A6C187-934E-459E-A629-9932CCFB0CAF				
+110	5	0.000%	0.0%	63.2%	1351 So. Ventura Rd., Oxnard	Oxnard	Oxnard, Ventura, California, USA	parent_resolved	5BD3AC1E-3520-453B-9478-4D7C09342F2C				
+111	5	0.000%	0.0%	63.5%	St. Ve Hospital, Helena	(declined)		parent_amb		Helena, Lewis and Clark, Montana, USA|Helena, Shelby, Alabama, USA|Helena, Helena-West Helena, Phillips, Arkansas, USA|Helena, Alfalfa, Oklahoma, USA|Helena, Sandusky, Ohio, USA			
+112	5	0.000%	0.0%	63.8%	444 Miles North Depot Rd., McAllen	McAllen	McAllen, Hidalgo, Texas, USA	parent_resolved	E6F6BB08-27F3-4BEA-9148-691C53EA2FD3				
+113	5	0.000%	0.0%	64.1%	West Vine street, Coldwater	(declined)		parent_amb		Avondale (Coldwater), Maricopa, Arizona, USA|Coldwater, Branch, Michigan, USA|Coldwater, Mercer, Ohio, USA|Coldwater, Neshoba, Mississippi, USA|Coldwater (Elm Grove), Tate, Mississippi, USA			
+114	5	0.000%	0.0%	64.4%	564 S. Moreland Blvd., Waukesha	Waukesha	Waukesha (Prairieville), Waukesha, Wisconsin, USA	parent_resolved	B6CEF222-6C9F-439F-A59B-A829D69131B7				
+115	5	0.000%	0.0%	64.6%	Mt. Eaton Apple Creek rd.	(declined)		no_auth_match					
+116	5	0.000%	0.0%	64.9%	800 E. 84th Street, Baltimore, Maryland	Baltimore	Baltimore, Maryland, USA	chain_verified	4B4C9F83-A6F1-4371-892D-2EE47616F425				
+117	5	0.000%	0.0%	65.2%	Geasslands hospital, White Plains	(declined)		parent_amb		White Plains, Westchester, New York, USA|White Plains, Hopkins, Kentucky, USA|White Plains, Greene, Georgia, USA|White Plains, East Baton Rouge, Louisiana, USA|White Plains, Brunswick, Virginia, USA			
+118	5	0.000%	0.0%	65.5%	home at 2201 E. Georgia, Phoenix, Arizona	Phoenix	Phoenix, Maricopa, Arizona, USA	chain_verified	DAC29B67-8C46-4C59-A0E9-B61937E51A25				
+119	5	0.000%	0.0%	65.8%	Skagway Health Center	(declined)		no_auth_match					
+120	5	0.000%	0.0%	66.1%	1020 Fairhill Road, Sellersville	Sellersville	Sellersville, Bucks, Pennsylvania, USA	freq_resolved	1E1AB37D-F87F-4FCF-8EA5-C295E0881B8D				
+121	4	0.000%	0.0%	66.3%	Castner, Oahu	(declined)		parent_rejected		Oahu, Hawaii, USA			
+122	4	0.000%	0.0%	66.5%	2511 Lakin	(declined)		no_auth_match					
+123	4	0.000%	0.0%	66.7%	Grace Reformed church, Hanover	(declined)		parent_amb		Hannover (Hanover), Region Hannover, Niedersachsen, Germany|Hanover, Eastman, Manitoba, Canada|Hanover, York, Pennsylvania, USA|Hanover, Plymouth, Massachusetts, USA|Hanover, Grafton, New Hampshire, USA			
+124	4	0.000%	0.0%	67.0%	706 Weeks Street, New Iberia	New Iberia	New Iberia, Iberia, Louisiana, USA	parent_resolved	71882114-A177-468A-B632-2C2D43CDB467				
+125	4	0.000%	0.0%	67.2%	First Evangel ical church	(declined)		no_auth_match					
+126	4	0.000%	0.0%	67.4%	Burr Funeral Home in Chardon, Chardon	(declined)		parent_rejected		Chardon, Geauga, Ohio, USA			
+127	4	0.000%	0.0%	67.6%	beach apartment hotel, Galveston, Texas	Galveston	Galveston, Galveston, Texas, USA	chain_verified	D0D9E0D0-B720-4FB0-8B9E-3C1BC19A3768				
+128	4	0.000%	0.0%	67.9%	Methodist church in Wiltshire, Wiltshire, D.	(declined)		no_auth_match					
+129	4	0.000%	0.0%	68.1%	North Haven, Connecticut, North Haven, Connecticut	North Haven	North Haven, New Haven, Connecticut, USA	chain_verified_proximity	94BF7639-6B6E-4300-B7F3-4966319E0987				
+130	4	0.000%	0.0%	68.3%	2 Sunset Lane, Finksburg	Finksburg	Finksburg, Carroll, Maryland, USA	parent_resolved	C0F8B76B-DB78-451D-91EC-FAF64F4EB5F1				
+131	4	0.000%	0.0%	68.6%	506 North Charles Street, Carlinville	Carlinville	Carlinville, Macoupin, Illinois, USA	parent_resolved	ECF69DA3-E372-4C2A-9C04-34BAA0BFE9F9				
+132	4	0.000%	0.0%	68.8%	home, Necedah, Wisconsin	Necedah	Necedah, Juneau, Wisconsin, USA	chain_verified	923963A3-8319-4D4E-97D6-9E67E7461F6F				
+133	4	0.000%	0.0%	69.0%	Cerro Gordo, Cerro Gordo County, Iowa	Cerro Gordo	Cerro Gordo County, Iowa, USA	chain_verified	5A234A5F-18C9-48C6-B395-52C69F88C3D7				
+134	4	0.000%	0.0%	69.2%	at home, 3810 Washington boulevard	(declined)		no_auth_match					
+135	4	0.000%	0.0%	69.5%	The Gap (cliffs), Sydney, New South Wales, Australia	Sydney	Sydney, New South Wales, Australia	chain_verified	B77CDF1F-5AB1-4D36-B20E-7B1C019DBCED				
+136	4	0.000%	0.0%	69.7%	723 Eighteenth st SE, Cedar Rapids	Cedar Rapids	Cedar Rapids, Linn, Iowa, USA	freq_resolved	F2A6C187-934E-459E-A629-9932CCFB0CAF				
+137	4	0.000%	0.0%	69.9%	352 Wisconsin Ave., Waukesha	Waukesha	Waukesha (Prairieville), Waukesha, Wisconsin, USA	parent_resolved	B6CEF222-6C9F-439F-A59B-A829D69131B7				
+138	4	0.000%	0.0%	70.1%	her home about a mile and a half east of Deer Grove	Deer Grove	Deer Grove, Whiteside, Illinois, USA	single_term	874E6290-730E-44D4-B195-889F2936564B				
+139	4	0.000%	0.0%	70.4%	Graybear Nursing Home, Keosauqua	Keosauqua	Keosauqua, Van Buren, Iowa, USA	parent_resolved	114B1233-F4C4-4BC1-9F45-0CEF965FD392				
+140	4	0.000%	0.1%	70.6%	Tilman, Texas	Tilmon	Tilmon, Caldwell, Texas, USA	chain_verified	B04E0AA9-9A15-4B1A-A95A-4EB2652E5B5A				
+141	4	0.000%	0.1%	70.8%	DoudsLeanderlona	(declined)		no_auth_match					
+142	4	0.000%	0.1%	71.0%	127 Pearl Street	(declined)		no_auth_match					
+143	4	0.000%	0.1%	71.3%	St. Anthony Catholic Church, Leoti	(declined)		parent_rejected		Leoti, Wichita, Kansas, USA			
+144	4	0.000%	0.1%	71.5%	172 Cass street, Omaha, Omaha, Nebraska	Omaha	Omaha, Douglas, Nebraska, USA	chain_verified	4ADD3337-605D-4936-8FC6-3D0AF880DA77				
+145	4	0.000%	0.1%	71.7%	10850 Thomas Read	(declined)		no_auth_match					
+146	4	0.000%	0.1%	71.9%	OISO, Japan	Japan	Japan	freq_resolved	AB55A034-2454-423A-843C-C097449D09C7				
+147	4	0.000%	0.1%	72.2%	northwest Washington mansion, Washington, D.C.	Washington D.C.	Washington D.C., USA	parent_resolved	5FD37B8E-AE07-4EB7-A4A5-BE5DC251FA24				
+148	4	0.000%	0.1%	72.4%	parsonage, Alvarado, Texas	Alvarado	Alvarado, Johnson, Texas, USA	chain_verified	52AE118B-6F21-42FD-911B-E189A605C1C6				
+149	4	0.000%	0.1%	72.6%	New Norway, Canada	New Norway	New Norway, Camrose County, Alberta, Canada	chain_verified	4CBEA291-B805-4193-A4D5-C9CAAA11C9FB				
+150	4	0.000%	0.1%	72.9%	101 Cortez Road W., Bradenton	Bradenton	Bradenton, Manatee, Florida, USA	parent_resolved	0A0B7238-5D99-4DFB-9428-E029ADDF11E4				
+151	4	0.000%	0.1%	73.1%	Plankinton, South Dakota, South Dakota	Plankinton	Plankinton, Aurora, South Dakota, USA	chain_verified	295622FD-26B2-480E-815E-97C667CD1B9B				
+152	4	0.000%	0.1%	73.3%	near Camden Point, near Camden Point, north of Kansas City, 12 miles northwest of Smithville	(declined)		parent_amb		Manhattan, New York City, New York, USA|Smithville, Clay, Missouri, USA|Smithville, DeKalb, Tennessee, USA|Smithville, Bastrop, Texas, USA|Smithville, Chenango, New York, USA			
+153	4	0.000%	0.1%	73.5%	farm house three miles west of Kearney, Linenry, Mo.	Kearney	Kearney, Clay, Missouri, USA	chain_verified	A3F38BA1-F7B3-4B74-BE78-405CCECC437B				
+154	4	0.000%	0.1%	73.8%	Bainbridge Basic Pilot School area (near Bainbridge, GA), Georgia	Georgia	Georgia, USA	freq_resolved	06D9B1BB-0224-4C28-AB0D-78860AE3D1D5				
+155	3	0.000%	0.1%	73.9%	5318 Stockwell	(declined)		no_auth_match					
+156	3	0.000%	0.1%	74.1%	late home at Holmes	(declined)		single_amb		Holmes, Tazewell, Illinois, USA|Holmes, City of Darwin, Northern Territory, Australia|Holmes, Washington, Tennessee, USA|Holmes, Grand Forks, North Dakota, USA|Holmes, Humboldt, California, USA			
+157	3	0.000%	0.1%	74.3%	Duncan Latter Day Saints Church, Duncan, Arizona	Duncan	Duncan, Greenlee, Arizona, USA	chain_verified	186791E3-D4F3-4998-9B8D-C15DCA2B3B9A				
+158	3	0.000%	0.1%	74.4%	222 Saldana St.	(declined)		no_auth_match					
+159	3	0.000%	0.1%	74.6%	113 East Rives street, St. Marys	(declined)		parent_amb		Cardiff (Caerdydd), Wales, United Kingdom|Reading, Reading, Berkshire, England, United Kingdom|Chester, Cheshire West and Chester, Cheshire, England, United Kingdom|Nottingham, Nottingham, Nottinghamshire, England, United Kingdom|Kingston upon Hull (Hull), East Riding of Yorkshire, England, United K			
+160	3	0.000%	0.1%	74.8%	closet in the Carlan tenement flat, Chelsea, Mass	Chelsea	Chelsea, Suffolk, Massachusetts, USA	chain_verified	CADBCB46-A2F2-4F76-A31A-AD3ED3533CAE				
+161	3	0.000%	0.1%	74.9%	Hospital, Toulon	(declined)		parent_rejected		Toulon, Stark, Illinois, USA			
+162	3	0.000%	0.1%	75.1%	3206 Red Bluff, Pasadena. Tx	(declined)		no_auth_match					
+163	3	0.000%	0.1%	75.3%	Interstate 80 in southeastern Cedar County, Cedar County, Iowa	Cedar	Cedar County, Iowa, USA	chain_verified	666189CC-F78E-41FA-A49E-298E0EA0448F				
+164	3	0.000%	0.1%	75.5%	ravine of the Palos Hills forest preserve, southwest of the city	(declined)		low_evidence		The City, East Suffolk, Suffolk, England, United Kingdom			
+165	3	0.000%	0.1%	75.6%	Campbell Lake, Kalamazoo, Michigan	Kalamazoo	Kalamazoo (Bronson), Kalamazoo, Michigan, USA	chain_verified	9ED5E870-1410-4457-85AD-B6D5CA5CBAA7				
+166	3	0.000%	0.1%	75.8%	3497 Collins Ferry Road	(declined)		no_auth_match					
+167	3	0.000%	0.1%	76.0%	home of the brides parents, near Glendale	(declined)		parent_amb		Glendale, Maricopa, Arizona, USA|Glendale, Los Angeles, California, USA|Glendale, Queens, New York City, New York, USA|Glendale, Milwaukee, Wisconsin, USA|Glendale, Monroe, Wisconsin, USA			
+168	3	0.000%	0.1%	76.1%	City hospital, Burlington, New Jersey	Burlington	Burlington, Burlington, New Jersey, USA	chain_verified	11F31E16-CE38-40E7-B364-05A7E5F0EE6D				
+169	3	0.000%	0.1%	76.3%	1820 Jonquil Park Dr.	(declined)		no_auth_match					
+170	3	0.000%	0.1%	76.5%	Pudsiouth, Va.	Virginia	Virginia, USA	freq_resolved	86BF0DD9-8840-4063-A130-A1C611BD73E1				
+171	3	0.000%	0.1%	76.6%	Fast Greta Junction workshops	(declined)		no_auth_match					
+172	3	0.000%	0.1%	76.8%	Our Lady of the Prairie Catholic Church, Belle Plaine	(declined)		parent_amb		Belle Plaine, Scott, Minnesota, USA|Belle Plaine, Benton, Iowa, USA|Belle Plaine, Shawano, Wisconsin, USA|Belle Plaine, Sumner, Kansas, USA|Belle Plaine, Pense, Saskatchewan, Canada			
+173	3	0.000%	0.1%	77.0%	Dolores, Webb County, Webb County	Dolores	Dolores, Webb, Texas, USA	chain_verified	D1F868D4-9DDD-4B4E-B073-230C8454CD6A				
+174	3	0.000%	0.1%	77.1%	614 West street, Louisville, Ky., Louisville, Kentucky	Louisville	Louisville, Jefferson, Kentucky, USA	chain_verified_proximity	249AC680-0F90-4DB9-A461-AD04AE12A5A7				
+175	3	0.000%	0.1%	77.3%	Rivera, Ga	(declined)		parent_rejected		Georgia, USA			
+176	3	0.000%	0.1%	77.5%	3535 W. 81st St., Chicago, Chicago	Chicago	Chicago, Cook, Illinois, USA	freq_resolved	AE0FFEB8-85BF-49E8-9835-1E33D163E3EF				
+177	3	0.000%	0.1%	77.7%	Gross Christinenberg	(declined)		no_auth_match					
+178	3	0.000%	0.1%	77.8%	First Methodist church of Wilson, Wilson	Wilson	Wilson, Wilson, North Carolina, USA	chain_verified	B9FE3027-7691-4E12-9C54-031DA9BD1B96				
+179	3	0.000%	0.1%	78.0%	16029 Arminia	(declined)		no_auth_match					
+180	3	0.000%	0.1%	78.2%	south of Kendallville, Kendallville, Indiana	Kendallville	Kendallville, Noble, Indiana, USA	chain_verified_proximity	6BCD243A-AFB3-446D-BDB4-1725602DD220				
+181	3	0.000%	0.1%	78.3%	Lying-in hospital, Detroit, Detroit, Michigan	Detroit	Detroit, Wayne, Michigan, USA	chain_verified	2466D0F6-E358-497F-A0FB-312F79121545				
+182	3	0.000%	0.1%	78.5%	Mrs. Burnisons hospital, Vida	(declined)		parent_amb		Vida, Lane, Oregon, USA|Vida, McCone, Montana, USA|Vida, Iberia, Louisiana, USA|Vida, Autauga, Alabama, USA|Vida, Phelps, Missouri, USA			
+183	3	0.000%	0.1%	78.7%	Fort Belvoir Medical Center, Alexandria, VA	Alexandria	Alexandria, Virginia, USA	chain_verified	A84563A1-7988-422E-A219-1ADDB5FC7F7D				
+184	3	0.000%	0.1%	78.8%	R. F. D. Huron	(declined)		no_auth_match					
+185	3	0.000%	0.1%	79.0%	American Hospital outside Paris, Paris, France	Paris	Paris, Île-de-France, France	chain_verified_proximity	B9AAB282-F513-2541-AE48-3507F9CE1743				
+186	3	0.000%	0.1%	79.2%	Serene Home, West Kittanning	West Kittanning	West Kittanning, Armstrong, Pennsylvania, USA	parent_resolved	FF5BA4A3-4B88-4385-ADA2-7FE039D3BCD0				
+187	3	0.000%	0.1%	79.4%	Green Haven Rest Home, Russell	(declined)		parent_amb		Russell, Russell, Kansas, USA|Russell, Greenup, Kentucky, USA|Russell, Hampden, Massachusetts, USA|Russell, St Lawrence, New York, USA|Russell, Bayfield, Wisconsin, USA			
+188	3	0.000%	0.1%	79.5%	Wathington Township near Mt. Iwtvins town	(declined)		no_auth_match					
+189	3	0.000%	0.1%	79.7%	Ella Township	(declined)		no_auth_match					
+190	3	0.000%	0.1%	79.9%	321 Lincoln Avenue	(declined)		no_auth_match					
+191	3	0.000%	0.1%	80.0%	6512 Matterhorn Drive, North Highland, California	North Highlands	North Highlands, Sacramento, California, USA	chain_verified	BAB442C5-15C2-47AC-BF50-9D85BB177022				
+192	3	0.000%	0.1%	80.2%	Monroe prairie, Aberdeen, Miss.	Aberdeen	Aberdeen, Monroe, Mississippi, USA	chain_verified	7BE89F8C-D35A-4ABC-9EB4-445051F76011				
+193	3	0.000%	0.1%	80.4%	114 West Walnut street, Titusville	(declined)		parent_amb		Titusville, Brevard, Florida, USA|Titusville, Crawford, Pennsylvania, USA|Titusville, Dutchess, New York, USA|Titusville, Mercer, New Jersey, USA			
+194	3	0.000%	0.1%	80.5%	1800 Lynn Dr.	(declined)		no_auth_match					
+195	3	0.000%	0.1%	80.7%	Cardiff, Glamorganshire, South Wales	Glamorgan	Glamorgan County (historical), Wales, United Kingdom	chain_verified	5BA46A67-E50C-48ED-974D-CC2976252E6F				
+196	3	0.000%	0.1%	80.9%	1423 Orchard Drive	(declined)		no_auth_match					
+197	3	0.000%	0.1%	81.1%	5019 Windsor St.	(declined)		no_auth_match					
+198	3	0.000%	0.1%	81.2%	871 Julian street	(declined)		no_auth_match					
+199	3	0.000%	0.1%	81.4%	home of Mr. and Mrs. Sam Hendrickson	(declined)		no_auth_match					
+200	3	0.000%	0.1%	81.6%	106A Lassiter Dr.	(declined)		no_auth_match					
+201	3	0.000%	0.1%	81.7%	M43 Summit Ave, Linwood	(declined)		parent_amb		Lynwood, Los Angeles, California, USA|Linwood, Christchurch, Canterbury, New Zealand|Linwood, Renfrewshire, Scotland, United Kingdom|Linwood, Atlantic, New Jersey, USA|Linwood, Lower Chichester, Delaware, Pennsylvania, USA			
+202	3	0.000%	0.1%	81.9%	home in New Amele, Kan.	(declined)		parent_amb		Kansas, USA|Kansas, Edgar, Illinois, USA|Kansas, Delaware, Oklahoma, USA|Kansas, Walker, Alabama, USA|Kansas, Bennington, Vermont, USA			
+203	3	0.000%	0.1%	82.1%	2209 University Apts	(declined)		no_auth_match					
+204	3	0.000%	0.1%	82.2%	Hawittviits addition, Taylorville	(declined)		parent_amb		Taylorville, Christian, Illinois, USA|Taylorsville, Alexander, North Carolina, USA|Taylorsville, Spencer, Kentucky, USA|Taylorsville, Smith, Mississippi, USA|Taylorville, Worcester, Maryland, USA			
+205	3	0.000%	0.1%	82.4%	184 Vinestreet, Chicago	Chicago	Chicago, Cook, Illinois, USA	freq_resolved	AE0FFEB8-85BF-49E8-9835-1E33D163E3EF				
+206	3	0.000%	0.1%	82.6%	1131 West Highland	(declined)		no_auth_match					
+207	3	0.000%	0.1%	82.7%	KE. Madisonst	(declined)		no_auth_match					
+208	3	0.000%	0.1%	82.9%	77 North Third Street	(declined)		no_auth_match					
+209	3	0.000%	0.1%	83.1%	Towanda, Main St.	(declined)		no_auth_match					
+210	3	0.000%	0.1%	83.3%	Belgian suite on the ground floor of Buckingham Palace	(declined)		single_amb		City of Westminster (Westminster), Greater London, England, United Kingdom|Buckingham Palace, City of Westminster, Greater London, England, United Kingdom			
+211	3	0.000%	0.1%	83.4%	210 North Fourth avenue	(declined)		no_auth_match					
+212	3	0.000%	0.1%	83.6%	near Howard University, District of Columbia	Howard University	Howard University, Washington D.C., USA	chain_verified	555B7ED1-BDC6-4DE1-9D04-7F9D501B61AB				
+213	3	0.000%	0.1%	83.8%	Route 1, Lake Mills, Lake Mills	(declined)		parent_amb		Lake Mills, Jefferson, Wisconsin, USA|Lake Mills, Winnebago, Iowa, USA|Lake Hills, King, Washington, USA|Lake Mill, Spencer, Indiana, USA|Lake Hills, Carroll, Maryland, USA			
+214	3	0.000%	0.1%	83.9%	chapel of Bowling Green State University, Bowling Green	Bowling Green State University	Bowling Green State University, Bowling Green, Wood, Ohio, USA	chain_verified	A55CD1DF-D977-2D43-99D8-0F4EBC553FF4				
+215	3	0.000%	0.1%	84.1%	20 South Railroad ave.	(declined)		no_auth_match					
+216	3	0.000%	0.1%	84.3%	St. Lukes, Twin Falls	(declined)		parent_rejected		Twin Falls, Twin Falls, Idaho, USA			
+217	3	0.000%	0.1%	84.4%	410 E Longyear St., Bessemer	(declined)		parent_amb		Pueblo, Pueblo, Colorado, USA|Bessemer, Jefferson, Alabama, USA|Bessemer, Gogebic, Michigan, USA|Bessemer, Lawrence, Pennsylvania, USA|Bessemer, North Braddock, Allegheny, Pennsylvania, USA			
+218	3	0.000%	0.1%	84.6%	Kirkland Hospital, Seattle, Washington	Seattle	Seattle, King, Washington, USA	chain_verified	E1DAC9BB-1904-47C1-BE04-4F5F2132A22A				
+219	2	0.000%	0.1%	84.7%	2914 South 14th street	(declined)		no_auth_match					
+220	2	0.000%	0.1%	84.8%	411 W. Phillips St.	(declined)		no_auth_match					
+221	2	0.000%	0.1%	85.0%	No. 302 Fifth Ave, New York	New York	New York, USA	freq_resolved	C11A67C9-8A8B-4B59-A984-C305254EEF70				
+222	2	0.000%	0.1%	85.1%	Bs High Street	(declined)		no_auth_match					
+223	2	0.000%	0.1%	85.2%	parking lot of the PNB office at Water and Market Streets, Bristol Borough, Bucks County	Bristol	Bristol, Bucks, Pennsylvania, USA	chain_verified	797940C3-1FA0-DB41-972C-2628F4F87DF1				
+224	2	0.000%	0.1%	85.3%	No. 1119 Otis Street	(declined)		no_auth_match					
+225	2	0.000%	0.1%	85.4%	Tornow's cabin	(declined)		no_auth_match					
+226	2	0.000%	0.1%	85.5%	Macon, Ga. hospital	(declined)		no_auth_match					
+227	2	0.000%	0.1%	85.6%	Sawyer canyon bridge, near Ferdinand, Idaho	Ferdinand	Ferdinand, Idaho, Idaho, USA	chain_verified	48A3922C-B7E4-41DC-81CA-2C7606C0F0D6				
+228	2	0.000%	0.1%	85.7%	Kalamo goo	(declined)		no_auth_match					
+229	2	0.000%	0.1%	85.9%	Bullocks Creek, Bullocks Creek township	(declined)		parent_amb		Bullock Creek, Midland, Michigan, USA|Bullocks Creek Township (historical), York, South Carolina, USA|Bullock Creek, York, South Carolina, USA			
+230	2	0.000%	0.1%	86.0%	Habana, Habana	(declined)		parent_amb		Habana, Moyobamba, San Martín, Peru|Habana, Mackay Region, Queensland, Australia|La Habana (Havana), Cuba|Sabana, Vega Alta, Puerto Rico, USA|Abana, Kastamonu, Turkey			
+231	2	0.000%	0.1%	86.1%	Imhoeming, Mich.	Michigan	Michigan, USA	freq_resolved	66BEE20E-3C18-4146-878A-9C52982B9EB4				
+232	2	0.000%	0.1%	86.2%	home of the brides parents, Ida Grove	Ida Grove	Ida Grove, Ida, Iowa, USA	parent_resolved	61434563-FB68-4971-BF12-1EE54F45316E				
+233	2	0.000%	0.1%	86.3%	1372 Kenyon st.	(declined)		no_auth_match					
+234	2	0.000%	0.1%	86.4%	410 Central Ave., Kannapolis, Kannapolis, Rowan County	(declined)		parent_amb		Rowan County, North Carolina, USA|Rowan County, Kentucky, USA|Royan, Charente-Maritime, Nouvelle-Aquitaine, France|Ronan, Lake, Montana, USA|Cowan, Franklin, Tennessee, USA			
+235	2	0.000%	0.1%	86.5%	Will home, Superior township	(declined)		parent_amb		Superior Township, Washtenaw, Michigan, USA|Superior Township, McPherson, Kansas, USA|Superior Township, Williams, Ohio, USA|Superior Township, Chippewa, Michigan, USA|Superior Township, Osage, Kansas, USA			
+236	2	0.000%	0.1%	86.7%	Kilfrush, co. Limerick	Kilrush	Kilrush, County Clare, Munster, Ireland	chain_verified_proximity	3A4D1DAB-6D57-47F3-AB63-6D7F47209367				
+237	2	0.000%	0.1%	86.8%	11415 Norledge, Sugar Creek, Missouri	Sugar Creek	Sugar Creek, Jackson, Missouri, USA	chain_verified	63F1FAEF-A351-4BF8-A589-5A08743D69AC				
+238	2	0.000%	0.1%	86.9%	Choctawhatchee River, Washington County	(declined)		parent_amb		Washington County (Kings), Rhode Island, USA|Washington County, Virginia, USA|Washington County, Arkansas, USA|Washington County, Nebraska, USA|Washington, Louisiana, USA			
+239	2	0.000%	0.1%	87.0%	145 Vanness	(declined)		no_auth_match					
+240	2	0.000%	0.1%	87.1%	St. Stephans church, Olean	Olean	Olean, Cattaraugus, New York, USA	freq_resolved	DC17883C-EDDC-4A11-B058-5B6C60ACE418				
+241	2	0.000%	0.1%	87.2%	Superior Court Department One, Department One	(declined)		no_auth_match					
+242	2	0.000%	0.1%	87.3%	102 Derry Road, Hudson, NH	Hudson	Hudson, Hillsborough, New Hampshire, USA	chain_verified	9F8C0788-EB36-479D-9121-A684F9CD8BAB				
+243	2	0.000%	0.1%	87.4%	Sylmar (home), San Fernando Valley, Los Angeles County, California	Los Angeles	Los Angeles, Los Angeles, California, USA	chain_verified	6B884CA9-F85A-4028-B645-2745B2A226FC				
+244	2	0.000%	0.1%	87.6%	combat base in Quang Nam province, Quang Nam province, Vietnam	Qu ng Nam	Qu ng Nam, Vietnam	chain_verified	769BB04C-2708-48E5-AA92-868B749F3B8E				
+245	2	0.000%	0.1%	87.7%	Geyer, Ohio	Geyer	Geyer, Auglaize, Ohio, USA	chain_verified	0A887F9C-797E-4F49-A92E-45B294A72B17				
+246	2	0.000%	0.1%	87.8%	Turkey township, Sampson County	(declined)		parent_rejected		Sampson County, North Carolina, USA			
+247	2	0.000%	0.1%	87.9%	Browneville, Kentucky	Brownsville	Brownsville, Edmonson, Kentucky, USA	chain_verified	68F9564E-9122-48D3-B3B0-0B62146F0E0D				
+248	2	0.000%	0.1%	88.0%	Gold Mine township	Gold Mine	Gold Mine Township, Franklin, North Carolina, USA	single_term	57A31143-EA9B-4F83-A9FB-30E82DC87914				
+249	2	0.000%	0.1%	88.1%	farm 3 miles south of town	(declined)		single_amb		Town Bluff, Tyler, Texas, USA|Town Hill, Hancock, Maine, USA|Town of Lake, Milwaukee, Milwaukee, Wisconsin, USA			
+250	2	0.000%	0.1%	88.2%	1114 West Eighth Street	(declined)		no_auth_match					
+251	2	0.000%	0.1%	88.3%	2285 7th Ave., New York, NY	(declined)		chain_amb		New York City, New York, USA|New York Mills, Oneida, New York, USA			
+252	2	0.000%	0.1%	88.5%	30 Spring Street, Nashua, Nashua, N.H.	Nashua	Nashua, Hillsborough, New Hampshire, USA	chain_verified	12651FDF-B9CF-4C90-8899-8A6907749FAD				
+253	2	0.000%	0.1%	88.6%	20 miles east of Nome, Alaska	Nome	Nome, Unorganized Borough, Alaska, USA	chain_verified	CFB4BEF4-949E-4E7E-AB69-0E5E690076A8				
+254	2	0.000%	0.1%	88.7%	townhouse they shared	(declined)		no_auth_match					
+255	2	0.000%	0.1%	88.8%	Northway Baptist Church, Walnut Hill in Dallas	(declined)		parent_amb		Dallas, Dallas, Texas, USA|Dallas, Polk, Oregon, USA|Dallas, Paulding, Georgia, USA|Dallas, City of Hume, Victoria, Australia|Dallas, Gaston, North Carolina, USA			
+256	2	0.000%	0.1%	88.9%	his farm home near Orange City	(declined)		single_amb		Orange City, Volusia, Florida, USA|Orange City, Sioux, Iowa, USA			
+257	2	0.000%	0.1%	89.0%	Whites Point on Lake Shafer	(declined)		no_auth_match					
+258	2	0.000%	0.1%	89.1%	Bunts End, Leigh, Surrey	Leigh	Leigh, Mole Valley, Surrey, England, United Kingdom	chain_verified	B7A11A01-5B1D-4C85-96E9-553F083D0254				
+259	2	0.000%	0.1%	89.3%	1623 Massachusetts avenue N.W., Washington, D.C.	Washington D.C.	Washington D.C., USA	parent_resolved	5FD37B8E-AE07-4EB7-A4A5-BE5DC251FA24				
+260	2	0.000%	0.1%	89.4%	238 East Pennsylvania	(declined)		no_auth_match					
+261	2	0.000%	0.1%	89.5%	Dinsworth, near Bury	Ainsworth	Ainsworth, Bury, Greater Manchester, England, United Kingdom	chain_verified	2DC53F68-AFE7-4EE6-9C8B-4EACD1C6C254				
+262	2	0.000%	0.1%	89.6%	Moll Court? Charleston	(declined)		no_auth_match					
+263	2	0.000%	0.1%	89.7%	316 S. Washington	(declined)		no_auth_match					
+264	2	0.000%	0.1%	89.8%	Alama Cry	(declined)		no_auth_match					
+265	2	0.000%	0.1%	89.9%	229 Boyer St.	(declined)		no_auth_match					
+266	2	0.000%	0.1%	90.0%	Holy Cross Church, Birdwood, Birdwood	(declined)		parent_amb		Charlottesville, Virginia, USA|Birdwood, Port Macquarie-Hastings Council, New South Wales, Australia|Birdwood, Adelaide Hills Council, South Australia, Australia|Birdwood, Lincoln, Nebraska, USA|Birdwood, Forest of Dean, Gloucestershire, England, United Kingdom			
+267	2	0.000%	0.1%	90.2%	home at 1738 Rigsby, San Antonio, Texas	San Antonio	San Antonio, Bexar, Texas, USA	chain_verified	ADD4DB38-72CE-49FB-AC95-E6945A42DB67				
+268	2	0.000%	0.1%	90.3%	Hig Ike, Minnesota	Minnesota	Minnesota, USA	freq_resolved	BD3143BB-7DA5-498B-B529-73E79587E8D8				
+269	2	0.000%	0.1%	90.4%	Lituya Bay area	(declined)		no_auth_match					
+270	2	0.000%	0.1%	90.5%	Main Street, Ottumwa	Ottumwa	Ottumwa, Wapello, Iowa, USA	freq_resolved	97D5331D-B29A-428E-BC41-2D507AB40898				
+271	2	0.000%	0.1%	90.6%	near Antlers, I.T.	(declined)		parent_rejected		Italy			
+272	2	0.000%	0.1%	90.7%	home on S. Depot St., Rogers	(declined)		parent_amb		Rogers, Benton, Arkansas, USA|Rogers, Hennepin, Minnesota, USA|Rogersville, Webster, Missouri, USA|Rogers, Bell, Texas, USA|Rogers, Columbiana, Ohio, USA			
+273	2	0.000%	0.1%	90.8%	FM 770, eight and one-half miles west of Kountze, Kountze, Hardin County, Texas	Kountze	Kountze, Hardin, Texas, USA	chain_verified_proximity	98A3523E-3FF2-46BE-9289-CA37F1B42D50				
+274	2	0.000%	0.1%	91.0%	at his residence in Selkirk	(declined)		single_amb		Selkirk, Winnipeg Metropolitan, Manitoba, Canada|Selkirk, Scottish Borders, Scotland, United Kingdom|Selkirk, Haldimand County, Ontario, Canada|Selkirk, Albany, New York, USA|Selkirk, Warren, Pennsylvania, USA			
+275	2	0.000%	0.1%	91.1%	Cross Praids	(declined)		no_auth_match					
+276	2	0.000%	0.1%	91.2%	1706 High Street	(declined)		no_auth_match					
+277	2	0.000%	0.1%	91.3%	622 Hillsdale Avenue	(declined)		no_auth_match					
+278	2	0.000%	0.1%	91.4%	Herer ton	(declined)		no_auth_match					
+279	2	0.000%	0.1%	91.5%	pasture on Johnsons farm, Dunkirk, Dane County, Wisconsin	Dunkirk	Dunkirk, Dane, Wisconsin, USA	chain_verified	40ECB96F-4AFC-4EBA-B75B-E07E8AC750EC				
+280	2	0.000%	0.1%	91.6%	1712 Hagerer street, Racine	Racine	Racine, Racine, Wisconsin, USA	freq_resolved	DCF0D645-2888-42E9-91E9-E3088CA76A90				
+281	2	0.000%	0.1%	91.7%	Pine County District Court, Pine County	Pine	Pine County, Minnesota, USA	parent_resolved	DC1D2DD2-BEC5-4116-8CA0-A6B166599D6E				
+282	2	0.000%	0.1%	91.9%	Monterey Ave., eran Park	Oran Park	Oran Park, Camden Council, New South Wales, Australia	parent_resolved	ED6321A4-101C-4BA3-9015-5DE7E7BDDE73				
+283	2	0.000%	0.1%	92.0%	Cajon Pass, between San Bernardino and the Mojave Desert	(declined)		no_auth_match					
+284	2	0.000%	0.1%	92.1%	Clarena Avenue, St. Louis, Missouri	St Louis	St Louis, Missouri, USA	chain_verified	586F06BF-96D7-46EF-BC8D-7F4C9E9564C3				
+285	2	0.000%	0.1%	92.2%	Thorndike canal	(declined)		no_auth_match					
+286	2	0.000%	0.1%	92.3%	Route 28, near Pittsburgh	(declined)		single_amb		Pittsburgh, Allegheny, Pennsylvania, USA|Pittsburg, Contra Costa, California, USA|Pittsburg, Crawford, Kansas, USA|Pittsburg, Camp, Texas, USA|Pittsburg, Pittsburg, Oklahoma, USA			
+287	2	0.000%	0.1%	92.4%	Pottera Ville, a small hamlet near Schroon Lake	Schroon Lake	Schroon Lake, Essex, New York, USA	parent_resolved	FF46DDA9-0063-425A-A21C-724BBDD8B284				
+288	2	0.000%	0.1%	92.5%	St. Vincent's Hospital, New York, N.Y.	Manhattan	Manhattan, New York City, New York, USA	chain_verified	01122336-F074-4046-B13B-3296EED1CA1C				
+289	2	0.000%	0.1%	92.6%	Kenmore Hotel, North Capitol Street, Washington, DC	Washington D.C.	Washington D.C., USA	parent_resolved	5FD37B8E-AE07-4EB7-A4A5-BE5DC251FA24				
+290	2	0.000%	0.1%	92.8%	Lattimore, Lattimore, North Carolina	Lattimore	Lattimore, Cleveland, North Carolina, USA	chain_verified_proximity	C6E3F9A1-BFBA-4338-9889-6586A2CB4CCA				
+291	2	0.000%	0.1%	92.9%	505 D southeast	(declined)		no_auth_match					
+292	2	0.000%	0.1%	93.0%	Naples Hospital, Florida	Naples	Naples, Collier, Florida, USA	chain_verified	97F5412D-8332-44DE-B363-892A911FBF82				
+293	2	0.000%	0.1%	93.1%	maton township, Cass	(declined)		chain_amb		Mason Township, Cass, Michigan, USA|Mason, Cass, North Dakota, USA			
+294	2	0.000%	0.1%	93.2%	Canningplace, Oldstreet Road	(declined)		no_auth_match					
+295	2	0.000%	0.1%	93.3%	913 Inverness Ave., Victoria	Victoria	Victoria, Australia	freq_resolved	35C727E5-B004-4F4F-814B-3E13AB1144EA				
+296	2	0.000%	0.1%	93.4%	their home on Prairie Ave.	(declined)		no_auth_match					
+297	2	0.000%	0.1%	93.6%	St. Andrews Episcopal church, Jackson, Mississippi	Jackson	Jackson, Hinds, Mississippi, USA	chain_verified	2A3799A6-097E-486F-AF4C-BE8F20646D96				
+298	2	0.000%	0.1%	93.7%	72 Victoria St, Sandringham, Sandringham, Victoria	Sandringham	Sandringham (Bluff Town), City of Bayside, Victoria, Australia	chain_verified	367237BD-0063-4864-8228-C027C90046D3				
+299	2	0.000%	0.1%	93.8%	Superior Court, Dover, Dover, Strafford County, New Hampshire	Dover	Dover, Strafford, New Hampshire, USA	chain_verified	9D0702A8-6B13-45E2-8EFD-797D3917C8E9				
+300	2	0.000%	0.1%	93.9%	321st district	(declined)		no_auth_match					
+301	2	0.000%	0.1%	94.0%	Cook County Jail?	Cook County Jail	Cook County Jail, South Lawndale, Chicago, Cook, Illinois, USA	single_term	B778A37D-8950-4A40-9342-7D31E34743B0				
+302	2	0.000%	0.1%	94.1%	Wuffmen Funeral home in Scranton, Scranton	(declined)		parent_rejected		Scranton, Lackawanna, Pennsylvania, USA			
+303	2	0.000%	0.1%	94.2%	lonely island off the east of Queensland, Queensland	(declined)		parent_rejected		Queensland, Australia			
+304	2	0.000%	0.1%	94.3%	home of her sister, Mrs. John Templeton	(declined)		no_auth_match					
+305	2	0.000%	0.1%	94.5%	Village Hall, Benbow City	(declined)		no_auth_match					
+306	2	0.000%	0.1%	94.6%	1001 south 24th street	(declined)		no_auth_match					
+307	2	0.000%	0.1%	94.7%	home near Haskins, Perrysburg area	(declined)		parent_amb		Perrysburg, Wood, Ohio, USA|Perrysburg, Cattaraugus, New York, USA|Perrysburg, Miami, Indiana, USA|Ferrysburg, Ottawa, Michigan, USA|Berrysburg, Dauphin, Pennsylvania, USA			
+308	2	0.000%	0.1%	94.8%	Hankow, central China	Wuhan	Wuhan (   ), Hubei, China	chain_verified	E534E02F-6F28-44B9-8331-C0E7E76E5203				
+309	1	0.000%	0.1%	94.9%	Home on the outskirts of Salisbury, Maryland	Salisbury	Salisbury, Wicomico, Maryland, USA	chain_verified	B98E9476-51AE-451B-875F-96C6E110307B				
+310	1	0.000%	0.1%	94.9%	1.C. O.F. Old Folks Home, Mattoon	Mattoon	Mattoon, Coles, Illinois, USA	freq_resolved	4B66E175-F766-4709-9DC9-E87E9D934DAF				
+311	1	0.000%	0.1%	95.0%	La sammas hospital	(declined)		no_auth_match					
+312	1	0.000%	0.1%	95.0%	Ttockford, Washington, Washington	Washington	Washington, USA	freq_resolved	DDE42B02-CD03-4F99-B084-92645BA71E4C				
+313	1	0.000%	0.1%	95.1%	Templeague, Dubfig, trend	(declined)		parent_amb		Tren  (T rincs), Lu enec, Banskobystrick , Slovakia|Trent, Taylor, Texas, USA|Trent, Moody, South Dakota, USA|Trent, Merced, California, USA|Trent, Wolfe, Kentucky, USA			
+314	1	0.000%	0.1%	95.1%	Bib Ley Hospital, Washington, D.C.	Washington D.C.	Washington D.C., USA	parent_resolved	5FD37B8E-AE07-4EB7-A4A5-BE5DC251FA24				
+315	1	0.000%	0.1%	95.2%	Cambridge, Saint James	Cambridge	Cambridge, St James, Jamaica	chain_verified	6F7937C2-8822-4299-8BFA-8D85BF542C5C				
+316	1	0.000%	0.1%	95.2%	Big Bend, Alpine, Brew ater County	(declined)		no_auth_match					
+317	1	0.000%	0.1%	95.3%	a hollow off route 66, southeast of 55th street near the Indiana harbor belt railroad	(declined)		no_auth_match					
+318	1	0.000%	0.1%	95.4%	Exchange Street law office, Portland, Maine	Portland	Portland, Cumberland, Maine, USA	chain_verified	8B8E01A7-A596-410B-B476-CEE6ADFF1F8C				
+319	1	0.000%	0.1%	95.4%	VallonIa Rl	(declined)		parent_rejected		Rhode Island, USA			
+320	1	0.000%	0.1%	95.5%	WoVeck (home of the bride's parents)	(declined)		no_auth_match					
+321	1	0.000%	0.1%	95.5%	5, The Grange, Shepherds Bush, W.	(declined)		no_auth_match					
+322	1	0.000%	0.1%	95.6%	Belpry, O., O	(declined)		no_auth_match					
+323	1	0.000%	0.1%	95.6%	near Lawrenceville, Monroe county	Lawrenceville	Lawrenceville, Monroe, Arkansas, USA	chain_verified	B9D12924-DC65-41A7-AF18-39C4C060E504				
+324	1	0.000%	0.1%	95.7%	thirdfloor apartment, Covington, Ky.	Covington	Covington, Kenton, Kentucky, USA	chain_verified	94A0A801-7248-4322-AEC8-4E6BA4AC387D				
+325	1	0.000%	0.1%	95.8%	state prison (southern Michigan), Southern Michigan	Michigan	Michigan, USA	parent_resolved	66BEE20E-3C18-4146-878A-9C52982B9EB4				
+326	1	0.000%	0.1%	95.8%	Morning Sun Presbyterian Church, Morning Sun, Iowa	Morning Sun	Morning Sun, Louisa, Iowa, USA	chain_verified	7C9FBC88-4EC7-4370-9B65-E37F7EB30DBC				
+327	1	0.000%	0.1%	95.9%	bus stop between Jerusalem and Ramallah, Jerusalem, Ramallah	(declined)		parent_rejected		R m All h (Ramallah), R m All h wa l B ra, Palestine			
+328	1	0.000%	0.1%	95.9%	Vernon RD 2, Oneida	Vernon	Vernon, Oneida, New York, USA	chain_verified	2DAFD9F9-2B30-4362-AC4E-4F130C1BB7A8				
+329	1	0.000%	0.1%	96.0%	Columbia Farms near Oil City, Pa, Pennsylvania	(declined)		chain_amb		Oil City, Venango, Pennsylvania, USA|Oil City, Cambria, Pennsylvania, USA			
+330	1	0.000%	0.1%	96.0%	on Ohio 128 in western Hamilton County, Cincinnati, Ohio	Cincinnati	Cincinnati, Hamilton, Ohio, USA	chain_verified	11421429-DC28-4332-B0A1-D03DB12AAC22				
+331	1	0.000%	0.1%	96.1%	PLors 1435	(declined)		no_auth_match					
+332	1	0.000%	0.1%	96.2%	near the Allert street subway	(declined)		no_auth_match					
+333	1	0.000%	0.1%	96.2%	376 North Park View	(declined)		no_auth_match					
+334	1	0.000%	0.1%	96.3%	608 South Orange Avenue, Newark, New Jersey	Newark	Newark, Essex, New Jersey, USA	chain_verified	4AFD42C9-5CC1-468C-87E7-BE5D8C230E2E				
+335	1	0.000%	0.1%	96.3%	Bethlehem Block Co plant, Bethlehem, Northampton County, Pennsylvania	Bethlehem	Bethlehem, Northampton, Pennsylvania, USA	chain_verified	81CA4AE2-69D7-4E6F-A7FC-D76FC4BDB878				
+336	1	0.000%	0.1%	96.4%	barn on his North Jackson farm	(declined)		no_auth_match					
+337	1	0.000%	0.1%	96.4%	Lerdo Jail's Pretrial facility	(declined)		no_auth_match					
+338	1	0.000%	0.1%	96.5%	eight miles south of Arnegard	Arnegard	Arnegard, McKenzie, North Dakota, USA	single_term	DEFFEBF2-F483-4AB8-BA82-2CDFF31C0C04				
+339	1	0.000%	0.1%	96.5%	home (Barbeau block, South Washington Street)	(declined)		no_auth_match					
+340	1	0.000%	0.1%	96.6%	Maryhill Barracks, Glasgow	Glasgow	Glasgow, City of Glasgow, Scotland, United Kingdom	freq_resolved	B60595CF-70C7-45C5-AA37-9D893A2EC22A				
+341	1	0.000%	0.1%	96.7%	27 Luther St., Grafton, Taylor County	Grafton	Grafton, Taylor, West Virginia, USA	chain_verified	53328EDC-3F3F-463E-9B3B-4E55822D40B7				
+342	1	0.000%	0.1%	96.7%	Sultush, north eastern part of Poland	(declined)		parent_amb		Poland|Manhattan, New York City, New York, USA|Portland, Multnomah, Oregon, USA|Poland, Androscoggin, Maine, USA|Poland, Poland, Mahoning, Ohio, USA			
+343	1	0.000%	0.1%	96.8%	home here, Hopkinsville, Ky.	Hopkinsville	Hopkinsville, Christian, Kentucky, USA	chain_verified	F3B6E2CD-8510-4452-9366-4B34C862C7CA				
+344	1	0.000%	0.1%	96.8%	field near Janesville, Janesville, Walworth County, Wisconsin	Janesville	Janesville, Rock, Wisconsin, USA	chain_verified_proximity	70D721EC-038D-44AD-B720-A86D2491BFE3				
+345	1	0.000%	0.1%	96.9%	the state fair grounds, Macon, Macon, Georgia	(declined)		chain_amb		Macon, Bibb, Georgia, USA|Mason, Heard, Georgia, USA			
+346	1	0.000%	0.1%	96.9%	north of Bagley, Wisconsin	(declined)		chain_amb		Bagley, Grant, Wisconsin, USA|Bagley, Oconto, Wisconsin, USA			
+347	1	0.000%	0.1%	97.0%	Ri, diocese of Sez; near Argentan; France	Argentan	Argentan, Orne, Normandie, France	chain_verified	9027D70F-6C9F-A64D-9F94-8A0C542257A5				
+348	1	0.000%	0.1%	97.1%	East Poultney Cemetery, East Poultney, VT	East Poultney	East Poultney, Poultney, Rutland, Vermont, USA	chain_verified	A687A6FE-892E-4F32-ACC9-4AF74DA1B3D8				
+349	1	0.000%	0.1%	97.1%	ridge near North Fork, Idaho	North Fork	North Fork, Lemhi, Idaho, USA	chain_verified	DC4EE750-E48D-4DED-BE1D-8B9FB15A9F3F				
+350	1	0.000%	0.1%	97.2%	Orangeburg, this state	(declined)		no_auth_match					
+351	1	0.000%	0.1%	97.2%	Sault Ste. Marie, Michigan, Sault Ste. Marie; Michigan	Sault Ste Marie	Sault Ste Marie, Chippewa, Michigan, USA	chain_verified_proximity	04BE86D0-865E-4793-A942-ED9056E5B29D				
+352	1	0.000%	0.1%	97.3%	City Mortuary, Golden Lane	(declined)		parent_amb		Golden Lake, Waukesha, Wisconsin, USA|Golden Lake, Mississippi, Arkansas, USA			
+353	1	0.000%	0.1%	97.3%	Ardennes mountains	(declined)		no_auth_match					
+354	1	0.000%	0.1%	97.4%	three miles west of Rushford	(declined)		single_amb		Rumford, Oxford, Maine, USA|Richford, Franklin, Vermont, USA|Rushford, Fillmore, Minnesota, USA|Rushford, Winnebago, Wisconsin, USA|Rushford, Allegany, New York, USA			
+355	1	0.000%	0.1%	97.5%	Coron a Hospital Surgery	(declined)		no_auth_match					
+356	1	0.000%	0.1%	97.5%	near Highways 14 and 96, north of Marshalltown, Iowa	Marshalltown	Marshalltown, Marshall, Iowa, USA	chain_verified	9AAD5B06-AD99-4C6C-B1CB-24E54623F84B				
+357	1	0.000%	0.1%	97.6%	1023 Cameron Ave.	(declined)		no_auth_match					
+358	1	0.000%	0.1%	97.6%	calle del Carmen, Madrid	(declined)		parent_amb		Madrid, Boone, Iowa, USA|Madrid, St Lawrence, New York, USA|Madrid, Houston, Alabama, USA|Madrid, Perkins, Nebraska, USA|Madrid, Santa Fe, New Mexico, USA			
+359	1	0.000%	0.1%	97.7%	43 Maple street, Seymour	(declined)		parent_amb		Seymour, Jackson, Indiana, USA|Seymour, New Haven, Connecticut, USA|Seymour, Shire of Mitchell, Victoria, Australia|Seymour, Outagamie, Wisconsin, USA|Seymour, Eau Claire, Wisconsin, USA			
+360	1	0.000%	0.1%	97.7%	U.S. 108, Macoupin County, Illinois	Macoupin	Macoupin County, Illinois, USA	chain_verified	20964F0D-C728-4B0B-BE8B-DC87E27EDF70				
+361	1	0.000%	0.1%	97.8%	Bedford area, near Evansville, Indiana	Evansville	Evansville, Vanderburgh, Indiana, USA	chain_verified	C7397C91-2280-4E9E-B329-D29559F672B1				
+362	1	0.000%	0.1%	97.9%	Lower Main St., Wilton, NH	Wilton	Wilton, Hillsborough, New Hampshire, USA	chain_verified	DF3525D9-BDE5-4756-B72E-915559197D55				
+363	1	0.000%	0.1%	97.9%	Wellington district, N.S.W.	Wellington	Wellington, Dubbo Regional Council, New South Wales, Australia	chain_verified	22481E75-1671-41C0-924B-7C70E1580A9D				
+364	1	0.000%	0.1%	98.0%	Heitman, Ia.	(declined)		parent_rejected		Iowa, USA			
+365	1	0.000%	0.1%	98.0%	Iradell Rd., Ithaca, R.D. 6	(declined)		parent_amb		Ithaca, Tompkins, New York, USA|Ithaca, Gratiot, Michigan, USA|Ithaca, Richland, Wisconsin, USA|Ithaca, Saunders, Nebraska, USA|Ithaca, Twin, Darke, Ohio, USA			
+366	1	0.000%	0.1%	98.1%	Marlborough Arms, Hackney	Hackney	Hackney, Greater London, England, United Kingdom	freq_resolved	A6375F71-4B71-4446-949C-09363E6411EF				
+367	1	0.000%	0.1%	98.1%	Near Glen Rock, York, York County, Pennsylvania	Glen Rock	Glen Rock, York, Pennsylvania, USA	chain_verified_proximity	6F1905C4-F9FA-4032-A46B-6B8326BB74CB				
+368	1	0.000%	0.1%	98.2%	Wheatley Chapel, on King street, Alexandria, Va	Alexandria	Alexandria, Virginia, USA	chain_verified	A84563A1-7988-422E-A219-1ADDB5FC7F7D				
+369	1	0.000%	0.1%	98.2%	825 Polson Bay	(declined)		no_auth_match					
+370	1	0.000%	0.1%	98.3%	Turkish baths	(declined)		no_auth_match					
+371	1	0.000%	0.1%	98.4%	Ferndale, Maryland, Maryland	Ferndale	Ferndale, Anne Arundel, Maryland, USA	chain_verified	38B7DE62-E327-4552-BE89-B57916C5D3CE				
+372	1	0.000%	0.1%	98.4%	Pleasant Valley Methodist Church, Heidelberg	(declined)		parent_amb		Heidelberg, Baden-Württemberg, Germany|Heidelberg, City of Banyule, Victoria, Australia|Heidelberg, Allegheny, Pennsylvania, USA|Heidelberg, Jasper, Mississippi, USA|Heidelberg, Le Sueur, Minnesota, USA			
+373	1	0.000%	0.1%	98.5%	Coldwater, id.	(declined)		parent_amb		Idaho, USA|Idaho, Pike, Ohio, USA|Idaho, Lawrence, Tennessee, USA|Idaho, Livingston, New York, USA|Idaho, Armstrong, Pennsylvania, USA			
+374	1	0.000%	0.1%	98.5%	court house, Knooxsvillle, Ky.	(declined)		parent_rejected		Kentucky, USA			
+375	1	0.000%	0.1%	98.6%	Mahaska county hospital, Oskaloosa, Mahaska county	Oskaloosa	Oskaloosa, Mahaska, Iowa, USA	chain_verified_proximity	24235ED9-A9C5-4FE1-92A5-C559F44090B0				
+376	1	0.000%	0.1%	98.6%	Pittssures	(declined)		no_auth_match					
+377	1	0.000%	0.1%	98.7%	761 W. Queens Place	(declined)		no_auth_match					
+378	1	0.000%	0.1%	98.8%	Glenrock Hotel	(declined)		no_auth_match					
+379	1	0.000%	0.1%	98.8%	In a creek, Texas	Texas	Texas, USA	freq_resolved	777D406E-9B19-4630-839B-F3E4BEE4122B				
+380	1	0.000%	0.1%	98.9%	Wiscasnet, Me., Me.	Wiscasset	Wiscasset, Lincoln, Maine, USA	chain_verified	96C83E27-5A1B-4267-B26A-4001CAA98032				
+381	1	0.000%	0.1%	98.9%	1406 32d St.	(declined)		no_auth_match					
+382	1	0.000%	0.1%	99.0%	144 Mighton Ave.	(declined)		no_auth_match					
+383	1	0.000%	0.1%	99.0%	Pittsburgh, RD 1	Pittsburgh	Pittsburgh, Allegheny, Pennsylvania, USA	freq_resolved	4D38AA7B-CF0F-41BA-9D72-5523D0A4D819				
+384	1	0.000%	0.1%	99.1%	Loneconing, Loneconing, Md.	Lonaconing	Lonaconing, Allegany, Maryland, USA	chain_verified_proximity	D7A4AF67-4758-4397-8A9E-B46649EAD136				
+385	1	0.000%	0.1%	99.2%	I-94 near Ann Arbor	Ann Arbor	Ann Arbor, Washtenaw, Michigan, USA	single_term	9E4BB2EF-A147-4043-8445-379D9B81A571				
+386	1	0.000%	0.1%	99.2%	Melville, Harlowton road, Fish Creek territory	(declined)		no_auth_match					
+387	1	0.000%	0.1%	99.3%	near Pilaras, Tex., Texas	(declined)		parent_rejected		Texas, USA			
+388	1	0.000%	0.1%	99.3%	Racton road, Fulham	Fulham	Fulham, Hammersmith and Fulham, Greater London, England, United Kingdom	freq_resolved	5901DCBF-D439-4211-BFCD-DD1B5ECF2D3F				
+389	1	0.000%	0.1%	99.4%	Yale, Tenn.	(declined)		parent_rejected		Tennessee, USA			
+390	1	0.000%	0.1%	99.4%	San Francisco de la Borja, Chihuahua	Chihuahua	Chihuahua, Mexico	freq_resolved	AEF45E4C-0373-4BAF-B4F3-23B6B552F51F				
+391	1	0.000%	0.1%	99.5%	21S Rusk	(declined)		no_auth_match					
+392	1	0.000%	0.1%	99.5%	Hotel Julien, Dubuque, Ia.	Dubuque	Dubuque, Dubuque, Iowa, USA	chain_verified	7EC33CB3-1C77-4C3A-A056-49C561B639AA				
+393	1	0.000%	0.1%	99.6%	Rock Vial, Kent County	(declined)		parent_amb		Kent County, New Brunswick, Canada|Kent County, Rhode Island, USA|Kent, England, United Kingdom|Kent County, Delaware, USA|Kent County, Michigan, USA			
+394	1	0.000%	0.1%	99.7%	New Martinsville, W.Va., West Virginia	New Martinsville	New Martinsville, Wetzel, West Virginia, USA	chain_verified	F43A41EE-90A4-46F2-8014-436305B7F775				
+395	1	0.000%	0.1%	99.7%	Point Pleasant Beach, NJ, New Jersey	Point Pleasant Beach	Point Pleasant Beach, Ocean, New Jersey, USA	chain_verified	C28AA83F-CC37-412F-9312-3C835DB8D090				
+396	1	0.000%	0.1%	99.8%	Devlele	(declined)		no_auth_match					
+397	1	0.000%	0.1%	99.8%	Hitouke Creek, Cowley County	Cowley	Cowley County, Kansas, USA	parent_resolved	0E080778-0E0B-4167-A073-F769B5B01ADA				
+398	1	0.000%	0.1%	99.9%	near Ohlsson Mountain, six miles back of Homer, Alaska	Homer	Homer, Kenai Peninsula, Alaska, USA	chain_verified	3A92FD20-AE18-4A58-A906-2A42A1CED7D3				
+399	1	0.000%	0.1%	99.9%	93 Werth Street, Syracuse	Syracuse	Syracuse, Onondaga, New York, USA	freq_resolved	8E69413E-2896-4062-8846-63B30A35B568				
+400	1	0.000%	0.1%	100.0%	ONeil block, Braonaxton, N.	(declined)		no_auth_match					
