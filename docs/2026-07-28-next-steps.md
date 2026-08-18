@@ -104,7 +104,13 @@ Fix the `(helper_miss, 0)` collapse in `rank_candidates`. Candidate axes, in rou
 
 ### 2. Tier candidate generation by provenance
 
-Tag every candidate with its origin — `mnt_full`, `exact`, `abbrev`, `variant`, `cardinal_strip`, `preposition`, `spelling`, `fs` — and make the tier axis 0 of the score, so a spelling-corrected candidate can never tie an exact match. This is the largest measured win at roughly 930 rows, and it produces exactly the feature a reranker would need as input.
+**Half of this has landed.** Corrected 2026-08-18; the original text below described both halves as pending.
+
+The tagging shipped in `3d54306` and `30dbf25`. Every candidate carries its origin — `mnt_full`, `exact`, `abbrev`, `variant`, `cardinal_strip`, `preposition`, `spelling`, `fs` — via `NameCache.origins` (`rtl_matcher.py:216`), `MatchStep.origins`, and the `ORIGIN_TO_METHOD` table (`rtl_matcher.py:127`). The level-provenance export reads them, which is where `_levels.tsv` gets its `match_method` column.
+
+What is still open is the ranking half: make the tier axis 0 of the score, so a spelling-corrected candidate can never tie an exact match. `rank_candidates` still reads the narrower `correction_uuids_by_term` path (`rtl_matcher.py:3390`) rather than the origin, so the tag is recorded and never scored on. Roughly 930 rows, and it produces the feature a reranker would need as input.
+
+Two constraints on doing it, both learned since: the signal belongs in `rank_candidates` and not in the lookup — an earlier attempt filtering candidates at lookup time scored 66.1% against a 67.4% baseline — and `origins` is first-writer-wins, so it disagrees with `correction_uuids_by_term` on any UUID found exactly and later rediscovered by correction. See `docs/2026-08-06-cleanup-followups.md` §1 and §3, and `OUTSTANDING.md` §3.2.
 
 ### 3. LLM reranker, scoped to ambiguous rows only
 

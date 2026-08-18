@@ -1,5 +1,12 @@
 # eval
 
+**Status, 2026-08-18: retained for reference, not maintained.** Production went a
+different direction on measurement, so nothing here is the metric of record. It is
+kept because it produced the figures in `docs/2026-08-12-results-table.md` and
+because `build_mnt_holdout.py` is needed by anyone scoring the matcher against
+curator labels, whatever scorer they use. Known weaknesses are listed in
+`OUTSTANDING.md` §6. The matcher itself does not depend on any of this.
+
 Record accuracy measurement for `rtl_matcher`. Answers one question: of the
 records we process, what share resolve to the correct Place Authority record?
 
@@ -158,6 +165,25 @@ Two independent checks that the holdout held, both on the matcher's own output:
 
 A non-zero count on either means a key variant escaped, and the run is a
 lookup test rather than a matching test.
+
+## A second set, and the old pipeline
+
+`build_sb2_eval.py` turns the Leafprint-verified snowball2 ground truth
+(15,796 strings, each carrying its own `frequency`) into an input and a label
+file. Record weight there is an exact per-string count rather than a sampled
+band mean, so `score_frequency.py` reports term accuracy, record accuracy,
+coverage, and precision off the one file. Abstain-is-correct rows are 32.1% of
+it against 6.6% here, which is the residual this set cannot show.
+
+`oldpipe/mirror_oldpipe.sh` builds a symlink copy of `code/place-normalizer`
+with its two hardcoded authority paths swapped for the holdout, so the old
+pipeline can be scored on the same rows without reading the table it is being
+measured against. `oldpipe/oldpipe_to_scorable.py` maps its output into the
+`guid`/`authority_id` shape both scorers read. `score_paired.py` prints two
+runs side by side.
+
+Results and the full evidence pack:
+`docs/2026-08-12-presentation-evidence.md`.
 
 ## What the numbers mean
 

@@ -1,3 +1,21 @@
 term	uuid	auth_name	jurisdiction	rows_last_run	last_input
-bridge	28497DD9-89AF-4381-9FBF-2412E5389498	Bridge	City	1	snowball2_sample_5k.tsv
-city	24503A39-8CA7-43FB-93AE-407F3FE52581	City of Glasgow	Council area	2	snowball2_sample_5k.tsv
+avenue	8703251C-EDB9-4124-939A-AB6CD0ADFEB8	Avenue	City	2	snowball2_sample_500k.tsv
+bridge	28497DD9-89AF-4381-9FBF-2412E5389498	Bridge	City	6	food_sample_1m.tsv
+church	85383312-814E-47DD-8C43-7B6B4967516F	Church	Settlement	7	snowball2_sample_500k.tsv
+city	24503A39-8CA7-43FB-93AE-407F3FE52581	City of Glasgow	Council area	2	snowball2_sample_500k.tsv
+city	E1940ADC-5682-4776-A492-1318A7484514	London	Federal city	155	snowball2_sample_500k.tsv
+co	4B9E1AB8-BF4F-417B-9D58-75CEEF7E5BE5	Colorado	State	1	snowball2_sample_500k.tsv
+co.	4B9E1AB8-BF4F-417B-9D58-75CEEF7E5BE5	Colorado	State	2	snowball2_sample_500k.tsv
+community	7B8EBA3C-2DFF-7443-9F80-B437A64159CA	Community Heights	Neighborhood	1	snowball2_sample_500k.tsv
+district	E13DA88A-6737-4FE9-962E-158CBB609B50	District	Township	16	snowball2_sample_500k.tsv
+hotel	A8429243-E074-485A-98F5-9A28DF3512B4	Salt Lake City	City	2	food_sample_1m.tsv
+landing	C810D0ED-5FAD-42E8-9EFE-CAF8ACF0B0F1	Lansing	City	1	snowball2_500k.tsv
+mine	7B9FAD66-B372-49FF-9221-85847C0A0854	Mine La Motte	City	3	food_sample_1m.tsv
+place	257C8710-F40A-4290-BC80-2F857BCF312E	Place	City	1	food_sample_1m.tsv
+prov	6D38CF6C-258A-4BF9-AB40-2A9F4267F00E	Providence	City	1	food_sample_1m.tsv
+prov.	6D38CF6C-258A-4BF9-AB40-2A9F4267F00E	Providence	City	1	snowball2_sample_500k.tsv
+road	EC46EA20-1356-4EBA-B2CD-9D51C624E897	Read	Township	3	snowball2_sample_500k.tsv
+school	39B0367B-7CBF-4E75-8476-2D77182C434A	School	City	1	snowball2_sample_500k.tsv
+station	442B0411-38DF-4931-A07A-5172099753A6	Station	City	2	food_sample_1m.tsv
+street	07203729-FD65-499F-97A5-84810F8E1AA1	Street	Village	17	snowball2_sample_500k.tsv
+the village	D9323606-4920-4050-AA13-01C99C29CF4E	The Village	City	3	snowball2_sample_500k.tsv
